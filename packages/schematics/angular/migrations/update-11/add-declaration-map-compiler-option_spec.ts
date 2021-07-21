@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
@@ -30,7 +30,7 @@ function createWorkSpaceConfig(tree: UnitTestTree) {
                 tsConfig: 'projects/lib/tsconfig.lib.prod.json',
               },
             },
-            // tslint:disable-next-line: no-any
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
           } as any,
         },
       },
@@ -59,7 +59,9 @@ describe(`Migration to add 'declarationMap' compiler option`, () => {
 
   it(`should be added with a value of 'false' in a prod tsconfig`, async () => {
     const newTree = await schematicRunner.runSchematicAsync(schematicName, {}, tree).toPromise();
-    const { compilerOptions } = JSON.parse(newTree.readContent('/projects/lib/tsconfig.lib.prod.json'));
+    const { compilerOptions } = JSON.parse(
+      newTree.readContent('/projects/lib/tsconfig.lib.prod.json'),
+    );
     expect(compilerOptions.declarationMap).toBeFalse();
   });
 
@@ -71,11 +73,18 @@ describe(`Migration to add 'declarationMap' compiler option`, () => {
 
   it('should not be overriden when already set', async () => {
     const tsConfigPath = '/projects/lib/tsconfig.lib.json';
-    tree.overwrite(tsConfigPath, JSON.stringify({
-      compilerOptions: {
-        declarationMap: false,
-      },
-    }, undefined, 2));
+    tree.overwrite(
+      tsConfigPath,
+      JSON.stringify(
+        {
+          compilerOptions: {
+            declarationMap: false,
+          },
+        },
+        undefined,
+        2,
+      ),
+    );
 
     const newTree = await schematicRunner.runSchematicAsync(schematicName, {}, tree).toPromise();
     const { compilerOptions } = JSON.parse(newTree.readContent(tsConfigPath));

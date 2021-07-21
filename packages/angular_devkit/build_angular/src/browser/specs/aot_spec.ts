@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
@@ -9,7 +9,7 @@
 import { Architect } from '@angular-devkit/architect';
 import { BrowserBuilderOutput } from '@angular-devkit/build-angular';
 import { join, logging, normalize, virtualFs } from '@angular-devkit/core';
-import { createArchitect, host, veEnabled } from '../../test-utils';
+import { createArchitect, host } from '../../test-utils';
 
 describe('Browser Builder AOT', () => {
   const targetSpec = { project: 'app', target: 'build' };
@@ -31,11 +31,7 @@ describe('Browser Builder AOT', () => {
 
     const fileName = join(normalize(output.outputPath), 'main.js');
     const content = virtualFs.fileBufferToString(await host.read(normalize(fileName)).toPromise());
-    if (!veEnabled) {
-      expect(content).toContain('AppComponent.ɵcmp');
-    } else {
-      expect(content).toMatch(/platformBrowser.*bootstrapModuleFactory.*AppModuleNgFactory/);
-    }
+    expect(content).toContain('AppComponent.ɵcmp');
 
     await run.stop();
   });
@@ -45,11 +41,7 @@ describe('Browser Builder AOT', () => {
       aot: true,
     };
 
-    host.replaceInFile(
-      'src/app/app.component.ts',
-      'app.component.css',
-      'app.component.scss',
-    );
+    host.replaceInFile('src/app/app.component.ts', 'app.component.css', 'app.component.scss');
 
     host.writeMultipleFiles({
       'src/app/app.component.scss': `
@@ -59,7 +51,7 @@ describe('Browser Builder AOT', () => {
 
     const logger = new logging.Logger('');
     const logs: string[] = [];
-    logger.subscribe(e => logs.push(e.message));
+    logger.subscribe((e) => logs.push(e.message));
 
     const run = await architect.scheduleTarget(targetSpec, overrides, { logger });
     const output = await run.result;

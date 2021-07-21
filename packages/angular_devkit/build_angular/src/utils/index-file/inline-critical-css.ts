@@ -1,12 +1,12 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
 
-import { readFile } from '../fs';
+import * as fs from 'fs';
 
 const Critters: typeof import('critters').default = require('critters');
 
@@ -19,18 +19,22 @@ export interface InlineCriticalCssProcessorOptions {
   deployUrl?: string;
   readAsset?: (path: string) => Promise<string>;
 }
+
 class CrittersExtended extends Critters {
   readonly warnings: string[] = [];
   readonly errors: string[] = [];
 
-  constructor(private readonly optionsExtended: InlineCriticalCssProcessorOptions & InlineCriticalCssProcessOptions) {
+  constructor(
+    private readonly optionsExtended: InlineCriticalCssProcessorOptions &
+      InlineCriticalCssProcessOptions,
+  ) {
     super({
       logger: {
         warn: (s: string) => this.warnings.push(s),
         error: (s: string) => this.errors.push(s),
-        log: () => { },
-        info: () => { },
+        info: () => {},
       },
+      logLevel: 'warn',
       path: optionsExtended.outputPath,
       publicPath: optionsExtended.deployUrl,
       compress: !!optionsExtended.minify,
@@ -39,22 +43,24 @@ class CrittersExtended extends Critters {
       mergeStylesheets: false,
       preload: 'media',
       noscriptFallback: true,
-      // tslint:disable-next-line: no-any
-    } as any);
+      inlineFonts: true,
+    });
   }
 
   protected readFile(path: string): Promise<string> {
     const readAsset = this.optionsExtended.readAsset;
 
-    return readAsset ? readAsset(path) : readFile(path, 'utf-8');
+    return readAsset ? readAsset(path) : fs.promises.readFile(path, 'utf-8');
   }
 }
 
 export class InlineCriticalCssProcessor {
-  constructor(protected readonly options: InlineCriticalCssProcessorOptions) { }
+  constructor(protected readonly options: InlineCriticalCssProcessorOptions) {}
 
-  async process(html: string, options: InlineCriticalCssProcessOptions)
-    : Promise<{ content: string, warnings: string[], errors: string[] }> {
+  async process(
+    html: string,
+    options: InlineCriticalCssProcessOptions,
+  ): Promise<{ content: string; warnings: string[]; errors: string[] }> {
     const critters = new CrittersExtended({ ...this.options, ...options });
     const content = await critters.process(html);
 
@@ -62,7 +68,7 @@ export class InlineCriticalCssProcessor {
       // Clean up value from value less attributes.
       // This is caused because parse5 always requires attributes to have a string value.
       // nomodule="" defer="" -> nomodule defer.
-      content: content.replace(/(\s[a-z]+)=""/g, '$1'),
+      content: content.replace(/(\s(?:defer|nomodule))=""/g, '$1'),
       errors: critters.errors,
       warnings: critters.warnings,
     };

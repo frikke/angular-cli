@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { analytics, experimental, json, logging } from '@angular-devkit/core';
 import { Observable, Subscription, from, isObservable, of, throwError } from 'rxjs';
 import { tap } from 'rxjs/operators';
@@ -25,22 +26,19 @@ import {
 import { Builder, BuilderSymbol, BuilderVersionSymbol } from './internal';
 import { scheduleByName, scheduleByTarget } from './schedule-by-name';
 
-
-// tslint:disable-next-line: no-big-function
-export function createBuilder<
-  OptT extends json.JsonObject,
-  OutT extends BuilderOutput = BuilderOutput,
->(
+// eslint-disable-next-line max-lines-per-function
+export function createBuilder<OptT = json.JsonObject, OutT extends BuilderOutput = BuilderOutput>(
   fn: BuilderHandlerFn<OptT>,
-): Builder<OptT> {
+): Builder<OptT & json.JsonObject> {
   const cjh = experimental.jobs.createJobHandler;
+  // eslint-disable-next-line max-lines-per-function
   const handler = cjh<json.JsonObject, BuilderInput, OutT>((options, context) => {
     const scheduler = context.scheduler;
     const progressChannel = context.createChannel('progress');
     const logChannel = context.createChannel('log');
     const analyticsChannel = context.createChannel('analytics');
     let currentState: BuilderProgressState = BuilderProgressState.Stopped;
-    const teardownLogics: Array<() => (PromiseLike<void> | void)> = [];
+    const teardownLogics: Array<() => PromiseLike<void> | void> = [];
     let tearingDown = false;
     let current = 0;
     let status = '';
@@ -63,33 +61,33 @@ export function createBuilder<
       }
 
       progressChannel.next({
-        ...progress as json.JsonObject,
+        ...(progress as json.JsonObject),
         ...(context.target && { target: context.target }),
         ...(context.builder && { builder: context.builder }),
         id: context.id,
       });
     }
 
-    return new Observable<OutT>(observer => {
+    return new Observable<OutT>((observer) => {
       const subscriptions: Subscription[] = [];
 
-      const inputSubscription = context.inboundBus.subscribe(
-        i => {
-          switch (i.kind) {
-            case experimental.jobs.JobInboundMessageKind.Stop:
-              // Run teardown logic then complete.
-              tearingDown = true;
-              Promise.all(teardownLogics.map(fn => fn() || Promise.resolve()))
-                .then(() => observer.complete(), err => observer.error(err));
-              break;
-            case experimental.jobs.JobInboundMessageKind.Input:
-              if (!tearingDown) {
-                onInput(i.value);
-              }
-              break;
-          }
-        },
-      );
+      const inputSubscription = context.inboundBus.subscribe((i) => {
+        switch (i.kind) {
+          case experimental.jobs.JobInboundMessageKind.Stop:
+            // Run teardown logic then complete.
+            tearingDown = true;
+            Promise.all(teardownLogics.map((fn) => fn() || Promise.resolve())).then(
+              () => observer.complete(),
+              (err) => observer.error(err),
+            );
+            break;
+          case experimental.jobs.JobInboundMessageKind.Input:
+            if (!tearingDown) {
+              onInput(i.value);
+            }
+            break;
+        }
+      });
 
       function onInput(i: BuilderInput) {
         const builder = i.info as BuilderInfo;
@@ -98,7 +96,7 @@ export function createBuilder<
           : builder.builderName;
         const logger = new logging.Logger(loggerName);
 
-        subscriptions.push(logger.subscribe(entry => log(entry)));
+        subscriptions.push(logger.subscribe((entry) => log(entry)));
 
         const context: BuilderContext = {
           builder,
@@ -120,7 +118,7 @@ export function createBuilder<
             });
 
             // We don't want to subscribe errors and complete.
-            subscriptions.push(run.progress.subscribe(event => progressChannel.next(event)));
+            subscriptions.push(run.progress.subscribe((event) => progressChannel.next(event)));
 
             return run;
           },
@@ -138,45 +136,51 @@ export function createBuilder<
             });
 
             // We don't want to subscribe errors and complete.
-            subscriptions.push(run.progress.subscribe(event => progressChannel.next(event)));
+            subscriptions.push(run.progress.subscribe((event) => progressChannel.next(event)));
 
             return run;
           },
           async getTargetOptions(target: Target) {
-            return scheduler.schedule<Target, json.JsonValue, json.JsonObject>(
-                    '..getTargetOptions', target).output.toPromise();
+            return scheduler
+              .schedule<Target, json.JsonValue, json.JsonObject>('..getTargetOptions', target)
+              .output.toPromise();
           },
           async getProjectMetadata(target: Target | string) {
-            return scheduler.schedule<Target | string, json.JsonValue, json.JsonObject>(
-                    '..getProjectMetadata', target).output.toPromise();
+            return scheduler
+              .schedule<Target | string, json.JsonValue, json.JsonObject>(
+                '..getProjectMetadata',
+                target,
+              )
+              .output.toPromise();
           },
           async getBuilderNameForTarget(target: Target) {
-            return scheduler.schedule<Target, json.JsonValue, string>(
-              '..getBuilderNameForTarget',
-              target,
-            ).output.toPromise();
+            return scheduler
+              .schedule<Target, json.JsonValue, string>('..getBuilderNameForTarget', target)
+              .output.toPromise();
           },
           async validateOptions<T extends json.JsonObject = json.JsonObject>(
             options: json.JsonObject,
             builderName: string,
           ) {
-            return scheduler.schedule<[string, json.JsonObject], json.JsonValue, T>(
-              '..validateOptions',
-              [builderName, options],
-            ).output.toPromise();
+            return scheduler
+              .schedule<[string, json.JsonObject], json.JsonValue, T>('..validateOptions', [
+                builderName,
+                options,
+              ])
+              .output.toPromise();
           },
           reportRunning() {
             switch (currentState) {
               case BuilderProgressState.Waiting:
               case BuilderProgressState.Stopped:
-                progress({ state: BuilderProgressState.Running, current: 0, total  }, context);
+                progress({ state: BuilderProgressState.Running, current: 0, total }, context);
                 break;
             }
           },
           reportStatus(status: string) {
             switch (currentState) {
               case BuilderProgressState.Running:
-                progress({ state: currentState, status, current, total  }, context);
+                progress({ state: currentState, status, current, total }, context);
                 break;
               case BuilderProgressState.Waiting:
                 progress({ state: currentState, status }, context);
@@ -189,8 +193,8 @@ export function createBuilder<
                 progress({ state: currentState, current, total, status }, context);
             }
           },
-          analytics: new analytics.ForwardingAnalytics(report => analyticsChannel.next(report)),
-          addTeardown(teardown: () => (Promise<void> | void)): void {
+          analytics: new analytics.ForwardingAnalytics((report) => analyticsChannel.next(report)),
+          addTeardown(teardown: () => Promise<void> | void): void {
             teardownLogics.push(teardown);
           },
         };
@@ -212,20 +216,24 @@ export function createBuilder<
 
         // Manage some state automatically.
         progress({ state: BuilderProgressState.Running, current: 0, total: 1 }, context);
-        subscriptions.push(result.pipe(
-          tap(() => {
-            progress({ state: BuilderProgressState.Running, current: total }, context);
-            progress({ state: BuilderProgressState.Stopped }, context);
-          }),
-        ).subscribe(
-          message => observer.next(message as OutT),
-          error => observer.error(error),
-          () => observer.complete(),
-        ));
+        subscriptions.push(
+          result
+            .pipe(
+              tap(() => {
+                progress({ state: BuilderProgressState.Running, current: total }, context);
+                progress({ state: BuilderProgressState.Stopped }, context);
+              }),
+            )
+            .subscribe(
+              (message) => observer.next(message as OutT),
+              (error) => observer.error(error),
+              () => observer.complete(),
+            ),
+        );
       }
 
       return () => {
-        subscriptions.forEach(x => x.unsubscribe());
+        subscriptions.forEach((x) => x.unsubscribe());
         inputSubscription.unsubscribe();
       };
     });

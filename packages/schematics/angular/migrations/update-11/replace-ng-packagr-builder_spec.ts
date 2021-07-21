@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
@@ -22,7 +22,7 @@ function createWorkSpaceConfig(tree: UnitTestTree) {
         architect: {
           build: {
             builder: Builders.DeprecatedNgPackagr,
-          // tslint:disable-next-line: no-any
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
           } as any,
         },
       },
@@ -44,12 +44,19 @@ describe(`Migration to replace '@angular-devkit/build-ng-packagr' builder`, () =
   beforeEach(() => {
     tree = new UnitTestTree(new EmptyTree());
     createWorkSpaceConfig(tree);
-    tree.create('/package.json', JSON.stringify({
-      devDependencies: {
-        '@angular/compiler-cli': '0.0.0',
-        '@angular-devkit/build-ng-packagr': '0.0.0',
-      },
-    }, undefined, 2));
+    tree.create(
+      '/package.json',
+      JSON.stringify(
+        {
+          devDependencies: {
+            '@angular/compiler-cli': '0.0.0',
+            '@angular-devkit/build-ng-packagr': '0.0.0',
+          },
+        },
+        undefined,
+        2,
+      ),
+    );
   });
 
   it(`should remove '@angular-devkit/build-ng-packagr' from devDependencies`, async () => {
@@ -66,7 +73,9 @@ describe(`Migration to replace '@angular-devkit/build-ng-packagr' builder`, () =
 
   it('should update library builder target', async () => {
     const newTree = await schematicRunner.runSchematicAsync(schematicName, {}, tree).toPromise();
-    const { projects: { lib } } = JSON.parse(newTree.readContent('/angular.json'));
+    const {
+      projects: { lib },
+    } = JSON.parse(newTree.readContent('/angular.json'));
     expect(lib.architect.build.builder).toBe('@angular-devkit/build-angular:ng-packagr');
   });
 });

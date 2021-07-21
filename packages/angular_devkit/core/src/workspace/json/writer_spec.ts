@@ -1,11 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-// tslint:disable:no-big-function
+
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { JsonArray, JsonObject } from '../../json';
@@ -40,7 +40,9 @@ function createTestCaseHost(inputData = '') {
     async writeFile(path: string, data: string) {
       try {
         const testCase = readFileSync(
-          require.resolve(join(__dirname, 'test', 'cases', path) + '.json'), 'utf8');
+          require.resolve(join(__dirname, 'test', 'cases', path) + '.json'),
+          'utf8',
+        );
         expect(data).toEqual(testCase);
       } catch (e) {
         fail(`Unable to load test case '${path}': ${e.message || e}`);
@@ -60,7 +62,7 @@ function createTestCaseHost(inputData = '') {
 describe('writeJsonWorkpaceFile', () => {
   it('does not modify a file without changes', async () => {
     const host = {
-      async readFile(path: string) {
+      async readFile() {
         return representativeFile;
       },
       async writeFile() {
@@ -274,7 +276,7 @@ describe('writeJsonWorkpaceFile', () => {
     await writeJsonWorkspace(workspace, host, 'AddProjectWithTargets');
   });
 
-  it('modifies a project\'s properties', async () => {
+  it("modifies a project's properties", async () => {
     const host = createTestCaseHost(representativeFile);
 
     const workspace = await readJsonWorkspace('', host);
@@ -291,7 +293,7 @@ describe('writeJsonWorkpaceFile', () => {
     await writeJsonWorkspace(workspace, host, 'ProjectModifyProperties');
   });
 
-  it('sets a project\'s properties', async () => {
+  it("sets a project's properties", async () => {
     const host = createTestCaseHost(representativeFile);
 
     const workspace = await readJsonWorkspace('', host);
@@ -578,7 +580,7 @@ describe('writeJsonWorkpaceFile', () => {
 
     const workspace = await readJsonWorkspace('', host);
 
-    workspace.extensions['x-foo'] = { };
+    workspace.extensions['x-foo'] = {};
 
     await writeJsonWorkspace(workspace, host, 'ObjectReplace2');
   });

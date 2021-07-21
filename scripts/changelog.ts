@@ -1,25 +1,23 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-// tslint:disable:no-console
-// tslint:disable:no-implicit-dependencies
+
 import { JsonObject, logging } from '@angular-devkit/core';
 import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as semver from 'semver';
+import { Transform } from 'stream';
 import { packages } from '../lib/packages';
 
-const changelogTemplate = require('./templates/changelog').default;
-
 const conventionalCommitsParser = require('conventional-commits-parser');
-const gitRawCommits = require('git-raw-commits');
 const ghGot = require('gh-got');
-const through = require('through2');
+const gitRawCommits = require('git-raw-commits');
+const changelogTemplate = require('./templates/changelog').default;
 
 export interface ChangelogOptions {
   from: string;
@@ -39,7 +37,7 @@ function exec(command: string, input?: string): string {
   }).trim();
 }
 
-export default async function(args: ChangelogOptions, logger: logging.Logger) {
+export default async function (args: ChangelogOptions, logger: logging.Logger) {
   const commits: JsonObject[] = [];
   let toSha: string | null = null;
 
@@ -78,24 +76,28 @@ export default async function(args: ChangelogOptions, logger: logging.Logger) {
     }
   }
 
-  return new Promise(resolve => {
-    (gitRawCommits({
-      from: args.from,
-      to: args.to || 'HEAD',
-      format: '%B%n-hash-%n%H%n-gitTags-%n%D%n-committerDate-%n%ci%n-authorName-%n%aN%n',
-    }) as NodeJS.ReadStream)
-      .on('error', err => {
+  return new Promise((resolve) => {
+    (
+      gitRawCommits({
+        from: args.from,
+        to: args.to || 'HEAD',
+        format: '%B%n-hash-%n%H%n-gitTags-%n%D%n-committerDate-%n%ci%n-authorName-%n%aN%n',
+      }) as NodeJS.ReadStream
+    )
+      .on('error', (err) => {
         logger.fatal('An error happened: ' + err.message);
         process.exit(1);
       })
       .pipe(
-        through((chunk: Buffer, enc: string, callback: Function) => {
-          // Replace github URLs with `@XYZ#123`
-          const commit = chunk
-            .toString('utf-8')
-            .replace(/https?:\/\/github.com\/(.*?)\/issues\/(\d+)/g, '@$1#$2');
+        new Transform({
+          transform(chunk, encoding, callback) {
+            // Replace github URLs with `@XYZ#123`
+            const commit = chunk
+              .toString('utf-8')
+              .replace(/https?:\/\/github.com\/(.*?)\/issues\/(\d+)/g, '@$1#$2');
 
-          callback(undefined, Buffer.from(commit));
+            callback(undefined, Buffer.from(commit));
+          },
         }),
       )
       .pipe(
@@ -108,22 +110,25 @@ export default async function(args: ChangelogOptions, logger: logging.Logger) {
         }),
       )
       .pipe(
-        through.obj((chunk: JsonObject, _: string, cb: Function) => {
-          try {
-            const maybeTag = chunk.gitTags && (chunk.gitTags as string).match(/tag: (.*)/);
-            const tags = maybeTag && maybeTag[1].split(/,/g);
-            chunk['tags'] = tags;
+        new Transform({
+          objectMode: true,
+          transform(chunk: JsonObject, encoding, callback) {
+            try {
+              const maybeTag = chunk.gitTags && (chunk.gitTags as string).match(/tag: (.*)/);
+              const tags = maybeTag && maybeTag[1].split(/,/g);
+              chunk['tags'] = tags;
 
-            if (tags && tags.find(x => x == args.to)) {
-              toSha = chunk.hash as string;
+              if (tags && tags.find((x) => x == args.to)) {
+                toSha = chunk.hash as string;
+              }
+              if (!cherryPicked.has(chunk.hash as string)) {
+                commits.push(chunk);
+              }
+              callback();
+            } catch (err) {
+              callback(err);
             }
-            if (!cherryPicked.has(chunk.hash as string)) {
-              commits.push(chunk);
-            }
-            cb();
-          } catch (err) {
-            cb(err);
-          }
+          },
         }),
       )
       .on('finish', resolve);

@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
@@ -52,7 +52,7 @@ describe('Migration to version 9', () => {
           require.resolve('../../collection.json'),
           'universal',
           {
-            clientProject: 'migration-test',
+            project: 'migration-test',
           },
           tree,
         )
@@ -61,7 +61,9 @@ describe('Migration to version 9', () => {
 
     it(`should add exports from '@angular/platform-server'`, async () => {
       tree.overwrite(mainServerFile, mainServerContent);
-      const tree2 = await schematicRunner.runSchematicAsync('workspace-version-9', {}, tree.branch()).toPromise();
+      const tree2 = await schematicRunner
+        .runSchematicAsync('workspace-version-9', {}, tree.branch())
+        .toPromise();
       expect(tree2.readContent(mainServerFile)).toContain(tags.stripIndents`
         export { AppServerModule } from './app/app.server.module';
         export { renderModule, renderModuleFactory } from '@angular/platform-server';
@@ -69,12 +71,17 @@ describe('Migration to version 9', () => {
     });
 
     it(`should add 'renderModule' and 'renderModuleFactory' to existing '@angular/platform-server' export`, async () => {
-      tree.overwrite(mainServerFile, tags.stripIndents`
+      tree.overwrite(
+        mainServerFile,
+        tags.stripIndents`
         ${mainServerContent}
         export { platformDynamicServer } from '@angular/platform-server';
         export { PlatformConfig } from '@angular/platform-server';
-      `);
-      const tree2 = await schematicRunner.runSchematicAsync('workspace-version-9', {}, tree.branch()).toPromise();
+      `,
+      );
+      const tree2 = await schematicRunner
+        .runSchematicAsync('workspace-version-9', {}, tree.branch())
+        .toPromise();
       expect(tree2.readContent(mainServerFile)).toContain(tags.stripIndents`
         export { AppServerModule } from './app/app.server.module';
         export { platformDynamicServer, renderModule, renderModuleFactory } from '@angular/platform-server';
@@ -83,11 +90,16 @@ describe('Migration to version 9', () => {
     });
 
     it(`should add 'renderModule' to existing '@angular/platform-server' export`, async () => {
-      tree.overwrite(mainServerFile, tags.stripIndents`
+      tree.overwrite(
+        mainServerFile,
+        tags.stripIndents`
         ${mainServerContent}
         export { platformDynamicServer, renderModuleFactory } from '@angular/platform-server';
-      `);
-      const tree2 = await schematicRunner.runSchematicAsync('workspace-version-9', {}, tree.branch()).toPromise();
+      `,
+      );
+      const tree2 = await schematicRunner
+        .runSchematicAsync('workspace-version-9', {}, tree.branch())
+        .toPromise();
       expect(tree2.readContent(mainServerFile)).toContain(tags.stripIndents`
         export { AppServerModule } from './app/app.server.module';
         export { platformDynamicServer, renderModuleFactory, renderModule } from '@angular/platform-server';
@@ -101,7 +113,9 @@ describe('Migration to version 9', () => {
       `;
 
       tree.overwrite(mainServerFile, input);
-      const tree2 = await schematicRunner.runSchematicAsync('workspace-version-9', {}, tree.branch()).toPromise();
+      const tree2 = await schematicRunner
+        .runSchematicAsync('workspace-version-9', {}, tree.branch())
+        .toPromise();
       expect(tree2.readContent(mainServerFile)).toBe(input);
     });
   });

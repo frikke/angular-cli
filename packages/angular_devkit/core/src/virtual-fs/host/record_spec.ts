@@ -1,22 +1,22 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-// tslint:disable:no-any no-big-function
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { path } from '../path';
 import { fileBuffer } from './buffer';
 import { CordHost } from './record';
 import { test } from './test';
 
-
 describe('CordHost', () => {
   const TestHost = test.TestHost;
   const mutatingTestRecord = ['write', 'delete', 'rename'];
 
-  it('works (create)', done => {
+  it('works (create)', (done) => {
     const base = new TestHost({
       '/hello': 'world',
     });
@@ -27,7 +27,7 @@ describe('CordHost', () => {
     const target = new TestHost();
     host.commit(target).subscribe(undefined, done.fail);
 
-    expect(target.records.filter(x => mutatingTestRecord.includes(x.kind))).toEqual([
+    expect(target.records.filter((x) => mutatingTestRecord.includes(x.kind))).toEqual([
       { kind: 'write', path: path`/blue` },
     ]);
 
@@ -36,7 +36,7 @@ describe('CordHost', () => {
     done();
   });
 
-  it('works (create -> create)', done => {
+  it('works (create -> create)', (done) => {
     const base = new TestHost({
       '/hello': 'world',
     });
@@ -48,7 +48,7 @@ describe('CordHost', () => {
     const target = new TestHost();
     host.commit(target).subscribe(undefined, done.fail);
 
-    expect(target.records.filter(x => mutatingTestRecord.includes(x.kind))).toEqual([
+    expect(target.records.filter((x) => mutatingTestRecord.includes(x.kind))).toEqual([
       { kind: 'write', path: path`/blue` },
     ]);
 
@@ -58,7 +58,7 @@ describe('CordHost', () => {
     done();
   });
 
-  it('works (create -> delete)', done => {
+  it('works (create -> delete)', (done) => {
     const base = new TestHost({
       '/hello': 'world',
     });
@@ -70,15 +70,14 @@ describe('CordHost', () => {
     const target = new TestHost();
     host.commit(target).subscribe(undefined, done.fail);
 
-    expect(target.records.filter(x => mutatingTestRecord.includes(x.kind))).toEqual([
-    ]);
+    expect(target.records.filter((x) => mutatingTestRecord.includes(x.kind))).toEqual([]);
 
     expect(target.$exists('/hello')).toBe(false);
     expect(target.$exists('/blue')).toBe(false);
     done();
   });
 
-  it('works (create -> rename)', done => {
+  it('works (create -> rename)', (done) => {
     const base = new TestHost({
       '/hello': 'world',
     });
@@ -91,7 +90,7 @@ describe('CordHost', () => {
     host.commit(target).subscribe(undefined, done.fail);
 
     // Check that there's only 1 write done.
-    expect(target.records.filter(x => mutatingTestRecord.includes(x.kind))).toEqual([
+    expect(target.records.filter((x) => mutatingTestRecord.includes(x.kind))).toEqual([
       { kind: 'write', path: path`/red` },
     ]);
 
@@ -102,7 +101,7 @@ describe('CordHost', () => {
     done();
   });
 
-  it('works (create -> rename (identity))', done => {
+  it('works (create -> rename (identity))', (done) => {
     const base = new TestHost({
       '/hello': 'world',
     });
@@ -115,7 +114,7 @@ describe('CordHost', () => {
     host.commit(target).subscribe(undefined, done.fail);
 
     // Check that there's only 1 write done.
-    expect(target.records.filter(x => mutatingTestRecord.includes(x.kind))).toEqual([
+    expect(target.records.filter((x) => mutatingTestRecord.includes(x.kind))).toEqual([
       { kind: 'write', path: path`/blue` },
     ]);
 
@@ -125,7 +124,7 @@ describe('CordHost', () => {
     done();
   });
 
-  it('works (create -> rename -> rename)', done => {
+  it('works (create -> rename -> rename)', (done) => {
     const base = new TestHost({
       '/hello': 'world',
     });
@@ -139,7 +138,7 @@ describe('CordHost', () => {
     host.commit(target).subscribe(undefined, done.fail);
 
     // Check that there's only 1 write done.
-    expect(target.records.filter(x => mutatingTestRecord.includes(x.kind))).toEqual([
+    expect(target.records.filter((x) => mutatingTestRecord.includes(x.kind))).toEqual([
       { kind: 'write', path: path`/yellow` },
     ]);
 
@@ -151,7 +150,7 @@ describe('CordHost', () => {
     done();
   });
 
-  it('works (rename)', done => {
+  it('works (rename)', (done) => {
     const base = new TestHost({
       '/hello': 'world',
     });
@@ -163,7 +162,7 @@ describe('CordHost', () => {
     host.commit(target).subscribe(undefined, done.fail);
 
     // Check that there's only 1 write done.
-    expect(target.records.filter(x => mutatingTestRecord.includes(x.kind))).toEqual([
+    expect(target.records.filter((x) => mutatingTestRecord.includes(x.kind))).toEqual([
       { kind: 'rename', from: path`/hello`, to: path`/blue` },
     ]);
 
@@ -173,7 +172,7 @@ describe('CordHost', () => {
     done();
   });
 
-  it('works (rename -> rename)', done => {
+  it('works (rename -> rename)', (done) => {
     const base = new TestHost({
       '/hello': 'world',
     });
@@ -186,7 +185,7 @@ describe('CordHost', () => {
     host.commit(target).subscribe(undefined, done.fail);
 
     // Check that there's only 1 write done.
-    expect(target.records.filter(x => mutatingTestRecord.includes(x.kind))).toEqual([
+    expect(target.records.filter((x) => mutatingTestRecord.includes(x.kind))).toEqual([
       { kind: 'rename', from: path`/hello`, to: path`/red` },
     ]);
 
@@ -197,7 +196,7 @@ describe('CordHost', () => {
     done();
   });
 
-  it('works (rename -> create)', done => {
+  it('works (rename -> create)', (done) => {
     const base = new TestHost({
       '/hello': 'world',
     });
@@ -210,7 +209,7 @@ describe('CordHost', () => {
     host.commit(target).subscribe(undefined, done.fail);
 
     // Check that there's only 1 write done.
-    expect(target.records.filter(x => mutatingTestRecord.includes(x.kind))).toEqual([
+    expect(target.records.filter((x) => mutatingTestRecord.includes(x.kind))).toEqual([
       { kind: 'rename', from: path`/hello`, to: path`/blue` },
       { kind: 'write', path: path`/hello` },
     ]);
@@ -221,7 +220,7 @@ describe('CordHost', () => {
     done();
   });
 
-  it('works (overwrite)', done => {
+  it('works (overwrite)', (done) => {
     const base = new TestHost({
       '/hello': 'world',
     });
@@ -233,7 +232,7 @@ describe('CordHost', () => {
     host.commit(target).subscribe(undefined, done.fail);
 
     // Check that there's only 1 write done.
-    expect(target.records.filter(x => mutatingTestRecord.includes(x.kind))).toEqual([
+    expect(target.records.filter((x) => mutatingTestRecord.includes(x.kind))).toEqual([
       { kind: 'write', path: path`/hello` },
     ]);
 
@@ -243,7 +242,7 @@ describe('CordHost', () => {
     done();
   });
 
-  it('works (overwrite -> overwrite)', done => {
+  it('works (overwrite -> overwrite)', (done) => {
     const base = new TestHost({
       '/hello': 'world',
     });
@@ -256,7 +255,7 @@ describe('CordHost', () => {
     host.commit(target).subscribe(undefined, done.fail);
 
     // Check that there's only 1 write done.
-    expect(target.records.filter(x => mutatingTestRecord.includes(x.kind))).toEqual([
+    expect(target.records.filter((x) => mutatingTestRecord.includes(x.kind))).toEqual([
       { kind: 'write', path: path`/hello` },
     ]);
 
@@ -266,7 +265,7 @@ describe('CordHost', () => {
     done();
   });
 
-  it('works (overwrite -> rename)', done => {
+  it('works (overwrite -> rename)', (done) => {
     const base = new TestHost({
       '/hello': 'world',
     });
@@ -278,7 +277,7 @@ describe('CordHost', () => {
     const target = base.clone();
     host.commit(target).subscribe(undefined, done.fail);
 
-    expect(target.records.filter(x => mutatingTestRecord.includes(x.kind))).toEqual([
+    expect(target.records.filter((x) => mutatingTestRecord.includes(x.kind))).toEqual([
       { kind: 'rename', from: path`/hello`, to: path`/blue` },
       { kind: 'write', path: path`/blue` },
     ]);
@@ -290,7 +289,7 @@ describe('CordHost', () => {
     done();
   });
 
-  it('works (overwrite -> delete)', done => {
+  it('works (overwrite -> delete)', (done) => {
     const base = new TestHost({
       '/hello': 'world',
     });
@@ -302,7 +301,7 @@ describe('CordHost', () => {
     const target = base.clone();
     host.commit(target).subscribe(undefined, done.fail);
 
-    expect(target.records.filter(x => mutatingTestRecord.includes(x.kind))).toEqual([
+    expect(target.records.filter((x) => mutatingTestRecord.includes(x.kind))).toEqual([
       { kind: 'delete', path: path`/hello` },
     ]);
 
@@ -310,7 +309,7 @@ describe('CordHost', () => {
     done();
   });
 
-  it('works (rename -> overwrite)', done => {
+  it('works (rename -> overwrite)', (done) => {
     const base = new TestHost({
       '/hello': 'world',
     });
@@ -322,7 +321,7 @@ describe('CordHost', () => {
     const target = base.clone();
     host.commit(target).subscribe(undefined, done.fail);
 
-    expect(target.records.filter(x => mutatingTestRecord.includes(x.kind))).toEqual([
+    expect(target.records.filter((x) => mutatingTestRecord.includes(x.kind))).toEqual([
       { kind: 'rename', from: path`/hello`, to: path`/blue` },
       { kind: 'write', path: path`/blue` },
     ]);
@@ -334,7 +333,7 @@ describe('CordHost', () => {
     done();
   });
 
-  it('works (delete)', done => {
+  it('works (delete)', (done) => {
     const base = new TestHost({
       '/hello': 'world',
     });
@@ -345,7 +344,7 @@ describe('CordHost', () => {
     const target = new TestHost();
     host.commit(target).subscribe(undefined, done.fail);
 
-    expect(target.records.filter(x => mutatingTestRecord.includes(x.kind))).toEqual([
+    expect(target.records.filter((x) => mutatingTestRecord.includes(x.kind))).toEqual([
       { kind: 'delete', path: path`/hello` },
     ]);
 
@@ -353,7 +352,7 @@ describe('CordHost', () => {
     done();
   });
 
-  it('works (delete -> create)', done => {
+  it('works (delete -> create)', (done) => {
     const base = new TestHost({
       '/hello': 'world',
     });
@@ -365,7 +364,7 @@ describe('CordHost', () => {
     const target = base.clone();
     host.commit(target).subscribe(undefined, done.fail);
 
-    expect(target.records.filter(x => mutatingTestRecord.includes(x.kind))).toEqual([
+    expect(target.records.filter((x) => mutatingTestRecord.includes(x.kind))).toEqual([
       { kind: 'write', path: path`/hello` },
     ]);
 
@@ -374,7 +373,7 @@ describe('CordHost', () => {
     done();
   });
 
-  it('works (rename -> delete)', done => {
+  it('works (rename -> delete)', (done) => {
     const base = new TestHost({
       '/hello': 'world',
     });
@@ -386,7 +385,7 @@ describe('CordHost', () => {
     const target = base.clone();
     host.commit(target).subscribe(undefined, done.fail);
 
-    expect(target.records.filter(x => mutatingTestRecord.includes(x.kind))).toEqual([
+    expect(target.records.filter((x) => mutatingTestRecord.includes(x.kind))).toEqual([
       { kind: 'delete', path: path`/hello` },
     ]);
 
@@ -394,7 +393,7 @@ describe('CordHost', () => {
     done();
   });
 
-  it('works (delete -> rename)', done => {
+  it('works (delete -> rename)', (done) => {
     const base = new TestHost({
       '/hello': 'world',
       '/blue': 'foo',
@@ -406,7 +405,7 @@ describe('CordHost', () => {
 
     const target = base.clone();
     host.commit(target).subscribe(undefined, done.fail);
-    expect(target.records.filter(x => mutatingTestRecord.includes(x.kind))).toEqual([
+    expect(target.records.filter((x) => mutatingTestRecord.includes(x.kind))).toEqual([
       { kind: 'delete', path: path`/hello` },
       { kind: 'write', path: path`/blue` },
     ]);
@@ -429,7 +428,11 @@ describe('CordHost', () => {
     });
 
     let error = false;
-    host.commit(target).subscribe(undefined, () => error = true, () => error = false);
+    host.commit(target).subscribe(
+      undefined,
+      () => (error = true),
+      () => (error = false),
+    );
     expect(error).toBe(true);
   });
 
@@ -444,7 +447,11 @@ describe('CordHost', () => {
     const target = new TestHost({});
 
     let error = false;
-    host.commit(target).subscribe(undefined, () => error = true, () => error = false);
+    host.commit(target).subscribe(
+      undefined,
+      () => (error = true),
+      () => (error = false),
+    );
     expect(error).toBe(true);
   });
 
@@ -459,7 +466,11 @@ describe('CordHost', () => {
     const target = new TestHost({});
 
     let error = false;
-    host.commit(target).subscribe(undefined, () => error = true, () => error = false);
+    host.commit(target).subscribe(
+      undefined,
+      () => (error = true),
+      () => (error = false),
+    );
     expect(error).toBe(true);
   });
 
@@ -476,7 +487,11 @@ describe('CordHost', () => {
     });
 
     let error = false;
-    host.commit(target).subscribe(undefined, () => error = true, () => error = false);
+    host.commit(target).subscribe(
+      undefined,
+      () => (error = true),
+      () => (error = false),
+    );
     expect(error).toBe(true);
   });
 
@@ -487,20 +502,25 @@ describe('CordHost', () => {
 
     const host = new CordHost(base);
     let error = false;
-    host.write(path`/dir`, fileBuffer`beautiful world`)
-      .subscribe(undefined, () => error = true, () => error = false);
+    host.write(path`/dir`, fileBuffer`beautiful world`).subscribe(
+      undefined,
+      () => (error = true),
+      () => (error = false),
+    );
 
     expect(error).toBe(true);
   });
 
   it('errors (delete: not exist)', () => {
-    const base = new TestHost({
-    });
+    const base = new TestHost({});
 
     const host = new CordHost(base);
     let error = false;
-    host.delete(path`/hello`)
-      .subscribe(undefined, () => error = true, () => error = false);
+    host.delete(path`/hello`).subscribe(
+      undefined,
+      () => (error = true),
+      () => (error = false),
+    );
 
     expect(error).toBe(true);
   });
@@ -513,20 +533,25 @@ describe('CordHost', () => {
 
     const host = new CordHost(base);
     let error = false;
-    host.rename(path`/hello`, path`/blue`)
-      .subscribe(undefined, () => error = true, () => error = false);
+    host.rename(path`/hello`, path`/blue`).subscribe(
+      undefined,
+      () => (error = true),
+      () => (error = false),
+    );
 
     expect(error).toBe(true);
   });
 
   it('errors (rename: not exist)', () => {
-    const base = new TestHost({
-    });
+    const base = new TestHost({});
 
     const host = new CordHost(base);
     let error = false;
-    host.rename(path`/hello`, path`/blue`)
-      .subscribe(undefined, () => error = true, () => error = false);
+    host.rename(path`/hello`, path`/blue`).subscribe(
+      undefined,
+      () => (error = true),
+      () => (error = false),
+    );
 
     expect(error).toBe(true);
   });

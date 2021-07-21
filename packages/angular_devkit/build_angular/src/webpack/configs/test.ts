@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
@@ -8,6 +8,7 @@
 
 import * as glob from 'glob';
 import * as path from 'path';
+import { ScriptTarget } from 'typescript';
 import * as webpack from 'webpack';
 import { WebpackConfigOptions, WebpackTestOptions } from '../../utils/build-options';
 import { getSourceMapDevTool, isPolyfillsEntry } from '../utils/helpers';
@@ -16,7 +17,7 @@ export function getTestConfig(
   wco: WebpackConfigOptions<WebpackTestOptions>,
 ): webpack.Configuration {
   const {
-    buildOptions: { codeCoverage, codeCoverageExclude, main, sourceMap },
+    buildOptions: { codeCoverage, codeCoverageExclude, main, sourceMap, webWorkerTsConfig },
     root,
     sourceRoot,
   } = wco;
@@ -25,10 +26,7 @@ export function getTestConfig(
   const extraPlugins: { apply(compiler: webpack.Compiler): void }[] = [];
 
   if (codeCoverage) {
-    const exclude: (string | RegExp)[] = [
-      /\.(e2e|spec)\.tsx?$/,
-      /node_modules/,
-    ];
+    const exclude: (string | RegExp)[] = [/\.(e2e|spec)\.tsx?$/, /node_modules/];
 
     if (codeCoverageExclude) {
       for (const excludeGlob of codeCoverageExclude) {
@@ -49,16 +47,12 @@ export function getTestConfig(
   }
 
   if (sourceMap.scripts || sourceMap.styles) {
-    extraPlugins.push(getSourceMapDevTool(
-      sourceMap.scripts,
-      sourceMap.styles,
-      false,
-      true,
-    ));
+    extraPlugins.push(getSourceMapDevTool(sourceMap.scripts, sourceMap.styles, false, true));
   }
 
   return {
     mode: 'development',
+    target: wco.tsConfig.options.target === ScriptTarget.ES5 ? ['web', 'es5'] : 'web',
     resolve: {
       mainFields: ['es2015', 'browser', 'module', 'main'],
     },
@@ -68,6 +62,15 @@ export function getTestConfig(
     },
     module: {
       rules: extraRules,
+      parser:
+        webWorkerTsConfig === undefined
+          ? {
+              javascript: {
+                worker: false,
+                url: false,
+              },
+            }
+          : undefined,
     },
     plugins: extraPlugins,
     optimization: {

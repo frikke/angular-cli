@@ -1,16 +1,16 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { dirname, join, normalize } from '@angular-devkit/core';
 import { Rule, Tree } from '@angular-devkit/schematics';
 import { JSONFile } from '../../utility/json-file';
 import { getWorkspace } from '../../utility/workspace';
 import { Builders } from '../../utility/workspace-models';
-
 
 interface ModuleAndTargetReplamenent {
   oldModule?: string;
@@ -40,8 +40,14 @@ export default function (): Rule {
     for (const [, project] of workspace.projects) {
       for (const [, target] of project.targets) {
         // E2E builder doesn't reference a tsconfig but it uses one found in the root folder.
-        if (target.builder === Builders.Protractor && typeof target.options?.protractorConfig === 'string') {
-          const tsConfigPath = join(dirname(normalize(target.options.protractorConfig)), 'tsconfig.json');
+        if (
+          target.builder === Builders.Protractor &&
+          typeof target.options?.protractorConfig === 'string'
+        ) {
+          const tsConfigPath = join(
+            dirname(normalize(target.options.protractorConfig)),
+            'tsconfig.json',
+          );
 
           try {
             updateModuleAndTarget(host, tsConfigPath, {
@@ -60,12 +66,9 @@ export default function (): Rule {
         }
 
         // Update all other known CLI builders that use a tsconfig
-        const tsConfigs = [
-          target.options || {},
-          ...Object.values(target.configurations || {}),
-        ]
-          .filter(opt => typeof opt?.tsConfig === 'string')
-          .map(opt => (opt as { tsConfig: string }).tsConfig);
+        const tsConfigs = [target.options || {}, ...Object.values(target.configurations || {})]
+          .filter((opt) => typeof opt?.tsConfig === 'string')
+          .map((opt) => (opt as { tsConfig: string }).tsConfig);
 
         const uniqueTsConfigs = [...new Set(tsConfigs)];
 
@@ -75,7 +78,7 @@ export default function (): Rule {
 
         switch (target.builder as Builders) {
           case Builders.Server:
-            uniqueTsConfigs.forEach(p => {
+            uniqueTsConfigs.forEach((p) => {
               try {
                 updateModuleAndTarget(host, p, {
                   oldModule: 'commonjs',
@@ -98,9 +101,7 @@ export default function (): Rule {
                 });
               } catch (error) {
                 logger.warn(
-                  `Unable to update '${p}' target option to 'es2016': ${
-                    error.message || error
-                  }`,
+                  `Unable to update '${p}' target option to 'es2016': ${error.message || error}`,
                 );
               }
             });
@@ -108,7 +109,7 @@ export default function (): Rule {
           case Builders.Karma:
           case Builders.Browser:
           case Builders.DeprecatedNgPackagr:
-            uniqueTsConfigs.forEach(p => {
+            uniqueTsConfigs.forEach((p) => {
               try {
                 updateModuleAndTarget(host, p, {
                   oldModule: 'esnext',
@@ -129,14 +130,21 @@ export default function (): Rule {
   };
 }
 
-function updateModuleAndTarget(host: Tree, tsConfigPath: string, replacements: ModuleAndTargetReplamenent) {
+function updateModuleAndTarget(
+  host: Tree,
+  tsConfigPath: string,
+  replacements: ModuleAndTargetReplamenent,
+) {
   const json = new JSONFile(host, tsConfigPath);
 
   const { oldTarget, newTarget, newModule, oldModule } = replacements;
   if (newTarget) {
     const target = json.get(['compilerOptions', 'target']);
 
-    if ((typeof target === 'string' && (!oldTarget || oldTarget === target.toLowerCase())) || !target) {
+    if (
+      (typeof target === 'string' && (!oldTarget || oldTarget === target.toLowerCase())) ||
+      !target
+    ) {
       json.modify(['compilerOptions', 'target'], newTarget);
     }
   }

@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
@@ -8,7 +8,7 @@
 
 import { Architect } from '@angular-devkit/architect';
 import { logging } from '@angular-devkit/core';
-import { createArchitect, host, veEnabled } from '../../test-utils';
+import { createArchitect, host } from '../../test-utils';
 
 describe('Browser Builder errors', () => {
   const targetSpec = { project: 'app', target: 'build' };
@@ -21,19 +21,11 @@ describe('Browser Builder errors', () => {
   afterEach(async () => host.restore().toPromise());
 
   it('shows error when files are not part of the compilation', async () => {
-    host.replaceInFile(
-      'src/tsconfig.app.json',
-      /,\r?\n?\s*"polyfills\.ts"/,
-      '',
-    );
-    host.replaceInFile(
-      'src/tsconfig.app.json',
-      '"**/*.ts"',
-      '"**/*.d.ts"',
-    );
+    host.replaceInFile('src/tsconfig.app.json', /,\r?\n?\s*"polyfills\.ts"/, '');
+    host.replaceInFile('src/tsconfig.app.json', '"**/*.ts"', '"**/*.d.ts"');
     const logger = new logging.Logger('');
     const logs: string[] = [];
-    logger.subscribe(e => logs.push(e.message));
+    logger.subscribe((e) => logs.push(e.message));
 
     const run = await architect.scheduleTarget(targetSpec, {}, { logger });
     const output = await run.result;
@@ -46,7 +38,7 @@ describe('Browser Builder errors', () => {
     host.appendToFile('src/app/app.component.ts', ']]]');
     const logger = new logging.Logger('');
     const logs: string[] = [];
-    logger.subscribe(e => logs.push(e.message));
+    logger.subscribe((e) => logs.push(e.message));
 
     const run = await architect.scheduleTarget(targetSpec, {}, { logger });
     const output = await run.result;
@@ -59,7 +51,7 @@ describe('Browser Builder errors', () => {
     host.replaceInFile('src/app/app.component.ts', `'app-root'`, `(() => 'app-root')()`);
     const logger = new logging.Logger('');
     const logs: string[] = [];
-    logger.subscribe(e => logs.push(e.message));
+    logger.subscribe((e) => logs.push(e.message));
 
     const run = await architect.scheduleTarget(targetSpec, { aot: true }, { logger });
     const output = await run.result;
@@ -68,11 +60,7 @@ describe('Browser Builder errors', () => {
     // Wait for the builder to complete
     await run.stop();
 
-    if (!veEnabled) {
-      expect(logs.join()).toContain('selector must be a string');
-    } else {
-      expect(logs.join()).toContain('Function expressions are not supported in');
-    }
+    expect(logs.join()).toContain('selector must be a string');
   });
 
   it('shows missing export errors', async () => {
@@ -85,7 +73,7 @@ describe('Browser Builder errors', () => {
     const overrides = { main: 'src/not-main.js' };
     const logger = new logging.Logger('');
     const logs: string[] = [];
-    logger.subscribe(e => logs.push(e.message));
+    logger.subscribe((e) => logs.push(e.message));
 
     const run = await architect.scheduleTarget(targetSpec, overrides, { logger });
     const output = await run.result;
@@ -94,6 +82,8 @@ describe('Browser Builder errors', () => {
     // Wait for the builder to complete
     await run.stop();
 
-    expect(logs.join()).toContain(`export 'missingExport' was not found in 'rxjs'`);
+    expect(logs.join()).toContain(
+      `export 'missingExport' (imported as 'missingExport') was not found in 'rxjs'`,
+    );
   });
 });

@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
@@ -11,8 +11,7 @@ import { Rule } from '@angular-devkit/schematics';
 import { updateWorkspace } from '../../utility/workspace';
 
 export default function (): Rule {
-  return updateWorkspace(workspace => {
-
+  return updateWorkspace((workspace) => {
     const optionsToRemove: Record<string, undefined> = {
       environment: undefined,
       extractCss: undefined,
@@ -54,8 +53,11 @@ export default function (): Rule {
 type TargetOptions = workspaces.TargetDefinition['options'];
 
 function updateLazyScriptsStyleOption(options: TargetOptions): TargetOptions {
-  function visitor(options: NonNullable<TargetOptions>, type: 'scripts' | 'styles'): JsonArray | undefined {
-    // tslint:disable-next-line: no-non-null-assertion
+  function visitor(
+    options: NonNullable<TargetOptions>,
+    type: 'scripts' | 'styles',
+  ): JsonArray | undefined {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     if (!options[type] || !isJsonArray(options[type]!)) {
       return undefined;
     }

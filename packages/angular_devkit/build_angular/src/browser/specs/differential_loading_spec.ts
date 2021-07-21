@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
@@ -10,7 +10,8 @@ import { Architect } from '@angular-devkit/architect';
 import { PathFragment } from '@angular-devkit/core';
 import { browserBuild, createArchitect, host } from '../../test-utils';
 
-// tslint:disable-next-line: no-big-function
+const TEST_TIMEOUT = 8 * 60 * 1000;
+
 describe('Browser Builder with differential loading', () => {
   const target = { project: 'app', target: 'build' };
   let architect: Architect;
@@ -27,185 +28,169 @@ describe('Browser Builder with differential loading', () => {
 
   afterEach(async () => host.restore().toPromise());
 
-  it('emits all the neccessary files for default configuration', async () => {
-    const { files } = await browserBuild(architect, host, target);
+  it(
+    'emits all the neccessary files for default configuration',
+    async () => {
+      const { files } = await browserBuild(architect, host, target, { sourceMap: true });
 
-    const expectedOutputs = [
-      'favicon.ico',
-      'index.html',
+      const expectedOutputs = [
+        'favicon.ico',
+        'index.html',
 
-      'main-es2015.js',
-      'main-es2015.js.map',
-      'main-es5.js',
-      'main-es5.js.map',
+        'main-es2017.js',
+        'main-es2017.js.map',
+        'main-es5.js',
+        'main-es5.js.map',
 
-      'polyfills-es2015.js',
-      'polyfills-es2015.js.map',
-      'polyfills-es5.js',
-      'polyfills-es5.js.map',
+        'polyfills-es2017.js',
+        'polyfills-es2017.js.map',
+        'polyfills-es5.js',
+        'polyfills-es5.js.map',
 
-      'runtime-es2015.js',
-      'runtime-es2015.js.map',
-      'runtime-es5.js',
-      'runtime-es5.js.map',
+        'runtime-es2017.js',
+        'runtime-es2017.js.map',
+        'runtime-es5.js',
+        'runtime-es5.js.map',
 
-      'vendor-es2015.js',
-      'vendor-es2015.js.map',
-      'vendor-es5.js',
-      'vendor-es5.js.map',
+        'vendor-es2017.js',
+        'vendor-es2017.js.map',
+        'vendor-es5.js',
+        'vendor-es5.js.map',
 
-      'styles.css',
-      'styles.css.map',
-    ] as PathFragment[];
+        'styles.css',
+        'styles.css.map',
+      ] as PathFragment[];
 
-    expect(Object.keys(files)).toEqual(jasmine.arrayWithExactContents(expectedOutputs));
-  });
+      expect(Object.keys(files)).toEqual(jasmine.arrayWithExactContents(expectedOutputs));
+    },
+    TEST_TIMEOUT,
+  );
 
-  it('emits all the neccessary files for target of ES2016', async () => {
-    host.replaceInFile(
-      'tsconfig.json',
-      '"target": "es2015",',
-      `"target": "es2016",`,
-    );
+  it(
+    'emits all the neccessary files for target of ESNext',
+    async () => {
+      host.replaceInFile('tsconfig.json', '"target": "es2017",', `"target": "esnext",`);
 
-    const { files } = await browserBuild(architect, host, target);
+      const { files } = await browserBuild(architect, host, target, { sourceMap: true });
+      const expectedOutputs = [
+        'favicon.ico',
+        'index.html',
 
-    const expectedOutputs = [
-      'favicon.ico',
-      'index.html',
+        'main-esnext.js',
+        'main-esnext.js.map',
+        'main-es5.js',
+        'main-es5.js.map',
 
-      'main-es2016.js',
-      'main-es2016.js.map',
-      'main-es5.js',
-      'main-es5.js.map',
+        'polyfills-esnext.js',
+        'polyfills-esnext.js.map',
+        'polyfills-es5.js',
+        'polyfills-es5.js.map',
 
-      'polyfills-es2016.js',
-      'polyfills-es2016.js.map',
-      'polyfills-es5.js',
-      'polyfills-es5.js.map',
+        'runtime-esnext.js',
+        'runtime-esnext.js.map',
+        'runtime-es5.js',
+        'runtime-es5.js.map',
 
-      'runtime-es2016.js',
-      'runtime-es2016.js.map',
-      'runtime-es5.js',
-      'runtime-es5.js.map',
+        'vendor-esnext.js',
+        'vendor-esnext.js.map',
+        'vendor-es5.js',
+        'vendor-es5.js.map',
 
-      'vendor-es2016.js',
-      'vendor-es2016.js.map',
-      'vendor-es5.js',
-      'vendor-es5.js.map',
+        'styles.css',
+        'styles.css.map',
+      ] as PathFragment[];
 
-      'styles.css',
-      'styles.css.map',
-    ] as PathFragment[];
+      expect(Object.keys(files)).toEqual(jasmine.arrayWithExactContents(expectedOutputs));
+    },
+    TEST_TIMEOUT,
+  );
 
-    expect(Object.keys(files)).toEqual(jasmine.arrayWithExactContents(expectedOutputs));
-  });
+  it(
+    'deactivates differential loading for watch mode',
+    async () => {
+      const { files } = await browserBuild(architect, host, target, {
+        watch: true,
+        sourceMap: true,
+      });
 
-  it('emits all the neccessary files for target of ESNext', async () => {
-    host.replaceInFile(
-      'tsconfig.json',
-      '"target": "es2015",',
-      `"target": "esnext",`,
-    );
+      const expectedOutputs = [
+        'favicon.ico',
+        'index.html',
 
-    const { files } = await browserBuild(architect, host, target);
+        'main-es2017.js',
+        'main-es2017.js.map',
 
-    const expectedOutputs = [
-      'favicon.ico',
-      'index.html',
+        'polyfills-es2017.js',
+        'polyfills-es2017.js.map',
 
-      'main-esnext.js',
-      'main-esnext.js.map',
-      'main-es5.js',
-      'main-es5.js.map',
+        'runtime-es2017.js',
+        'runtime-es2017.js.map',
 
-      'polyfills-esnext.js',
-      'polyfills-esnext.js.map',
-      'polyfills-es5.js',
-      'polyfills-es5.js.map',
+        'vendor-es2017.js',
+        'vendor-es2017.js.map',
 
-      'runtime-esnext.js',
-      'runtime-esnext.js.map',
-      'runtime-es5.js',
-      'runtime-es5.js.map',
+        'styles.css',
+        'styles.css.map',
+      ] as PathFragment[];
 
-      'vendor-esnext.js',
-      'vendor-esnext.js.map',
-      'vendor-es5.js',
-      'vendor-es5.js.map',
+      expect(Object.keys(files)).toEqual(jasmine.arrayWithExactContents(expectedOutputs));
+    },
+    TEST_TIMEOUT,
+  );
 
-      'styles.css',
-      'styles.css.map',
-    ] as PathFragment[];
+  it(
+    'emits the right ES formats',
+    async () => {
+      const { files } = await browserBuild(architect, host, target, {
+        optimization: true,
+        vendorChunk: false,
+      });
+      expect(await files['main-es5.js']).not.toContain('const ');
+      expect(await files['main-es2017.js']).toContain('const ');
+    },
+    TEST_TIMEOUT,
+  );
 
-    expect(Object.keys(files)).toEqual(jasmine.arrayWithExactContents(expectedOutputs));
-  });
+  it(
+    'wraps ES5 scripts in an IIFE',
+    async () => {
+      const { files } = await browserBuild(architect, host, target, { optimization: false });
+      expect(await files['main-es5.js']).toMatch(/^\(function \(\) \{/);
+      expect(await files['main-es2017.js']).not.toMatch(/^\(function \(\) \{/);
+    },
+    TEST_TIMEOUT,
+  );
 
-  it('deactivates differential loading for watch mode', async () => {
-    const { files } = await browserBuild(architect, host, target, { watch: true });
+  it(
+    'uses the right zone.js variant',
+    async () => {
+      const { files } = await browserBuild(architect, host, target, { optimization: false });
+      expect(await files['polyfills-es5.js']).toContain('zone.js/plugins/zone-legacy');
+      expect(await files['polyfills-es5.js']).toContain('registerElementPatch');
+      expect(await files['polyfills-es2017.js']).not.toContain('zone.js/plugins/zone-legacy');
+      expect(await files['polyfills-es2017.js']).not.toContain('registerElementPatch');
+    },
+    TEST_TIMEOUT,
+  );
 
-    const expectedOutputs = [
-      'favicon.ico',
-      'index.html',
-
-      'main-es2015.js',
-      'main-es2015.js.map',
-
-      'polyfills-es2015.js',
-      'polyfills-es2015.js.map',
-
-      'runtime-es2015.js',
-      'runtime-es2015.js.map',
-
-      'vendor-es2015.js',
-      'vendor-es2015.js.map',
-
-      'styles.css',
-      'styles.css.map',
-    ] as PathFragment[];
-
-    expect(Object.keys(files)).toEqual(jasmine.arrayWithExactContents(expectedOutputs));
-  });
-
-  it('emits the right ES formats', async () => {
-    const { files } = await browserBuild(architect, host, target, {
-      optimization: true,
-      vendorChunk: false,
-    });
-    expect(await files['main-es5.js']).not.toContain('const ');
-    expect(await files['main-es2015.js']).toContain('const ');
-  });
-
-  it('wraps ES5 scripts in an IIFE', async () => {
-    const { files } = await browserBuild(architect, host, target, { optimization: false });
-    expect(await files['main-es5.js']).toMatch(/^\(function \(\) \{/);
-    expect(await files['main-es2015.js']).not.toMatch(/^\(function \(\) \{/);
-  });
-
-  it('uses the right zone.js variant', async () => {
-    const { files } = await browserBuild(architect, host, target, { optimization: false });
-    expect(await files['polyfills-es5.js']).toContain('zone.js/dist/zone-legacy');
-    expect(await files['polyfills-es5.js']).toContain('registerElementPatch');
-    expect(await files['polyfills-es5.js']).toContain('zone.js/dist/zone-evergreen');
-    expect(await files['polyfills-es2015.js']).toContain('zone.js/dist/zone-evergreen');
-    expect(await files['polyfills-es2015.js']).not.toContain('zone.js/dist/zone-legacy');
-    expect(await files['polyfills-es2015.js']).not.toContain('registerElementPatch');
-  });
-
-  it('adds `type="module"` when differential loading is needed', async () => {
-    host.writeMultipleFiles({
-      '.browserslistrc': `
+  it(
+    'adds `type="module"` when differential loading is needed',
+    async () => {
+      host.writeMultipleFiles({
+        '.browserslistrc': `
         last 1 chrome version
         IE 9
       `,
-    });
+      });
 
-    const { files } = await browserBuild(architect, host, target, { watch: true });
-    expect(await files['index.html']).toContain(
-      '<script src="runtime-es2015.js" type="module"></script>' +
-      '<script src="polyfills-es2015.js" type="module"></script>' +
-      '<script src="vendor-es2015.js" type="module"></script>' +
-      '<script src="main-es2015.js" type="module"></script>',
-    );
-  });
+      const { files } = await browserBuild(architect, host, target, { watch: true });
+      expect(await files['index.html']).toContain(
+        '<script src="runtime-es2017.js" type="module"></script>' +
+          '<script src="polyfills-es2017.js" type="module"></script>' +
+          '<script src="vendor-es2017.js" type="module"></script>' +
+          '<script src="main-es2017.js" type="module"></script>',
+      );
+    },
+    TEST_TIMEOUT,
+  );
 });

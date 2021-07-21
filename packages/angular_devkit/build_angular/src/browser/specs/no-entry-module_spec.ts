@@ -1,14 +1,13 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
 
 import { Architect } from '@angular-devkit/architect';
-import { logging } from '@angular-devkit/core';
-import { browserBuild, createArchitect, host, veEnabled } from '../../test-utils';
+import { browserBuild, createArchitect, host } from '../../test-utils';
 
 describe('Browser Builder no entry module', () => {
   const target = { project: 'app', target: 'build' };
@@ -26,23 +25,5 @@ describe('Browser Builder no entry module', () => {
     host.appendToFile('src/main.ts', 'console.log(AppModule);');
 
     await browserBuild(architect, host, target, { baseHref: '/myUrl' });
-  });
-
-  it('reports warning when no bootstrap code', async () => {
-    if (!veEnabled) {
-      pending('Does not apply to Ivy.');
-
-      return;
-    }
-
-    host.replaceInFile('src/main.ts', /./g, '');
-    host.appendToFile('src/main.ts', `import './app/app.module';`);
-
-    const logger = new logging.Logger('');
-    const logs: string[] = [];
-    logger.subscribe(e => logs.push(e.message));
-
-    await browserBuild(architect, host, target, { baseHref: '/myUrl' }, { logger });
-    expect(logs.join().includes('Lazy routes discovery is not enabled')).toBe(true);
   });
 });

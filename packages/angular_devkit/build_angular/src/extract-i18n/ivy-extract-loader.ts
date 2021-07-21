@@ -1,53 +1,55 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { MessageExtractor } from '@angular/localize/src/tools/src/extract/extraction';
-import { getOptions } from 'loader-utils';
 import * as nodePath from 'path';
+
+// Extract loader source map parameter type since it is not exported directly
+type LoaderSourceMap = Parameters<import('webpack').LoaderDefinitionFunction>[1];
 
 interface LocalizeExtractLoaderOptions {
   messageHandler: (messages: import('@angular/localize').ɵParsedMessage[]) => void;
 }
 
 export default function localizeExtractLoader(
-  this: import('webpack').loader.LoaderContext,
+  this: import('webpack').LoaderContext<LocalizeExtractLoaderOptions>,
   content: string,
-  // Source map types are broken in the webpack type definitions
-  // tslint:disable-next-line: no-any
-  map: any,
+  map: LoaderSourceMap,
 ) {
+  // eslint-disable-next-line @typescript-eslint/no-this-alias
   const loaderContext = this;
-
-  // Casts are needed to workaround the loader-utils typings limited support for option values
-  const options = (getOptions(this) as unknown) as LocalizeExtractLoaderOptions | undefined;
+  const options = this.getOptions();
 
   // Setup a Webpack-based logger instance
   const logger = {
     // level 2 is warnings
     level: 2,
     debug(...args: string[]): void {
-      // tslint:disable-next-line: no-console
+      // eslint-disable-next-line no-console
       console.debug(...args);
     },
     info(...args: string[]): void {
-      loaderContext.emitWarning(args.join(''));
+      loaderContext.emitWarning(new Error(args.join('')));
     },
     warn(...args: string[]): void {
-      loaderContext.emitWarning(args.join(''));
+      loaderContext.emitWarning(new Error(args.join('')));
     },
     error(...args: string[]): void {
-      loaderContext.emitError(args.join(''));
+      loaderContext.emitError(new Error(args.join('')));
     },
   };
 
   let filename = loaderContext.resourcePath;
-  if (map?.file) {
+  const mapObject =
+    typeof map === 'string' ? (JSON.parse(map) as Exclude<LoaderSourceMap, string>) : map;
+  if (mapObject?.file) {
     // The extractor's internal sourcemap handling expects the filenames to match
-    filename = nodePath.join(loaderContext.context, map.file);
+    filename = nodePath.join(loaderContext.context, mapObject.file);
   }
 
   // Setup a virtual file system instance for the extractor
@@ -77,9 +79,9 @@ export default function localizeExtractLoader(
     },
   };
 
-  // tslint:disable-next-line: no-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const extractor = new MessageExtractor(filesystem as any, logger, {
-    // tslint:disable-next-line: no-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     basePath: this.rootContext as any,
     useSourceMaps: !!map,
   });

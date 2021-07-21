@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { EmptyTree } from '@angular-devkit/schematics';
 import { SchematicTestRunner, UnitTestTree } from '@angular-devkit/schematics/testing';
 import { parse as parseJson } from 'jsonc-parser';
@@ -22,7 +23,7 @@ describe('Migration to remove "Solution Style" tsconfig', () => {
     tree.create(filePath, JSON.stringify(content, undefined, 2));
   }
 
-  // tslint:disable-next-line: no-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function readJsonFile(tree: UnitTestTree, filePath: string): any {
     return parseJson(tree.readContent(filePath).toString());
   }
@@ -61,7 +62,6 @@ describe('Migration to remove "Solution Style" tsconfig', () => {
     createJsonFile(tree, 'angular.json', angularConfig);
   }
 
-
   let tree: UnitTestTree;
   beforeEach(() => {
     tree = new UnitTestTree(new EmptyTree());
@@ -72,12 +72,30 @@ describe('Migration to remove "Solution Style" tsconfig', () => {
     createJsonFile(tree, 'tsconfig.json', { files: [] });
     createJsonFile(tree, 'tsconfig.base.json', { compilerOptions });
     createJsonFile(tree, 'tsconfig.common.json', { compilerOptions });
-    createJsonFile(tree, 'src/tsconfig.json', { extends: './../tsconfig.base.json', compilerOptions });
-    createJsonFile(tree, 'src/tsconfig.base.json', { extends: './../tsconfig.base.json', compilerOptions });
-    createJsonFile(tree, 'src/tsconfig.tsc.json', { extends: './tsconfig.base.json', compilerOptions });
-    createJsonFile(tree, 'src/tsconfig.app.json', { extends: './../tsconfig.common.json', compilerOptions });
-    createJsonFile(tree, 'src/tsconfig.spec.json', { extends: './../tsconfig.base.json', compilerOptions });
-    createJsonFile(tree, 'src/tsconfig.worker.json', { extends: './../tsconfig.base.json', compilerOptions });
+    createJsonFile(tree, 'src/tsconfig.json', {
+      extends: './../tsconfig.base.json',
+      compilerOptions,
+    });
+    createJsonFile(tree, 'src/tsconfig.base.json', {
+      extends: './../tsconfig.base.json',
+      compilerOptions,
+    });
+    createJsonFile(tree, 'src/tsconfig.tsc.json', {
+      extends: './tsconfig.base.json',
+      compilerOptions,
+    });
+    createJsonFile(tree, 'src/tsconfig.app.json', {
+      extends: './../tsconfig.common.json',
+      compilerOptions,
+    });
+    createJsonFile(tree, 'src/tsconfig.spec.json', {
+      extends: './../tsconfig.base.json',
+      compilerOptions,
+    });
+    createJsonFile(tree, 'src/tsconfig.worker.json', {
+      extends: './../tsconfig.base.json',
+      compilerOptions,
+    });
   });
 
   it(`should rename 'tsconfig.base.json' to 'tsconfig.json'`, async () => {
@@ -105,13 +123,15 @@ describe('Migration to remove "Solution Style" tsconfig', () => {
 
   it('should show warning with full path when parsing invalid JSON', async () => {
     const logs: string[] = [];
-    schematicRunner.logger.subscribe(m => logs.push(m.message));
+    schematicRunner.logger.subscribe((m) => logs.push(m.message));
 
     tree.create('src/invalid/error.json', `{ "extends": "./../../tsconfig.base.json", invalid }`);
     const newTree = await schematicRunner.runSchematicAsync(schematicName, {}, tree).toPromise();
 
     expect(readJsonFile(newTree, 'src/tsconfig.spec.json').extends).toEqual('./../tsconfig.json');
-    expect(logs.join('\n')).toContain('Failed to parse "/src/invalid/error.json" as JSON AST Object. InvalidSymbol at location: 43.');
+    expect(logs.join('\n')).toContain(
+      'Failed to parse "/src/invalid/error.json" as JSON AST Object. InvalidSymbol at location: 43.',
+    );
   });
 
   it(`should not error when 'tsconfig.json' doesn't exist`, async () => {

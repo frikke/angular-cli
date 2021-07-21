@@ -1,23 +1,26 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-import { BaseException } from '@angular-devkit/core';
 
+import { BaseException } from '@angular-devkit/core';
 
 // Used by schematics to throw exceptions.
 export class SchematicsException extends BaseException {}
 
-
 // Exceptions
 export class FileDoesNotExistException extends BaseException {
-  constructor(path: string) { super(`Path "${path}" does not exist.`); }
+  constructor(path: string) {
+    super(`Path "${path}" does not exist.`);
+  }
 }
 export class FileAlreadyExistException extends BaseException {
-  constructor(path: string) { super(`Path "${path}" already exist.`); }
+  constructor(path: string) {
+    super(`Path "${path}" already exist.`);
+  }
 }
 export class ContentHasMutatedException extends BaseException {
   constructor(path: string) {
@@ -25,7 +28,9 @@ export class ContentHasMutatedException extends BaseException {
   }
 }
 export class InvalidUpdateRecordException extends BaseException {
-  constructor() { super(`Invalid record instance.`); }
+  constructor() {
+    super(`Invalid record instance.`);
+  }
 }
 export class MergeConflictException extends BaseException {
   constructor(path: string) {
@@ -40,5 +45,7 @@ export class UnsuccessfulWorkflowExecution extends BaseException {
 }
 
 export class UnimplementedException extends BaseException {
-  constructor() { super('This function is unimplemented.'); }
+  constructor() {
+    super('This function is unimplemented.');
+  }
 }

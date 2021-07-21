@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { RawSourceMap } from 'source-map';
 import * as ts from 'typescript';
 
@@ -35,7 +36,7 @@ interface DiagnosticSourceFile extends ts.SourceFile {
 function validateDiagnostics(diagnostics: ReadonlyArray<ts.Diagnostic>, strict?: boolean): boolean {
   // Print error diagnostics.
 
-  const hasError = diagnostics.some(diag => diag.category === ts.DiagnosticCategory.Error);
+  const hasError = diagnostics.some((diag) => diag.category === ts.DiagnosticCategory.Error);
   if (hasError) {
     // Throw only if we're in strict mode, otherwise return original content.
     if (strict) {
@@ -61,15 +62,7 @@ function validateDiagnostics(diagnostics: ReadonlyArray<ts.Diagnostic>, strict?:
 export function transformJavascript(
   options: TransformJavascriptOptions,
 ): TransformJavascriptOutput {
-
-  const {
-    content,
-    getTransforms,
-    emitSourceMap,
-    inputFilePath,
-    outputFilePath,
-    strict,
-  } = options;
+  const { content, getTransforms, emitSourceMap, inputFilePath, outputFilePath, strict } = options;
 
   // Bail if there's no transform to do.
   if (getTransforms.length === 0) {
@@ -125,13 +118,10 @@ export function transformJavascript(
       };
     }
 
-    const printer = ts.createPrinter(
-      undefined,
-      {
-        onEmitNode: result.emitNodeWithNotification,
-        substituteNode: result.substituteNode,
-      },
-    );
+    const printer = ts.createPrinter(undefined, {
+      onEmitNode: result.emitNodeWithNotification,
+      substituteNode: result.substituteNode,
+    });
 
     const output = printer.printFile(result.transformed[0]);
 
@@ -198,8 +188,10 @@ export function transformJavascript(
     // Fix sourcemaps file references.
     if (outputFilePath) {
       sourceMap.file = outputFilePath;
-      transformedContent = transformedContent.replace(urlRegExp,
-        `//# sourceMappingURL=${sourceMap.file}.map\n`);
+      transformedContent = transformedContent.replace(
+        urlRegExp,
+        `//# sourceMappingURL=${sourceMap.file}.map\n`,
+      );
       if (inputFilePath) {
         sourceMap.sources = [inputFilePath];
       } else {

@@ -1,27 +1,25 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-import * as path from 'path';
-import { AngularPluginSymbol, FileEmitter } from './symbol';
 
-export function angularWebpackLoader(
-  this: import('webpack').loader.LoaderContext,
-  content: string,
-  // Source map types are broken in the webpack type definitions
-  // tslint:disable-next-line: no-any
-  map: any,
-) {
+import * as path from 'path';
+import type { LoaderContext } from 'webpack';
+import { AngularPluginSymbol, FileEmitterCollection } from './symbol';
+
+export function angularWebpackLoader(this: LoaderContext<unknown>, content: string, map: string) {
   const callback = this.async();
   if (!callback) {
     throw new Error('Invalid webpack version');
   }
 
-  const emitFile = this._compilation[AngularPluginSymbol] as FileEmitter;
-  if (typeof emitFile !== 'function') {
+  const fileEmitter = (
+    this as LoaderContext<unknown> & { [AngularPluginSymbol]?: FileEmitterCollection }
+  )[AngularPluginSymbol];
+  if (!fileEmitter || typeof fileEmitter !== 'object') {
     if (this.resourcePath.endsWith('.js')) {
       // Passthrough for JS files when no plugin is used
       this.callback(undefined, content, map);
@@ -34,7 +32,8 @@ export function angularWebpackLoader(
     return;
   }
 
-  emitFile(this.resourcePath)
+  fileEmitter
+    .emit(this.resourcePath)
     .then((result) => {
       if (!result) {
         if (this.resourcePath.endsWith('.js')) {

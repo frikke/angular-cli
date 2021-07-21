@@ -1,17 +1,15 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-// tslint:disable:no-big-function
-// tslint:disable-next-line:no-implicit-dependencies
+
 import { tags } from '@angular-devkit/core';
 import { RawSourceMap } from 'source-map';
 import { TransformJavascriptOutput } from '../helpers/transform-javascript';
 import { buildOptimizer } from './build-optimizer';
-
 
 describe('build-optimizer', () => {
   const imports = `
@@ -73,8 +71,6 @@ describe('build-optimizer', () => {
         '/node_modules/@angular/core/esm2015/core.js',
         '\\node_modules\\@angular\\core\\fesm2015\\core.js',
         '\\node_modules\\@angular\\core\\esm2015\\core.js',
-        '/project/file.ngfactory.js',
-        '/project/file.ngstyle.js',
       ];
 
       inputPaths.forEach((inputFilePath) => {
@@ -190,9 +186,8 @@ describe('build-optimizer', () => {
     });
   });
 
-
   describe('resilience', () => {
-    it('doesn\'t process files with invalid syntax by default', () => {
+    it("doesn't process files with invalid syntax by default", () => {
       const input = tags.oneLine`
         ))))invalid syntax
         ${clazz}
@@ -224,9 +219,9 @@ describe('build-optimizer', () => {
         var BigClass = /** @class */ (function () {
           function BigClass() {
           }
-          ${Array.from(new Array(1000)).map((_v, i) =>
-            `BigClass.prototype.method${i} = function () { return this.myVar; };`,
-          ).join('\n')}
+          ${Array.from(new Array(1000))
+            .map((_v, i) => `BigClass.prototype.method${i} = function () { return this.myVar; };`)
+            .join('\n')}
           return BigClass;
         }());
         ${clazz}
@@ -254,15 +249,13 @@ describe('build-optimizer', () => {
       expect(boOutput.emitSkipped).toEqual(false);
     });
 
-    it('should not process modules which are not in the list of known side effect free modules',
-     () => {
+    it('should not process modules which are not in the list of known side effect free modules', () => {
       const inputFilePath = '/node_modules/other-package/core.es5.js';
       const boOutput = buildOptimizer({ content: input, inputFilePath });
       expect(boOutput.emitSkipped).toEqual(true);
     });
 
-    it('should not process umd modules which are not in the list of known side effect free modules',
-    () => {
+    it('should not process umd modules which are not in the list of known side effect free modules', () => {
       const inputFilePath = '/node_modules/other_lib/index.js';
       const boOutput = buildOptimizer({ content: input, inputFilePath });
       expect(boOutput.emitSkipped).toEqual(true);
@@ -276,19 +269,19 @@ describe('build-optimizer', () => {
       ${decorators}
     `;
 
-    it('doesn\'t produce sourcemaps by default', () => {
+    it("doesn't produce sourcemaps by default", () => {
       expect(buildOptimizer({ content: transformableInput }).sourceMap).toBeFalsy();
     });
 
     it('produces sourcemaps', () => {
-      expect(buildOptimizer(
-        { content: transformableInput, emitSourceMap: true },
-      ).sourceMap).toBeTruthy();
+      expect(
+        buildOptimizer({ content: transformableInput, emitSourceMap: true }).sourceMap,
+      ).toBeTruthy();
     });
 
     // TODO: re-enable this test, it was temporarily disabled as part of
     // https://github.com/angular/devkit/pull/842
-    xit('doesn\'t produce sourcemaps when emitting was skipped', () => {
+    xit("doesn't produce sourcemaps when emitting was skipped", () => {
       const ignoredInput = tags.oneLine`
         var Clazz = (function () { function Clazz() { } return Clazz; }());
       `;
@@ -308,16 +301,17 @@ describe('build-optimizer', () => {
     });
 
     it('emits sources content', () => {
-      const sourceMap = buildOptimizer(
-        { content: transformableInput, emitSourceMap: true },
-      ).sourceMap as RawSourceMap;
+      const sourceMap = buildOptimizer({ content: transformableInput, emitSourceMap: true })
+        .sourceMap as RawSourceMap;
       const sourceContent = sourceMap.sourcesContent as string[];
       expect(sourceContent[0]).toEqual(transformableInput);
     });
 
     it('uses empty strings if inputFilePath and outputFilePath is not provided', () => {
-      const { content, sourceMap } = buildOptimizer(
-        { content: transformableInput, emitSourceMap: true });
+      const { content, sourceMap } = buildOptimizer({
+        content: transformableInput,
+        emitSourceMap: true,
+      });
 
       if (!sourceMap) {
         throw new Error('sourceMap was not generated.');
@@ -345,5 +339,4 @@ describe('build-optimizer', () => {
       expect(content).toContain(`sourceMappingURL=${outputFilePath}.map`);
     });
   });
-
 });

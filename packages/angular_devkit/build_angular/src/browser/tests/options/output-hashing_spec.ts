@@ -1,11 +1,10 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-
 
 import { buildWebpackBrowser } from '../../index';
 import { OutputHashing } from '../../schema';
@@ -16,17 +15,16 @@ describeBuilder(buildWebpackBrowser, BROWSER_BUILDER_INFO, (harness) => {
     beforeEach(async () => {
       // Application code is not needed for asset tests
       await harness.writeFile('src/main.ts', '');
+      await harness.writeFile('src/polyfills.ts', '');
     });
 
     it('hashes all filenames when set to "all"', async () => {
-      await harness.writeFile(
-        'src/styles.css',
-        `h1 { background: url('./spectrum.png')}`,
-      );
+      await harness.writeFile('src/styles.css', `h1 { background: url('./spectrum.png')}`);
 
       harness.useTarget('build', {
         ...BASE_OPTIONS,
         styles: ['src/styles.css'],
+        polyfills: 'src/polyfills.ts',
         outputHashing: OutputHashing.All,
       });
 
@@ -41,13 +39,11 @@ describeBuilder(buildWebpackBrowser, BROWSER_BUILDER_INFO, (harness) => {
     });
 
     it(`doesn't hash any filenames when not set`, async () => {
-      await harness.writeFile(
-        'src/styles.css',
-        `h1 { background: url('./spectrum.png')}`,
-      );
+      await harness.writeFile('src/styles.css', `h1 { background: url('./spectrum.png')}`);
 
       harness.useTarget('build', {
         ...BASE_OPTIONS,
+        polyfills: 'src/polyfills.ts',
         styles: ['src/styles.css'],
       });
 
@@ -62,14 +58,12 @@ describeBuilder(buildWebpackBrowser, BROWSER_BUILDER_INFO, (harness) => {
     });
 
     it(`doesn't hash any filenames when set to "none"`, async () => {
-      await harness.writeFile(
-        'src/styles.css',
-        `h1 { background: url('./spectrum.png')}`,
-      );
+      await harness.writeFile('src/styles.css', `h1 { background: url('./spectrum.png')}`);
 
       harness.useTarget('build', {
         ...BASE_OPTIONS,
         styles: ['src/styles.css'],
+        polyfills: 'src/polyfills.ts',
         outputHashing: OutputHashing.None,
       });
 
@@ -84,14 +78,12 @@ describeBuilder(buildWebpackBrowser, BROWSER_BUILDER_INFO, (harness) => {
     });
 
     it(`hashes CSS resources filenames only when set to "media"`, async () => {
-      await harness.writeFile(
-        'src/styles.css',
-        `h1 { background: url('./spectrum.png')}`,
-      );
+      await harness.writeFile('src/styles.css', `h1 { background: url('./spectrum.png')}`);
 
       harness.useTarget('build', {
         ...BASE_OPTIONS,
         styles: ['src/styles.css'],
+        polyfills: 'src/polyfills.ts',
         outputHashing: OutputHashing.Media,
       });
 
@@ -106,14 +98,12 @@ describeBuilder(buildWebpackBrowser, BROWSER_BUILDER_INFO, (harness) => {
     });
 
     it(`hashes bundles filenames only when set to "bundles"`, async () => {
-      await harness.writeFile(
-        'src/styles.css',
-        `h1 { background: url('./spectrum.png')}`,
-      );
+      await harness.writeFile('src/styles.css', `h1 { background: url('./spectrum.png')}`);
 
       harness.useTarget('build', {
         ...BASE_OPTIONS,
         styles: ['src/styles.css'],
+        polyfills: 'src/polyfills.ts',
         outputHashing: OutputHashing.Bundles,
       });
 
@@ -131,10 +121,13 @@ describeBuilder(buildWebpackBrowser, BROWSER_BUILDER_INFO, (harness) => {
       harness.useTarget('build', {
         ...BASE_OPTIONS,
         outputHashing: OutputHashing.All,
-        styles: [{
-          input: 'src/styles.css',
-          inject: false,
-        }],
+        sourceMap: true,
+        styles: [
+          {
+            input: 'src/styles.css',
+            inject: false,
+          },
+        ],
       });
 
       const { result } = await harness.executeOnce();

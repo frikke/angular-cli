@@ -1,13 +1,14 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { BaseException } from '@angular-devkit/core';
 import { SpawnOptions, spawn } from 'child_process';
-import * as ora from 'ora';
+import ora from 'ora';
 import * as path from 'path';
 import { Observable } from 'rxjs';
 import { TaskExecutor, UnsuccessfulWorkflowExecution } from '../../src';
@@ -34,7 +35,7 @@ const packageManagers: { [name: string]: PackageManagerProfile } = {
       installAll: 'install',
       installPackage: 'install',
     },
-   },
+  },
   'yarn': {
     quietArgument: '--silent',
     commands: {
@@ -56,7 +57,7 @@ export class UnknownPackageManagerException extends BaseException {
   }
 }
 
-export default function(
+export default function (
   factoryOptions: NodePackageTaskFactoryOptions = {},
 ): TaskExecutor<NodePackageTaskOptions> {
   const packageManagerName = factoryOptions.packageManager || 'npm';
@@ -78,9 +79,9 @@ export default function(
       taskPackageManagerName = options.packageManager;
     }
 
-    const bufferedOutput: {stream: NodeJS.WriteStream, data: Buffer}[] = [];
+    const bufferedOutput: { stream: NodeJS.WriteStream; data: Buffer }[] = [];
     const spawnOptions: SpawnOptions = {
-      stdio: !!options.hideOutput ? 'pipe' : 'inherit',
+      stdio: options.hideOutput ? 'pipe' : 'inherit',
       shell: true,
       cwd: path.join(rootDirectory, options.workingDirectory || ''),
     };
@@ -103,14 +104,19 @@ export default function(
       args.push(`--registry="${factoryOptions.registry}"`);
     }
 
-    return new Observable(obs => {
+    if (factoryOptions.force) {
+      args.push('--force');
+    }
+
+    return new Observable((obs) => {
       const spinner = ora({
         text: `Installing packages (${taskPackageManagerName})...`,
         // Workaround for https://github.com/sindresorhus/ora/issues/136.
         discardStdin: process.platform != 'win32',
       }).start();
-      const childProcess = spawn(taskPackageManagerName, args, spawnOptions)
-        .on('close', (code: number) => {
+      const childProcess = spawn(taskPackageManagerName, args, spawnOptions).on(
+        'close',
+        (code: number) => {
           if (code === 0) {
             spinner.succeed('Packages installed successfully.');
             spinner.stop();
@@ -123,14 +129,16 @@ export default function(
             spinner.fail('Package install failed, see above.');
             obs.error(new UnsuccessfulWorkflowExecution());
           }
-      });
+        },
+      );
       if (options.hideOutput) {
-        childProcess.stdout.on('data', (data: Buffer) =>
-          bufferedOutput.push({ stream: process.stdout, data: data }));
-        childProcess.stderr.on('data', (data: Buffer) =>
-          bufferedOutput.push({ stream: process.stderr, data: data }));
+        childProcess.stdout?.on('data', (data: Buffer) =>
+          bufferedOutput.push({ stream: process.stdout, data: data }),
+        );
+        childProcess.stderr?.on('data', (data: Buffer) =>
+          bufferedOutput.push({ stream: process.stderr, data: data }),
+        );
       }
     });
-
   };
 }

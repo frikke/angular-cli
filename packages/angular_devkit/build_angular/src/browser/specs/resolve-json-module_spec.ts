@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
@@ -10,7 +10,6 @@ import { Architect } from '@angular-devkit/architect';
 import { join, virtualFs } from '@angular-devkit/core';
 import { take, tap } from 'rxjs/operators';
 import { createArchitect, host, outputPath } from '../../test-utils';
-
 
 describe('Browser Builder resolve json module', () => {
   const target = { project: 'app', target: 'build' };
@@ -30,7 +29,7 @@ describe('Browser Builder resolve json module', () => {
 
     host.replaceInFile(
       'tsconfig.json',
-      '"target": "es2015"',
+      '"target": "es2017"',
       '"target": "es5", "resolveJsonModule": true',
     );
 
@@ -38,29 +37,30 @@ describe('Browser Builder resolve json module', () => {
 
     let buildCount = 1;
     const run = await architect.scheduleTarget(target, overrides);
-    await run.output.pipe(
-      tap(() => {
-        const content = virtualFs.fileBufferToString(
-          host.scopedSync().read(join(outputPath, 'main.js')),
-        );
+    await run.output
+      .pipe(
+        tap(() => {
+          const content = virtualFs.fileBufferToString(
+            host.scopedSync().read(join(outputPath, 'main.js')),
+          );
 
-        switch (buildCount) {
-          case 1:
-            expect(content).toContain('\\"foo\\":\\"1\\"');
-            host.writeMultipleFiles({
-              'src/my-json-file.json': `{"foo": "2"}`,
-            });
-            break;
-          case 2:
-            expect(content).toContain('\\"foo\\":\\"2\\"');
-            break;
-        }
+          switch (buildCount) {
+            case 1:
+              expect(content).toContain('"foo":"1"');
+              host.writeMultipleFiles({
+                'src/my-json-file.json': `{"foo": "2"}`,
+              });
+              break;
+            case 2:
+              expect(content).toContain('"foo":"2"');
+              break;
+          }
 
-        buildCount++;
-      }),
-      tap((buildEvent) => expect(buildEvent.success).toBe(true)),
-      take(2),
-    ).toPromise();
+          buildCount++;
+        }),
+        tap((buildEvent) => expect(buildEvent.success).toBe(true)),
+        take(2),
+      )
+      .toPromise();
   });
-
 });

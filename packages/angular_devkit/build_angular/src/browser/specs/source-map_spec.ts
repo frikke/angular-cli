@@ -1,15 +1,15 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { Architect } from '@angular-devkit/architect';
 import { OutputHashing } from '@angular-devkit/build-angular';
 import { browserBuild, createArchitect, host } from '../../test-utils';
 
-// tslint:disable-next-line:no-big-function
 describe('Browser Builder source map', () => {
   const target = { project: 'app', target: 'build' };
   let architect: Architect;
@@ -59,7 +59,7 @@ describe('Browser Builder source map', () => {
       outputHashing: OutputHashing.All,
     });
 
-    expect(Object.keys(files).some(name => /main\.[0-9a-f]{20}\.js.map/.test(name))).toBeTruthy();
+    expect(Object.keys(files).some((name) => /main\.[0-9a-f]{20}\.js.map/.test(name))).toBeTruthy();
   });
 
   it('does not output source map when disabled', async () => {

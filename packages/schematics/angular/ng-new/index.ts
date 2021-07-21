@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import {
   Rule,
   SchematicContext,
@@ -28,8 +29,7 @@ import { validateProjectName } from '../utility/validation';
 import { Schema as WorkspaceOptions } from '../workspace/schema';
 import { Schema as NgNewOptions } from './schema';
 
-
-export default function(options: NgNewOptions): Rule {
+export default function (options: NgNewOptions): Rule {
   if (!options.name) {
     throw new SchematicsException(`Invalid options, "name" is required.`);
   }
@@ -63,7 +63,7 @@ export default function(options: NgNewOptions): Rule {
     skipInstall: true,
     strict: options.strict,
     minimal: options.minimal,
-    legacyBrowsers: options.legacyBrowsers,
+    legacyBrowsers: options.legacyBrowsers || undefined,
   };
 
   return chain([
@@ -91,15 +91,11 @@ export default function(options: NgNewOptions): Rule {
         }
       }
       if (!options.skipGit) {
-        const commit = typeof options.commit == 'object'
-          ? options.commit
-          : (!!options.commit ? {} : false);
+        const commit =
+          typeof options.commit == 'object' ? options.commit : options.commit ? {} : false;
 
         context.addTask(
-          new RepositoryInitializerTask(
-            options.directory,
-            commit,
-          ),
+          new RepositoryInitializerTask(options.directory, commit),
           packageTask ? [packageTask] : [],
         );
       }

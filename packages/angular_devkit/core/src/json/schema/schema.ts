@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { JsonObject, JsonValue, isJsonObject } from '../interface';
 
 /**
@@ -13,7 +14,6 @@ import { JsonObject, JsonValue, isJsonObject } from '../interface';
  * @public
  */
 export type JsonSchema = JsonObject | boolean;
-
 
 export function isJsonSchema(value: unknown): value is JsonSchema {
   return isJsonObject(value as JsonValue) || value === false || value === true;

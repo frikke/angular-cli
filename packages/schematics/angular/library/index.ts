@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { join, normalize, strings } from '@angular-devkit/core';
 import {
   Rule,
@@ -33,7 +34,9 @@ import { Schema as LibraryOptions } from './schema';
 
 function updateTsConfig(packageName: string, ...paths: string[]) {
   return (host: Tree) => {
-    if (!host.exists('tsconfig.json')) { return host; }
+    if (!host.exists('tsconfig.json')) {
+      return host;
+    }
 
     const file = new JSONFile(host, 'tsconfig.json');
     const jsonPath = ['compilerOptions', 'paths', packageName];
@@ -58,19 +61,19 @@ function addDependenciesToPackageJson() {
       {
         type: NodeDependencyType.Dev,
         name: 'ng-packagr',
-        version: latestVersions.ngPackagr,
+        version: latestVersions['ng-packagr'],
       },
       {
         type: NodeDependencyType.Default,
         name: 'tslib',
-        version: latestVersions.TsLib,
+        version: latestVersions['tslib'],
       },
       {
         type: NodeDependencyType.Dev,
         name: 'typescript',
-        version: latestVersions.TypeScript,
+        version: latestVersions['typescript'],
       },
-    ].forEach(dependency => addPackageJsonDependency(host, dependency));
+    ].forEach((dependency) => addPackageJsonDependency(host, dependency));
 
     return host;
   };
@@ -81,7 +84,7 @@ function addLibToWorkspaceFile(
   projectRoot: string,
   projectName: string,
 ): Rule {
-  return updateWorkspace(workspace => {
+  return updateWorkspace((workspace) => {
     if (workspace.projects.size === 0) {
       workspace.extensions.defaultProject = projectName;
     }
@@ -95,13 +98,16 @@ function addLibToWorkspaceFile(
       targets: {
         build: {
           builder: Builders.NgPackagr,
+          defaultConfiguration: 'production',
           options: {
-            tsConfig: `${projectRoot}/tsconfig.lib.json`,
             project: `${projectRoot}/ng-package.json`,
           },
           configurations: {
             production: {
               tsConfig: `${projectRoot}/tsconfig.lib.prod.json`,
+            },
+            development: {
+              tsConfig: `${projectRoot}/tsconfig.lib.json`,
             },
           },
         },
@@ -111,18 +117,6 @@ function addLibToWorkspaceFile(
             main: `${projectRoot}/src/test.ts`,
             tsConfig: `${projectRoot}/tsconfig.spec.json`,
             karmaConfig: `${projectRoot}/karma.conf.js`,
-          },
-        },
-        lint: {
-          builder: Builders.TsLint,
-          options: {
-            tsConfig: [
-              `${projectRoot}/tsconfig.lib.json`,
-              `${projectRoot}/tsconfig.spec.json`,
-            ],
-            exclude: [
-              '**/node_modules/**',
-            ],
           },
         },
       },
@@ -150,7 +144,7 @@ export default function (options: LibraryOptions): Rule {
     }
 
     const workspace = await getWorkspace(host);
-    const newProjectRoot = workspace.extensions.newProjectRoot as (string | undefined) || '';
+    const newProjectRoot = (workspace.extensions.newProjectRoot as string | undefined) || '';
 
     const scopeFolder = scopeName ? strings.dasherize(scopeName) + '/' : '';
     const folderName = `${scopeFolder}${strings.dasherize(options.name)}`;
@@ -168,8 +162,8 @@ export default function (options: LibraryOptions): Rule {
         distRoot,
         relativePathToWorkspaceRoot: relativePathToWorkspaceRoot(projectRoot),
         prefix,
-        angularLatestVersion: latestVersions.Angular.replace('~', '').replace('^', ''),
-        tsLibLatestVersion: latestVersions.TsLib.replace('~', '').replace('^', ''),
+        angularLatestVersion: latestVersions.Angular.replace(/\~|\^/, ''),
+        tsLibLatestVersion: latestVersions['tslib'].replace(/\~|\^/, ''),
         folderName,
       }),
       move(projectRoot),
@@ -185,7 +179,7 @@ export default function (options: LibraryOptions): Rule {
         commonModule: false,
         flat: true,
         path: sourceDir,
-        project: options.name,
+        project: projectName,
       }),
       schematic('component', {
         name: options.name,
@@ -195,13 +189,13 @@ export default function (options: LibraryOptions): Rule {
         flat: true,
         path: sourceDir,
         export: true,
-        project: options.name,
+        project: projectName,
       }),
       schematic('service', {
         name: options.name,
         flat: true,
         path: sourceDir,
-        project: options.name,
+        project: projectName,
       }),
       options.lintFix ? applyLintFix(sourceDir) : noop(),
       (_tree: Tree, context: SchematicContext) => {

@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { deepCopy, schema } from '@angular-devkit/core';
 import { Observable, of as observableOf } from 'rxjs';
 import { first, map, mergeMap } from 'rxjs/operators';
@@ -33,19 +34,17 @@ export function validateOptionsWithSchema(registry: schema.SchemaRegistry) {
 
     if (schematic.schema && schematic.schemaJson) {
       // Make a deep copy of options.
-      return registry
-        .compile(schematic.schemaJson)
-        .pipe(
-          mergeMap(validator => validator(options, { withPrompts })),
-          first(),
-          map(result => {
-            if (!result.success) {
-              throw new InvalidInputOptions(options, result.errors || []);
-            }
+      return registry.compile(schematic.schemaJson).pipe(
+        mergeMap((validator) => validator(options, { withPrompts })),
+        first(),
+        map((result) => {
+          if (!result.success) {
+            throw new InvalidInputOptions(options, result.errors || []);
+          }
 
-            return options;
-          }),
-        );
+          return options;
+        }),
+      );
     }
 
     return observableOf(options);

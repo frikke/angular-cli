@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { Path, virtualFs } from '@angular-devkit/core';
 import {
   EMPTY,
@@ -18,29 +19,39 @@ import { CreateFileAction } from '../tree/action';
 import { UpdateBuffer } from '../utility/update-buffer';
 import { SimpleSinkBase } from './sink';
 
-
 export class HostSink extends SimpleSinkBase {
   protected _filesToDelete = new Set<Path>();
   protected _filesToRename = new Set<[Path, Path]>();
   protected _filesToCreate = new Map<Path, UpdateBuffer>();
   protected _filesToUpdate = new Map<Path, UpdateBuffer>();
 
-  constructor(protected _host: virtualFs.Host, protected _force = false) { super(); }
+  constructor(protected _host: virtualFs.Host, protected _force = false) {
+    super();
+  }
 
-  protected _validateCreateAction(action: CreateFileAction): Observable<void> {
+  protected override _validateCreateAction(action: CreateFileAction): Observable<void> {
     return this._force ? EMPTY : super._validateCreateAction(action);
   }
 
   protected _validateFileExists(p: Path): Observable<boolean> {
     if (this._filesToCreate.has(p) || this._filesToUpdate.has(p)) {
       return observableOf(true);
-    } else if (this._filesToDelete.has(p)) {
-      return observableOf(false);
-    } else if ([...this._filesToRename.values()].some(([from]) => from == p)) {
-      return observableOf(false);
-    } else {
-      return this._host.exists(p);
     }
+
+    if (this._filesToDelete.has(p)) {
+      return observableOf(false);
+    }
+
+    for (const [from, to] of this._filesToRename.values()) {
+      switch (p) {
+        case from:
+          return observableOf(false);
+        case to:
+          return observableOf(true);
+      }
+    }
+
+    return this._host.exists(p);
   }
 
   protected _overwriteFile(path: Path, content: Buffer): Observable<void> {
@@ -73,7 +84,7 @@ export class HostSink extends SimpleSinkBase {
     // Really commit everything to the actual filesystem.
     return concatObservables(
       observableFrom([...this._filesToDelete.values()]).pipe(
-        concatMap(path => this._host.delete(path)),
+        concatMap((path) => this._host.delete(path)),
       ),
       observableFrom([...this._filesToRename.entries()]).pipe(
         concatMap(([_, [path, to]]) => this._host.rename(path, to)),
@@ -81,11 +92,13 @@ export class HostSink extends SimpleSinkBase {
       observableFrom([...this._filesToCreate.entries()]).pipe(
         concatMap(([path, buffer]) => {
           return this._host.write(path, buffer.generate() as {} as virtualFs.FileBuffer);
-        })),
+        }),
+      ),
       observableFrom([...this._filesToUpdate.entries()]).pipe(
         concatMap(([path, buffer]) => {
           return this._host.write(path, buffer.generate() as {} as virtualFs.FileBuffer);
-        })),
+        }),
+      ),
     ).pipe(reduce(() => {}));
   }
 }

@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { JsonValue } from '../json';
 
 export interface WorkspaceDefinition {
@@ -25,7 +26,7 @@ export interface ProjectDefinition {
 export interface TargetDefinition {
   options?: Record<string, JsonValue | undefined>;
   configurations?: Record<string, Record<string, JsonValue | undefined> | undefined>;
-
+  defaultConfiguration?: string;
   builder: string;
 }
 
@@ -40,10 +41,7 @@ export type DefinitionCollectionListener<V extends object> = (
 class DefinitionCollection<V extends object> implements ReadonlyMap<string, V> {
   private _map: Map<string, V>;
 
-  constructor(
-    initial?: Record<string, V>,
-    private _listener?: DefinitionCollectionListener<V>,
-  ) {
+  constructor(initial?: Record<string, V>, private _listener?: DefinitionCollectionListener<V>) {
     this._map = new Map(initial && Object.entries(initial));
   }
 
@@ -133,7 +131,6 @@ function isJsonValue(value: unknown): value is JsonValue {
 }
 
 export class ProjectDefinitionCollection extends DefinitionCollection<ProjectDefinition> {
-
   constructor(
     initial?: Record<string, ProjectDefinition>,
     listener?: DefinitionCollectionListener<ProjectDefinition>,
@@ -141,16 +138,14 @@ export class ProjectDefinitionCollection extends DefinitionCollection<ProjectDef
     super(initial, listener);
   }
 
-  add(
-    definition: {
-      name: string,
-      root: string,
-      sourceRoot?: string,
-      prefix?: string,
-      targets?: Record<string, TargetDefinition | undefined>,
-      [key: string]: unknown,
-    },
-  ): ProjectDefinition {
+  add(definition: {
+    name: string;
+    root: string;
+    sourceRoot?: string;
+    prefix?: string;
+    targets?: Record<string, TargetDefinition | undefined>;
+    [key: string]: unknown;
+  }): ProjectDefinition {
     if (this.has(definition.name)) {
       throw new Error('Project name already exists.');
     }
@@ -195,7 +190,7 @@ export class ProjectDefinitionCollection extends DefinitionCollection<ProjectDef
     return project;
   }
 
-  set(name: string, value: ProjectDefinition): this {
+  override set(name: string, value: ProjectDefinition): this {
     this._validateName(name);
 
     super.set(name, value);
@@ -208,11 +203,9 @@ export class ProjectDefinitionCollection extends DefinitionCollection<ProjectDef
       throw new Error('Project name must be a valid npm package name.');
     }
   }
-
 }
 
 export class TargetDefinitionCollection extends DefinitionCollection<TargetDefinition> {
-
   constructor(
     initial?: Record<string, TargetDefinition>,
     listener?: DefinitionCollectionListener<TargetDefinition>,
@@ -222,7 +215,7 @@ export class TargetDefinitionCollection extends DefinitionCollection<TargetDefin
 
   add(
     definition: {
-      name: string,
+      name: string;
     } & TargetDefinition,
   ): TargetDefinition {
     if (this.has(definition.name)) {
@@ -234,6 +227,7 @@ export class TargetDefinitionCollection extends DefinitionCollection<TargetDefin
       builder: definition.builder,
       options: definition.options,
       configurations: definition.configurations,
+      defaultConfiguration: definition.defaultConfiguration,
     };
 
     super.set(definition.name, target);
@@ -241,7 +235,7 @@ export class TargetDefinitionCollection extends DefinitionCollection<TargetDefin
     return target;
   }
 
-  set(name: string, value: TargetDefinition): this {
+  override set(name: string, value: TargetDefinition): this {
     this._validateName(name);
 
     super.set(name, value);
@@ -254,5 +248,4 @@ export class TargetDefinitionCollection extends DefinitionCollection<TargetDefin
       throw new TypeError('Target name must be a string.');
     }
   }
-
 }

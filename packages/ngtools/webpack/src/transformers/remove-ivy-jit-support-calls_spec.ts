@@ -1,11 +1,13 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-import { tags } from '@angular-devkit/core';  // tslint:disable-line:no-implicit-dependencies
+
+/* eslint-disable max-len */
+import { tags } from '@angular-devkit/core';
 import * as ts from 'typescript';
 import { removeIvyJitSupportCalls } from './remove-ivy-jit-support-calls';
 import { createTypescriptContext, transformTypescript } from './spec_helpers';
@@ -79,9 +81,7 @@ const inputNoPure = tags.stripIndent`
       }], null, null); })();
 `;
 
-// tslint:disable-next-line: no-big-function
 describe('@ngtools/webpack transformers', () => {
-  // tslint:disable-next-line: no-big-function
   describe('remove-ivy-dev-calls', () => {
     it('should allow removing only set class metadata with pure annotation', () => {
       const output = tags.stripIndent`
@@ -97,7 +97,7 @@ describe('@ngtools/webpack transformers', () => {
                 AppRoutingModule] }); })();
       `;
 
-      const result = transform(input, getTypeChecker =>
+      const result = transform(input, (getTypeChecker) =>
         removeIvyJitSupportCalls(true, false, getTypeChecker),
       );
 
@@ -118,7 +118,7 @@ describe('@ngtools/webpack transformers', () => {
                 AppRoutingModule] }); })();
       `;
 
-      const result = transform(inputNoPure, getTypeChecker =>
+      const result = transform(inputNoPure, (getTypeChecker) =>
         removeIvyJitSupportCalls(true, false, getTypeChecker),
       );
 
@@ -151,7 +151,7 @@ describe('@ngtools/webpack transformers', () => {
             }], null, null); })();
       `;
 
-      const result = transform(input, getTypeChecker =>
+      const result = transform(input, (getTypeChecker) =>
         removeIvyJitSupportCalls(false, true, getTypeChecker),
       );
 
@@ -184,7 +184,7 @@ describe('@ngtools/webpack transformers', () => {
             }], null, null); })();
       `;
 
-      const result = transform(inputNoPure, getTypeChecker =>
+      const result = transform(inputNoPure, (getTypeChecker) =>
         removeIvyJitSupportCalls(false, true, getTypeChecker),
       );
 
@@ -202,7 +202,7 @@ describe('@ngtools/webpack transformers', () => {
                 ]] });
       `;
 
-      const result = transform(input, getTypeChecker =>
+      const result = transform(input, (getTypeChecker) =>
         removeIvyJitSupportCalls(true, true, getTypeChecker),
       );
 
@@ -220,7 +220,7 @@ describe('@ngtools/webpack transformers', () => {
                 ]] });
       `;
 
-      const result = transform(inputNoPure, getTypeChecker =>
+      const result = transform(inputNoPure, (getTypeChecker) =>
         removeIvyJitSupportCalls(true, true, getTypeChecker),
       );
 
@@ -228,7 +228,7 @@ describe('@ngtools/webpack transformers', () => {
     });
 
     it('should allow removing neither set class metadata nor ng module scope with pure annotation', () => {
-      const result = transform(input, getTypeChecker =>
+      const result = transform(input, (getTypeChecker) =>
         removeIvyJitSupportCalls(false, false, getTypeChecker),
       );
 
@@ -236,7 +236,7 @@ describe('@ngtools/webpack transformers', () => {
     });
 
     it('should allow removing neither set class metadata nor ng module scope', () => {
-      const result = transform(inputNoPure, getTypeChecker =>
+      const result = transform(inputNoPure, (getTypeChecker) =>
         removeIvyJitSupportCalls(false, false, getTypeChecker),
       );
 
@@ -267,7 +267,7 @@ describe('@ngtools/webpack transformers', () => {
                 ]] });
       `;
 
-      const result = transform(imports + input, getTypeChecker =>
+      const result = transform(imports + input, (getTypeChecker) =>
         removeIvyJitSupportCalls(true, true, getTypeChecker),
       );
 
@@ -298,7 +298,7 @@ describe('@ngtools/webpack transformers', () => {
                 ]] });
       `;
 
-      const result = transform(imports + inputNoPure, getTypeChecker =>
+      const result = transform(imports + inputNoPure, (getTypeChecker) =>
         removeIvyJitSupportCalls(true, true, getTypeChecker),
       );
 

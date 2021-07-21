@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
@@ -11,18 +11,17 @@ import { map, reduce } from 'rxjs/operators';
 import { AggregatedProcessStats, Capture, MetricGroup } from './interfaces';
 import { cumulativeMovingAverage, max } from './utils';
 
-
 export const defaultStatsCapture: Capture = (
   stats: Observable<AggregatedProcessStats>,
 ): Observable<MetricGroup> => {
   type Accumulator = {
-    elapsed: number,
-    avgProcesses: number,
-    peakProcesses: number,
-    avgCpu: number,
-    peakCpu: number,
-    avgMemory: number,
-    peakMemory: number,
+    elapsed: number;
+    avgProcesses: number;
+    peakProcesses: number;
+    avgCpu: number;
+    peakCpu: number;
+    avgMemory: number;
+    peakMemory: number;
   };
   const seed: Accumulator = {
     elapsed: 0,
@@ -35,16 +34,19 @@ export const defaultStatsCapture: Capture = (
   };
 
   return stats.pipe(
-    reduce<AggregatedProcessStats, Accumulator>((acc, val, idx) => ({
-      elapsed: val.elapsed,
-      avgProcesses: cumulativeMovingAverage(acc.avgProcesses, val.processes, idx),
-      peakProcesses: max(acc.peakProcesses, val.processes),
-      avgCpu: cumulativeMovingAverage(acc.avgCpu, val.cpu, idx),
-      peakCpu: max(acc.peakCpu, val.cpu),
-      avgMemory: cumulativeMovingAverage(acc.avgMemory, val.memory, idx),
-      peakMemory: max(acc.peakMemory, val.memory),
-    }), seed),
-    map(metrics => ({
+    reduce<AggregatedProcessStats, Accumulator>(
+      (acc, val, idx) => ({
+        elapsed: val.elapsed,
+        avgProcesses: cumulativeMovingAverage(acc.avgProcesses, val.processes, idx),
+        peakProcesses: max(acc.peakProcesses, val.processes),
+        avgCpu: cumulativeMovingAverage(acc.avgCpu, val.cpu, idx),
+        peakCpu: max(acc.peakCpu, val.cpu),
+        avgMemory: cumulativeMovingAverage(acc.avgMemory, val.memory, idx),
+        peakMemory: max(acc.peakMemory, val.memory),
+      }),
+      seed,
+    ),
+    map((metrics) => ({
       name: 'Process Stats',
       metrics: [
         { name: 'Elapsed Time', unit: 'ms', value: metrics.elapsed },

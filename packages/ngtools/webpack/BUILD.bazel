@@ -35,16 +35,11 @@ ts_library(
     module_name = "@ngtools/webpack",
     module_root = "src/index.d.ts",
     deps = [
-        "//packages/angular_devkit/core",
-        "//packages/angular_devkit/core/node",
         "@npm//@angular/compiler-cli",
         "@npm//@types/node",
-        "@npm//@types/webpack",
-        "@npm//@types/webpack-sources",
         "@npm//enhanced-resolve",
         "@npm//typescript",
         "@npm//webpack",
-        "@npm//webpack-sources",
     ],
 )
 
@@ -72,6 +67,7 @@ jasmine_node_test(
     deps = [
         "@npm//jasmine",
         "@npm//source-map",
+        "@npm//tslib",
     ],
 )
 

@@ -1,10 +1,12 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
+/* eslint-disable no-constant-condition */
 import { BaseException } from '../exception';
 import {
   JsonArray,
@@ -49,7 +51,6 @@ export class InvalidJsonCharacterException extends JsonException {
   }
 }
 
-
 /**
  * More input was expected, but we reached the end of the stream.
  * @deprecated Deprecated since version 11. Use 3rd party JSON parsers such as `jsonc-parser` instead.
@@ -81,7 +82,6 @@ export interface JsonParserContext {
   readonly mode: JsonParseMode;
 }
 
-
 /**
  * Peek and return the next character from the context.
  * @private
@@ -90,7 +90,6 @@ function _peek(context: JsonParserContext): string | undefined {
   return context.original[context.position.offset];
 }
 
-
 /**
  * Move the context to the next character, including incrementing the line if necessary.
  * @private
@@ -98,7 +97,7 @@ function _peek(context: JsonParserContext): string | undefined {
 function _next(context: JsonParserContext) {
   context.previous = context.position;
 
-  let {offset, line, character} = context.position;
+  let { offset, line, character } = context.position;
   const char = context.original[offset];
   offset++;
   if (char == '\n') {
@@ -107,9 +106,8 @@ function _next(context: JsonParserContext) {
   } else {
     character++;
   }
-  context.position = {offset, line, character};
+  context.position = { offset, line, character };
 }
-
 
 /**
  * Read a single character from the input. If a `valid` string is passed, validate that the
@@ -135,17 +133,18 @@ function _token(context: JsonParserContext, valid?: string): string | undefined 
   return char;
 }
 
-
 /**
  * Read the exponent part of a number. The exponent part is looser for JSON than the number
  * part. `str` is the string of the number itself found so far, and start the position
  * where the full number started. Returns the node found.
  * @private
  */
-function _readExpNumber(context: JsonParserContext,
-                        start: Position,
-                        str: string,
-                        comments: (JsonAstComment | JsonAstMultilineComment)[]): JsonAstNumber {
+function _readExpNumber(
+  context: JsonParserContext,
+  start: Position,
+  str: string,
+  comments: (JsonAstComment | JsonAstMultilineComment)[],
+): JsonAstNumber {
   let char;
   let signed = false;
 
@@ -157,8 +156,18 @@ function _readExpNumber(context: JsonParserContext,
       }
       signed = true;
       str += char;
-    } else if (char == '0' || char == '1' || char == '2' || char == '3' || char == '4'
-        || char == '5' || char == '6' || char == '7' || char == '8' || char == '9') {
+    } else if (
+      char == '0' ||
+      char == '1' ||
+      char == '2' ||
+      char == '3' ||
+      char == '4' ||
+      char == '5' ||
+      char == '6' ||
+      char == '7' ||
+      char == '8' ||
+      char == '9'
+    ) {
       signed = true;
       str += char;
     } else {
@@ -179,15 +188,16 @@ function _readExpNumber(context: JsonParserContext,
   };
 }
 
-
 /**
  * Read the hexa part of a 0xBADCAFE hexadecimal number.
  * @private
  */
-function _readHexaNumber(context: JsonParserContext,
-                         isNegative: boolean,
-                         start: Position,
-                         comments: (JsonAstComment | JsonAstMultilineComment)[]): JsonAstNumber {
+function _readHexaNumber(
+  context: JsonParserContext,
+  isNegative: boolean,
+  start: Position,
+  comments: (JsonAstComment | JsonAstMultilineComment)[],
+): JsonAstNumber {
   // Read an hexadecimal number, until it's not hexadecimal.
   let hexa = '';
   const valid = '0123456789abcdefABCDEF';
@@ -230,9 +240,11 @@ function _readNumber(context: JsonParserContext, comments = _readBlanks(context)
       if (str != '') {
         throw new InvalidJsonCharacterException(context);
       }
-    } else if (char == 'I'
-        && (str == '-' || str == '' || str == '+')
-        && (context.mode & JsonParseMode.NumberConstantsAllowed) != 0) {
+    } else if (
+      char == 'I' &&
+      (str == '-' || str == '' || str == '+') &&
+      (context.mode & JsonParseMode.NumberConstantsAllowed) != 0
+    ) {
       // Infinity?
       // _token(context, 'I'); Already read.
       _token(context, 'n');
@@ -249,8 +261,17 @@ function _readNumber(context: JsonParserContext, comments = _readBlanks(context)
       if (str == '0' || str == '-0') {
         throw new InvalidJsonCharacterException(context);
       }
-    } else if (char == '1' || char == '2' || char == '3' || char == '4' || char == '5'
-        || char == '6' || char == '7' || char == '8' || char == '9') {
+    } else if (
+      char == '1' ||
+      char == '2' ||
+      char == '3' ||
+      char == '4' ||
+      char == '5' ||
+      char == '6' ||
+      char == '7' ||
+      char == '8' ||
+      char == '9'
+    ) {
       if (str == '0' || str == '-0') {
         throw new InvalidJsonCharacterException(context);
       }
@@ -263,8 +284,11 @@ function _readNumber(context: JsonParserContext, comments = _readBlanks(context)
       dotted = true;
     } else if (char == 'e' || char == 'E') {
       return _readExpNumber(context, start, str + char, comments);
-    } else if (char == 'x' && (str == '0' || str == '-0')
-               && (context.mode & JsonParseMode.HexadecimalNumberAllowed) != 0) {
+    } else if (
+      char == 'x' &&
+      (str == '0' || str == '-0') &&
+      (context.mode & JsonParseMode.HexadecimalNumberAllowed) != 0
+    ) {
       return _readHexaNumber(context, str == '-0', start, comments);
     } else {
       // We read one too many characters, so rollback the last character.
@@ -290,7 +314,6 @@ function _readNumber(context: JsonParserContext, comments = _readBlanks(context)
   };
 }
 
-
 /**
  * Read a string from the context. Takes the comments of the string or read the blanks before the
  * string.
@@ -302,7 +325,7 @@ function _readString(context: JsonParserContext, comments = _readBlanks(context)
   // Consume the first string delimiter.
   const delim = _token(context);
   if ((context.mode & JsonParseMode.SingleQuotesAllowed) == 0) {
-    if (delim == '\'') {
+    if (delim == "'") {
       throw new InvalidJsonCharacterException(context);
     }
   }
@@ -323,17 +346,27 @@ function _readString(context: JsonParserContext, comments = _readBlanks(context)
       char = _token(context);
       switch (char) {
         case '\\':
-        case '\/':
+        case '/':
         case '"':
         case delim:
           str += char;
           break;
 
-        case 'b': str += '\b'; break;
-        case 'f': str += '\f'; break;
-        case 'n': str += '\n'; break;
-        case 'r': str += '\r'; break;
-        case 't': str += '\t'; break;
+        case 'b':
+          str += '\b';
+          break;
+        case 'f':
+          str += '\f';
+          break;
+        case 'n':
+          str += '\n';
+          break;
+        case 'r':
+          str += '\r';
+          break;
+        case 't':
+          str += '\t';
+          break;
         case 'u':
           const [c0] = _token(context, '0123456789abcdefABCDEF');
           const [c1] = _token(context, '0123456789abcdefABCDEF');
@@ -366,13 +399,14 @@ function _readString(context: JsonParserContext, comments = _readBlanks(context)
   }
 }
 
-
 /**
  * Read the constant `true` from the context.
  * @private
  */
-function _readTrue(context: JsonParserContext,
-                   comments = _readBlanks(context)): JsonAstConstantTrue {
+function _readTrue(
+  context: JsonParserContext,
+  comments = _readBlanks(context),
+): JsonAstConstantTrue {
   const start = context.position;
   _token(context, 't');
   _token(context, 'r');
@@ -391,13 +425,14 @@ function _readTrue(context: JsonParserContext,
   };
 }
 
-
 /**
  * Read the constant `false` from the context.
  * @private
  */
-function _readFalse(context: JsonParserContext,
-                    comments = _readBlanks(context)): JsonAstConstantFalse {
+function _readFalse(
+  context: JsonParserContext,
+  comments = _readBlanks(context),
+): JsonAstConstantFalse {
   const start = context.position;
   _token(context, 'f');
   _token(context, 'a');
@@ -417,13 +452,14 @@ function _readFalse(context: JsonParserContext,
   };
 }
 
-
 /**
  * Read the constant `null` from the context.
  * @private
  */
-function _readNull(context: JsonParserContext,
-                   comments = _readBlanks(context)): JsonAstConstantNull {
+function _readNull(
+  context: JsonParserContext,
+  comments = _readBlanks(context),
+): JsonAstConstantNull {
   const start = context.position;
 
   _token(context, 'n');
@@ -443,13 +479,11 @@ function _readNull(context: JsonParserContext,
   };
 }
 
-
 /**
  * Read the constant `NaN` from the context.
  * @private
  */
-function _readNaN(context: JsonParserContext,
-                  comments = _readBlanks(context)): JsonAstNumber {
+function _readNaN(context: JsonParserContext, comments = _readBlanks(context)): JsonAstNumber {
   const start = context.position;
 
   _token(context, 'N');
@@ -467,7 +501,6 @@ function _readNaN(context: JsonParserContext,
     comments: comments,
   };
 }
-
 
 /**
  * Read an array of JSON values from the context.
@@ -513,14 +546,15 @@ function _readArray(context: JsonParserContext, comments = _readBlanks(context))
   };
 }
 
-
 /**
  * Read an identifier from the context. An identifier is a valid JavaScript identifier, and this
  * function is only used in Loose mode.
  * @private
  */
-function _readIdentifier(context: JsonParserContext,
-                         comments = _readBlanks(context)): JsonAstIdentifier {
+function _readIdentifier(
+  context: JsonParserContext,
+  comments = _readBlanks(context),
+): JsonAstIdentifier {
   const start = context.position;
 
   let char = _peek(context);
@@ -543,8 +577,10 @@ function _readIdentifier(context: JsonParserContext,
 
   while (true) {
     char = _token(context);
-    if (char == undefined
-        || (first ? identValidFirstChar.indexOf(char) : identValidChar.indexOf(char)) == -1) {
+    if (
+      char == undefined ||
+      (first ? identValidFirstChar.indexOf(char) : identValidChar.indexOf(char)) == -1
+    ) {
       context.position = context.previous;
 
       return {
@@ -562,20 +598,21 @@ function _readIdentifier(context: JsonParserContext,
   }
 }
 
-
 /**
  * Read a property from the context. A property is a string or (in Loose mode only) a number or
  * an identifier, followed by a colon `:`.
  * @private
  */
-function _readProperty(context: JsonParserContext,
-                       comments = _readBlanks(context)): JsonAstKeyValue {
+function _readProperty(
+  context: JsonParserContext,
+  comments = _readBlanks(context),
+): JsonAstKeyValue {
   const start = context.position;
 
   let key;
   if ((context.mode & JsonParseMode.IdentifierKeyNamesAllowed) != 0) {
     const top = _peek(context);
-    if (top == '"' || top == '\'') {
+    if (top == '"' || top == "'") {
       key = _readString(context);
     } else {
       key = _readIdentifier(context);
@@ -600,13 +637,11 @@ function _readProperty(context: JsonParserContext,
   };
 }
 
-
 /**
  * Read an object of properties -> JSON values from the context.
  * @private
  */
-function _readObject(context: JsonParserContext,
-                     comments = _readBlanks(context)): JsonAstObject {
+function _readObject(context: JsonParserContext, comments = _readBlanks(context)): JsonAstObject {
   const start = context.position;
   // Consume the first delimiter.
   _token(context, '{');
@@ -645,7 +680,6 @@ function _readObject(context: JsonParserContext,
   };
 }
 
-
 /**
  * Remove any blank character or comments (in Loose mode) from the context, returning an array
  * of comments if any are found.
@@ -662,8 +696,10 @@ function _readBlanks(context: JsonParserContext): (JsonAstComment | JsonAstMulti
         _next(context);
         _next(context);
 
-        while (context.original[context.position.offset] != '*'
-            || context.original[context.position.offset + 1] != '/') {
+        while (
+          context.original[context.position.offset] != '*' ||
+          context.original[context.position.offset + 1] != '/'
+        ) {
           _next(context);
           if (context.position.offset >= context.original.length) {
             throw new UnexpectedEndOfInputException(context);
@@ -723,7 +759,6 @@ function _readBlanks(context: JsonParserContext): (JsonAstComment | JsonAstMulti
   }
 }
 
-
 /**
  * Read a JSON value from the context, which can be any form of JSON value.
  * @private
@@ -759,7 +794,7 @@ function _readValue(context: JsonParserContext, comments = _readBlanks(context))
       result = _readNumber(context, comments);
       break;
 
-    case '\'':
+    case "'":
     case '"':
       result = _readString(context, comments);
       break;
@@ -806,31 +841,33 @@ function _readValue(context: JsonParserContext, comments = _readBlanks(context))
   return result;
 }
 
-
 /**
  * The Parse mode used for parsing the JSON string.
  */
 export enum JsonParseMode {
-  Strict                    =      0,  // Standard JSON.
-  CommentsAllowed           = 1 << 0,  // Allows comments, both single or multi lines.
-  SingleQuotesAllowed       = 1 << 1,  // Allow single quoted strings.
-  IdentifierKeyNamesAllowed = 1 << 2,  // Allow identifiers as objectp properties.
-  TrailingCommasAllowed     = 1 << 3,
-  HexadecimalNumberAllowed  = 1 << 4,
-  MultiLineStringAllowed    = 1 << 5,
-  LaxNumberParsingAllowed   = 1 << 6,  // Allow `.` or `+` as the first character of a number.
-  NumberConstantsAllowed    = 1 << 7,  // Allow -Infinity, Infinity and NaN.
+  Strict = 0, // Standard JSON.
+  CommentsAllowed = 1 << 0, // Allows comments, both single or multi lines.
+  SingleQuotesAllowed = 1 << 1, // Allow single quoted strings.
+  IdentifierKeyNamesAllowed = 1 << 2, // Allow identifiers as objectp properties.
+  TrailingCommasAllowed = 1 << 3,
+  HexadecimalNumberAllowed = 1 << 4,
+  MultiLineStringAllowed = 1 << 5,
+  LaxNumberParsingAllowed = 1 << 6, // Allow `.` or `+` as the first character of a number.
+  NumberConstantsAllowed = 1 << 7, // Allow -Infinity, Infinity and NaN.
 
-  Default                   = Strict,
-  Loose                     = CommentsAllowed | SingleQuotesAllowed |
-                              IdentifierKeyNamesAllowed | TrailingCommasAllowed |
-                              HexadecimalNumberAllowed | MultiLineStringAllowed |
-                              LaxNumberParsingAllowed | NumberConstantsAllowed,
+  Default = Strict,
+  Loose = CommentsAllowed |
+    SingleQuotesAllowed |
+    IdentifierKeyNamesAllowed |
+    TrailingCommasAllowed |
+    HexadecimalNumberAllowed |
+    MultiLineStringAllowed |
+    LaxNumberParsingAllowed |
+    NumberConstantsAllowed,
 
-  Json                      = Strict,
-  Json5                     = Loose,
+  Json = Strict,
+  Json5 = Loose,
 }
-
 
 /**
  * Parse the JSON string and return its AST. The AST may be losing data (end comments are
@@ -859,13 +896,14 @@ export function parseJsonAst(input: string, mode = JsonParseMode.Default): JsonA
   if (context.position.offset < input.length) {
     const rest = input.substr(context.position.offset);
     const i = rest.length > 20 ? rest.substr(0, 20) + '...' : rest;
-    throw new Error(`Expected end of file, got "${i}" at `
-        + `${context.position.line}:${context.position.character}.`);
+    throw new Error(
+      `Expected end of file, got "${i}" at ` +
+        `${context.position.line}:${context.position.character}.`,
+    );
   }
 
   return ast;
 }
-
 
 /**
  * Options for the parseJson() function.
@@ -878,7 +916,6 @@ export interface ParseJsonOptions {
    */
   path?: string;
 }
-
 
 /**
  * Parse a JSON string into its value.  This discards the AST and only returns the value itself.

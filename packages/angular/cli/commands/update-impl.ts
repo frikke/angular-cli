@@ -1,22 +1,24 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { UnsuccessfulWorkflowExecution } from '@angular-devkit/schematics';
 import { NodeWorkflow } from '@angular-devkit/schematics/tools';
 import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as semver from 'semver';
-import { PackageManager } from '../lib/config/schema';
+import { PackageManager } from '../lib/config/workspace-schema';
 import { Command } from '../models/command';
 import { Arguments } from '../models/interface';
 import { SchematicEngineHost } from '../models/schematic-engine-host';
+import { VERSION } from '../models/version';
 import { colors } from '../utilities/color';
-import { runTempPackageBin } from '../utilities/install-package';
+import { installAllPackages, runTempPackageBin } from '../utilities/install-package';
 import { writeErrorToLogFile } from '../utilities/log-file';
 import { ensureCompatibleNpm, getPackageManager } from '../utilities/package-manager';
 import {
@@ -40,11 +42,14 @@ const pickManifest = require('npm-pick-manifest') as (
   selector: string,
 ) => PackageManifest;
 
-const oldConfigFileNames = ['.angular-cli.json', 'angular-cli.json'];
-
 const NG_VERSION_9_POST_MSG = colors.cyan(
   '\nYour project has been updated to Angular version 9!\n' +
-  'For more info, please see: https://v9.angular.io/guide/updating-to-version-9',
+    'For more info, please see: https://v9.angular.io/guide/updating-to-version-9',
+);
+
+const UPDATE_SCHEMATIC_COLLECTION = path.join(
+  __dirname,
+  '../src/commands/update/schematic/collection.json',
 );
 
 /**
@@ -58,23 +63,21 @@ const disableVersionCheck =
   disableVersionCheckEnv.toLowerCase() !== 'false';
 
 export class UpdateCommand extends Command<UpdateCommandSchema> {
-  public readonly allowMissingWorkspace = true;
+  public override readonly allowMissingWorkspace = true;
   private workflow!: NodeWorkflow;
   private packageManager = PackageManager.Npm;
 
-  async initialize() {
+  override async initialize(options: UpdateCommandSchema & Arguments) {
     this.packageManager = await getPackageManager(this.context.root);
-    this.workflow = new NodeWorkflow(
-      this.context.root,
-      {
-        packageManager: this.packageManager,
-        // __dirname -> favor @schematics/update from this package
-        // Otherwise, use packages from the active workspace (migrations)
-        resolvePaths: [__dirname, this.context.root],
-        schemaValidation: true,
-        engineHostCreator: (options) => new SchematicEngineHost(options.resolvePaths),
-      },
-    );
+    this.workflow = new NodeWorkflow(this.context.root, {
+      packageManager: this.packageManager,
+      packageManagerForce: options.force,
+      // __dirname -> favor @schematics/update from this package
+      // Otherwise, use packages from the active workspace (migrations)
+      resolvePaths: [__dirname, this.context.root],
+      schemaValidation: true,
+      engineHostCreator: (options) => new SchematicEngineHost(options.resolvePaths),
+    });
   }
 
   private async executeSchematic(
@@ -86,7 +89,7 @@ export class UpdateCommand extends Command<UpdateCommandSchema> {
     let logs: string[] = [];
     const files = new Set<string>();
 
-    const reporterSubscription = this.workflow.reporter.subscribe(event => {
+    const reporterSubscription = this.workflow.reporter.subscribe((event) => {
       // Strip leading slash to prevent confusion.
       const eventPath = event.path.startsWith('/') ? event.path.substr(1) : event.path;
 
@@ -116,11 +119,11 @@ export class UpdateCommand extends Command<UpdateCommandSchema> {
       }
     });
 
-    const lifecycleSubscription = this.workflow.lifeCycle.subscribe(event => {
+    const lifecycleSubscription = this.workflow.lifeCycle.subscribe((event) => {
       if (event.kind == 'end' || event.kind == 'post-tasks-start') {
         if (!error) {
           // Output the logging queue, no error happened.
-          logs.forEach(log => this.logger.info(`  ${log}`));
+          logs.forEach((log) => this.logger.info(`  ${log}`));
           logs = [];
         }
       }
@@ -143,12 +146,14 @@ export class UpdateCommand extends Command<UpdateCommandSchema> {
       return { success: !error, files };
     } catch (e) {
       if (e instanceof UnsuccessfulWorkflowExecution) {
-        this.logger.error(`${colors.symbols.cross} Migration failed. See above for further details.\n`);
+        this.logger.error(
+          `${colors.symbols.cross} Migration failed. See above for further details.\n`,
+        );
       } else {
         const logPath = writeErrorToLogFile(e);
         this.logger.fatal(
           `${colors.symbols.cross} Migration failed: ${e.message}\n` +
-          `  See "${logPath}" for further details.\n`,
+            `  See "${logPath}" for further details.\n`,
         );
       }
 
@@ -166,7 +171,7 @@ export class UpdateCommand extends Command<UpdateCommandSchema> {
     commit?: boolean,
   ): Promise<boolean> {
     const collection = this.workflow.engine.createCollection(collectionPath);
-    const name = collection.listSchematicNames().find(name => name === migrationName);
+    const name = collection.listSchematicNames().find((name) => name === migrationName);
     if (!name) {
       this.logger.error(`Cannot find migration '${migrationName}' in '${packageName}'.`);
 
@@ -188,10 +193,14 @@ export class UpdateCommand extends Command<UpdateCommandSchema> {
   private async executeMigrations(
     packageName: string,
     collectionPath: string,
-    range: semver.Range,
+    from: string,
+    to: string,
     commit?: boolean,
   ): Promise<boolean> {
     const collection = this.workflow.engine.createCollection(collectionPath);
+    const migrationRange = new semver.Range(
+      '>' + (semver.prerelease(from) ? from.split('-')[0] + '-0' : from) + ' <=' + to,
+    );
     const migrations = [];
 
     for (const name of collection.listSchematicNames()) {
@@ -204,7 +213,7 @@ export class UpdateCommand extends Command<UpdateCommandSchema> {
         continue;
       }
 
-      if (semver.satisfies(description.version, range, { includePrerelease: true })) {
+      if (semver.satisfies(description.version, migrationRange, { includePrerelease: true })) {
         migrations.push(description as typeof schematic.description & { version: string });
       }
     }
@@ -215,15 +224,13 @@ export class UpdateCommand extends Command<UpdateCommandSchema> {
       return true;
     }
 
-    this.logger.info(
-      colors.cyan(`** Executing migrations of package '${packageName}' **\n`),
-    );
+    this.logger.info(colors.cyan(`** Executing migrations of package '${packageName}' **\n`));
 
     return this.executePackageMigrations(migrations, packageName, commit);
   }
 
   private async executePackageMigrations(
-    migrations: Iterable<{ name: string; description: string; collection: { name: string }}>,
+    migrations: Iterable<{ name: string; description: string; collection: { name: string } }>,
     packageName: string,
     commit = false,
   ): Promise<boolean> {
@@ -231,8 +238,9 @@ export class UpdateCommand extends Command<UpdateCommandSchema> {
       const [title, ...description] = migration.description.split('. ');
 
       this.logger.info(
-        colors.cyan(colors.symbols.pointer) + ' ' +
-        colors.bold(title.endsWith('.') ? title : title + '.'),
+        colors.cyan(colors.symbols.pointer) +
+          ' ' +
+          colors.bold(title.endsWith('.') ? title : title + '.'),
       );
 
       if (description.length) {
@@ -265,29 +273,36 @@ export class UpdateCommand extends Command<UpdateCommandSchema> {
     return true;
   }
 
-  // tslint:disable-next-line:no-big-function
+  // eslint-disable-next-line max-lines-per-function
   async run(options: UpdateCommandSchema & Arguments) {
     await ensureCompatibleNpm(this.context.root);
 
     // Check if the current installed CLI version is older than the latest version.
-    if (!disableVersionCheck && await this.checkCLILatestVersion(options.verbose, options.next)) {
+    if (!disableVersionCheck && (await this.checkCLILatestVersion(options.verbose, options.next))) {
       this.logger.warn(
-        `The installed local Angular CLI version is older than the latest ${options.next ? 'pre-release' : 'stable'} version.\n` +
-        'Installing a temporary version to perform the update.',
+        `The installed local Angular CLI version is older than the latest ${
+          options.next ? 'pre-release' : 'stable'
+        } version.\n` + 'Installing a temporary version to perform the update.',
       );
 
       return runTempPackageBin(
         `@angular/cli@${options.next ? 'next' : 'latest'}`,
-        this.logger,
         this.packageManager,
         process.argv.slice(2),
       );
     }
 
+    const logVerbose = (message: string) => {
+      if (options.verbose) {
+        this.logger.info(message);
+      }
+    };
+
     if (options.all) {
-      const updateCmd = this.packageManager === PackageManager.Yarn
-        ? `'yarn upgrade-interactive' or 'yarn upgrade'`
-        : `'${this.packageManager} update'`;
+      const updateCmd =
+        this.packageManager === PackageManager.Yarn
+          ? `'yarn upgrade-interactive' or 'yarn upgrade'`
+          : `'${this.packageManager} update'`;
 
       this.logger.warn(`
         '--all' functionality has been removed as updating multiple packages at once is not recommended.
@@ -310,7 +325,7 @@ export class UpdateCommand extends Command<UpdateCommandSchema> {
           return 1;
         }
 
-        if (packages.some(v => v.name === packageIdentifier.name)) {
+        if (packages.some((v) => v.name === packageIdentifier.name)) {
           this.logger.error(`Duplicate package '${packageIdentifier.name}' specified.`);
 
           return 1;
@@ -356,20 +371,6 @@ export class UpdateCommand extends Command<UpdateCommandSchema> {
     }
 
     this.logger.info(`Using package manager: '${this.packageManager}'`);
-
-    // Special handling for Angular CLI 1.x migrations
-    if (
-      options.migrateOnly === undefined &&
-      options.from === undefined &&
-      packages.length === 1 &&
-      packages[0].name === '@angular/cli' &&
-      this.workspace &&
-      oldConfigFileNames.includes(path.basename(this.workspace.filePath))
-    ) {
-      options.migrateOnly = true;
-      options.from = '1.0.0';
-    }
-
     this.logger.info('Collecting installed dependencies...');
 
     const rootDependencies = await getProjectDependencies(this.context.root);
@@ -378,7 +379,7 @@ export class UpdateCommand extends Command<UpdateCommandSchema> {
 
     if (packages.length === 0) {
       // Show status
-      const { success } = await this.executeSchematic('@schematics/update', 'update', {
+      const { success } = await this.executeSchematic(UPDATE_SCHEMATIC_COLLECTION, 'update', {
         force: options.force || false,
         next: options.next || false,
         verbose: options.verbose || false,
@@ -391,7 +392,9 @@ export class UpdateCommand extends Command<UpdateCommandSchema> {
 
     if (options.migrateOnly) {
       if (!options.from && typeof options.migrateOnly !== 'string') {
-        this.logger.error('"from" option is required when using the "migrate-only" option without a migration name.');
+        this.logger.error(
+          '"from" option is required when using the "migrate-only" option without a migration name.',
+        );
 
         return 1;
       } else if (packages.length !== 1) {
@@ -497,24 +500,21 @@ export class UpdateCommand extends Command<UpdateCommandSchema> {
           return 1;
         }
 
-        const migrationRange = new semver.Range(
-          '>' + from + ' <=' + (options.to || packageNode.version),
-        );
-
         success = await this.executeMigrations(
           packageName,
           migrations,
-          migrationRange,
+          from,
+          options.to || packageNode.version,
           options.createCommits,
         );
       }
 
       if (success) {
         if (
-          packageName === '@angular/core'
-          && options.from
-          && +options.from.split('.')[0] < 9
-          && (options.to || packageNode.version).split('.')[0] === '9'
+          packageName === '@angular/core' &&
+          options.from &&
+          +options.from.split('.')[0] < 9 &&
+          (options.to || packageNode.version).split('.')[0] === '9'
         ) {
           this.logger.info(NG_VERSION_9_POST_MSG);
         }
@@ -612,6 +612,30 @@ export class UpdateCommand extends Command<UpdateCommandSchema> {
         return 1;
       }
 
+      if (node.package?.name === '@angular/cli') {
+        // Migrations for non LTS versions of Angular CLI are no longer included in @schematics/angular v12.
+        const toBeInstalledMajorVersion = +manifest.version.split('.')[0];
+        const currentMajorVersion = +node.package.version.split('.')[0];
+        if (currentMajorVersion < 9 && toBeInstalledMajorVersion >= 12) {
+          const updateVersions: Record<number, number> = {
+            1: 6,
+            6: 7,
+            7: 8,
+            8: 9,
+          };
+
+          const updateTo = updateVersions[currentMajorVersion];
+          this.logger.error(
+            'Updating multiple major versions at once is not recommended. ' +
+              `Run 'ng update @angular/cli@${updateTo}' in your workspace directory ` +
+              `to update to latest '${updateTo}.x' version of '@angular/cli'.\n\n` +
+              'For more information about the update process, see https://update.angular.io/.',
+          );
+
+          return 1;
+        }
+      }
+
       if (manifest.version === node.package?.version) {
         this.logger.info(`Package '${packageName}' is already up to date.`);
         continue;
@@ -624,25 +648,45 @@ export class UpdateCommand extends Command<UpdateCommandSchema> {
       return 0;
     }
 
-    const { success } = await this.executeSchematic('@schematics/update', 'update', {
+    const { success } = await this.executeSchematic(UPDATE_SCHEMATIC_COLLECTION, 'update', {
       verbose: options.verbose || false,
       force: options.force || false,
       next: !!options.next,
       packageManager: this.packageManager,
       packages: packagesToUpdate,
-      migrateExternal: true,
     });
+
+    if (success) {
+      try {
+        // Remove existing node modules directory to provide a stronger guarantee that packages
+        // will be hoisted into the correct locations.
+        await fs.promises.rmdir(path.join(this.context.root, 'node_modules'), {
+          recursive: true,
+          maxRetries: 3,
+        });
+      } catch {}
+
+      const result = await installAllPackages(
+        this.packageManager,
+        options.force ? ['--force'] : [],
+        this.context.root,
+      );
+      if (result !== 0) {
+        return result;
+      }
+    }
 
     if (success && options.createCommits) {
       const committed = this.commit(
-          `Angular CLI update for packages - ${packagesToUpdate.join(', ')}`);
+        `Angular CLI update for packages - ${packagesToUpdate.join(', ')}`,
+      );
       if (!committed) {
         return 1;
       }
     }
 
     // This is a temporary workaround to allow data to be passed back from the update schematic
-    // tslint:disable-next-line: no-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const migrations = (global as any).externalMigrations as {
       package: string;
       collection: string;
@@ -654,7 +698,42 @@ export class UpdateCommand extends Command<UpdateCommandSchema> {
       for (const migration of migrations) {
         // Resolve the package from the workspace root, as otherwise it will be resolved from the temp
         // installed CLI version.
-        const packagePath = require.resolve(migration.package, { paths: [this.context.root] });
+        let packagePath;
+        logVerbose(
+          `Resolving migration package '${migration.package}' from '${this.context.root}'...`,
+        );
+        try {
+          try {
+            packagePath = path.dirname(
+              // This may fail if the `package.json` is not exported as an entry point
+              require.resolve(path.join(migration.package, 'package.json'), {
+                paths: [this.context.root],
+              }),
+            );
+          } catch (e) {
+            if (e.code === 'MODULE_NOT_FOUND') {
+              // Fallback to trying to resolve the package's main entry point
+              packagePath = require.resolve(migration.package, { paths: [this.context.root] });
+            } else {
+              throw e;
+            }
+          }
+        } catch (e) {
+          if (e.code === 'MODULE_NOT_FOUND') {
+            logVerbose(e.toString());
+            this.logger.error(
+              `Migrations for package (${migration.package}) were not found.` +
+                ' The package could not be found in the workspace.',
+            );
+          } else {
+            this.logger.error(
+              `Unable to resolve migrations for package (${migration.package}).  [${e.message}]`,
+            );
+          }
+
+          return 1;
+        }
+
         let migrations;
 
         // Check if it is a package-local location
@@ -681,7 +760,8 @@ export class UpdateCommand extends Command<UpdateCommandSchema> {
         const result = await this.executeMigrations(
           migration.package,
           migrations,
-          new semver.Range('>' + migration.from + ' <=' + migration.to),
+          migration.from,
+          migration.to,
           options.createCommits,
         );
 
@@ -690,7 +770,14 @@ export class UpdateCommand extends Command<UpdateCommandSchema> {
         }
       }
 
-      if (migrations.some(m => m.package === '@angular/core' && m.to.split('.')[0] === '9' && +m.from.split('.')[0] < 9)) {
+      if (
+        migrations.some(
+          (m) =>
+            m.package === '@angular/core' &&
+            m.to.split('.')[0] === '9' &&
+            +m.from.split('.')[0] < 9,
+        )
+      ) {
         this.logger.info(NG_VERSION_9_POST_MSG);
       }
     }
@@ -722,8 +809,7 @@ export class UpdateCommand extends Command<UpdateCommandSchema> {
     try {
       createCommit(message);
     } catch (err) {
-      this.logger.error(
-        `Failed to commit update (${message}):\n${err.stderr}`);
+      this.logger.error(`Failed to commit update (${message}):\n${err.stderr}`);
 
       return false;
     }
@@ -732,8 +818,7 @@ export class UpdateCommand extends Command<UpdateCommandSchema> {
     const hash = findCurrentGitSha();
     const shortMessage = message.split('\n')[0];
     if (hash) {
-      this.logger.info(`  Committed migration step (${getShortHash(hash)}): ${
-          shortMessage}.`);
+      this.logger.info(`  Committed migration step (${getShortHash(hash)}): ${shortMessage}.`);
     } else {
       // Commit was successful, but reading the hash was not. Something weird happened,
       // but nothing that would stop the update. Just log the weirdness and continue.
@@ -746,7 +831,10 @@ export class UpdateCommand extends Command<UpdateCommandSchema> {
 
   private checkCleanGit(): boolean {
     try {
-      const topLevel = execSync('git rev-parse --show-toplevel', { encoding: 'utf8', stdio: 'pipe' });
+      const topLevel = execSync('git rev-parse --show-toplevel', {
+        encoding: 'utf8',
+        stdio: 'pipe',
+      });
       const result = execSync('git status --porcelain', { encoding: 'utf8', stdio: 'pipe' });
       if (result.trim().length === 0) {
         return true;
@@ -771,9 +859,9 @@ export class UpdateCommand extends Command<UpdateCommandSchema> {
   /**
    * Checks if the current installed CLI version is older than the latest version.
    * @returns `true` when the installed version is older.
-  */
+   */
   private async checkCLILatestVersion(verbose = false, next = false): Promise<boolean> {
-    const { version: installedCLIVersion } = require('../package.json');
+    const installedCLIVersion = VERSION.full;
 
     const LatestCLIManifest = await fetchPackageManifest(
       `@angular/cli@${next ? 'next' : 'latest'}`,
@@ -817,7 +905,7 @@ function createCommit(message: string) {
  */
 function findCurrentGitSha(): string | null {
   try {
-    const hash = execSync('git rev-parse HEAD', {encoding: 'utf8', stdio: 'pipe'});
+    const hash = execSync('git rev-parse HEAD', { encoding: 'utf8', stdio: 'pipe' });
 
     return hash.trim();
   } catch {

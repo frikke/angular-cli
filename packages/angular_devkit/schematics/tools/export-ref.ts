@@ -1,12 +1,12 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-import { dirname, resolve } from 'path';
 
+import { dirname, resolve } from 'path';
 
 export class ExportStringRef<T> {
   private _ref?: T;
@@ -26,7 +26,13 @@ export class ExportStringRef<T> {
     }
   }
 
-  get ref() { return this._ref; }
-  get module() { return this._module; }
-  get path() { return this._path; }
+  get ref() {
+    return this._ref;
+  }
+  get module() {
+    return this._module;
+  }
+  get path() {
+    return this._path;
+  }
 }

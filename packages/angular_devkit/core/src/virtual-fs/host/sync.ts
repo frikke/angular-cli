@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { Observable } from 'rxjs';
 import { BaseException } from '../../exception';
 import { Path, PathFragment } from '../path';
@@ -18,9 +19,10 @@ import {
   Stats,
 } from './interface';
 
-
 export class SynchronousDelegateExpectedException extends BaseException {
-  constructor() { super(`Expected a synchronous delegate but got an asynchronous one.`); }
+  constructor() {
+    super(`Expected a synchronous delegate but got an asynchronous one.`);
+  }
 }
 
 /**
@@ -40,9 +42,9 @@ export class SyncDelegateHost<T extends object = {}> {
     // Perf note: this is not using an observer object to avoid a performance penalty in RxJS.
     // See https://github.com/ReactiveX/rxjs/pull/5646 for details.
     observable.subscribe(
-      (x: ResultT) => result = x,
-      (err: Error) => errorResult = err,
-      () => completed = true,
+      (x: ResultT) => (result = x),
+      (err: Error) => (errorResult = err),
+      () => (completed = true),
     );
 
     if (errorResult !== undefined) {
@@ -55,8 +57,8 @@ export class SyncDelegateHost<T extends object = {}> {
     // The non-null operation is to work around `void` type. We don't allow to return undefined
     // but ResultT could be void, which is undefined in JavaScript, so this doesn't change the
     // behaviour.
-    // tslint:disable-next-line:no-non-null-assertion
-    return result !;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    return result!;
   }
 
   get capabilities(): HostCapabilities {

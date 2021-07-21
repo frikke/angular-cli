@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { join } from '@angular-devkit/core';
 import { DirEntry, Rule } from '@angular-devkit/schematics';
 
@@ -27,7 +28,7 @@ function* visit(directory: DirEntry): IterableIterator<string> {
 }
 
 export default function (): Rule {
-  return tree => {
+  return (tree) => {
     for (const path of visit(tree.root)) {
       tree.rename(path, path.replace(/browserslist$/, '.browserslistrc'));
     }

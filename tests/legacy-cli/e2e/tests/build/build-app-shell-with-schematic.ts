@@ -8,7 +8,7 @@ const snapshots = require('../../ng-snapshot/package.json');
 
 export default async function () {
   await appendToFile('src/app/app.component.html', '<router-outlet></router-outlet>');
-  await ng('generate', 'appShell', '--client-project', 'test-project');
+  await ng('generate', 'appShell', '--project', 'test-project');
 
   const isSnapshotBuild = getGlobalVariable('argv')['ng-snapshots'];
   if (isSnapshotBuild) {
@@ -28,9 +28,9 @@ export default async function () {
     }
   }
 
-  await ng('run', 'test-project:app-shell');
+  await ng('run', 'test-project:app-shell:development');
   await expectFileToMatch('dist/test-project/browser/index.html', /app-shell works!/);
 
-  await ng('run', 'test-project:app-shell:production');
+  await ng('run', 'test-project:app-shell');
   await expectFileToMatch('dist/test-project/browser/index.html', /app-shell works!/);
 }

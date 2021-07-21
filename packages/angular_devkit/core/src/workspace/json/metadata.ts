@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { JsonAstArray, JsonAstKeyValue, JsonAstNode, JsonAstObject, JsonValue } from '../../json';
 import { ProjectDefinition, TargetDefinition, WorkspaceDefinition } from '../definitions';
 
@@ -34,7 +35,7 @@ export interface JsonChange<T extends keyof ChangeValues = keyof ChangeValues> {
 export class JsonWorkspaceMetadata {
   readonly changes: JsonChange[] = [];
 
-  constructor(readonly filePath: string, readonly ast: JsonAstObject, readonly raw: string) { }
+  constructor(readonly filePath: string, readonly ast: JsonAstObject, readonly raw: string) {}
 
   get hasChanges(): boolean {
     return this.changes.length > 0;
@@ -45,7 +46,7 @@ export class JsonWorkspaceMetadata {
   }
 
   findChangesForPath(path: string): JsonChange[] {
-    return this.changes.filter(c => c.path === path);
+    return this.changes.filter((c) => c.path === path);
   }
 
   addChange<T extends keyof ChangeValues = keyof ChangeValues>(

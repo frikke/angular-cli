@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import {
   BuilderContext,
   BuilderOutput,
@@ -18,7 +19,6 @@ import { BrowserBuilderOutput } from '../browser';
 import { Schema as BrowserBuilderSchema } from '../browser/schema';
 import { ServerBuilderOutput } from '../server';
 import { normalizeOptimization } from '../utils';
-import { readFile, writeFile } from '../utils/fs';
 import { InlineCriticalCssProcessor } from '../utils/index-file/inline-critical-css';
 import { augmentAppWithServiceWorker } from '../utils/service-worker';
 import { Spinner } from '../utils/spinner';
@@ -33,13 +33,13 @@ async function _renderUniversal(
 ): Promise<BrowserBuilderOutput> {
   // Get browser target options.
   const browserTarget = targetFromTargetString(options.browserTarget);
-  const rawBrowserOptions = (await context.getTargetOptions(browserTarget)) as JsonObject & BrowserBuilderSchema;
+  const rawBrowserOptions = (await context.getTargetOptions(browserTarget)) as JsonObject &
+    BrowserBuilderSchema;
   const browserBuilderName = await context.getBuilderNameForTarget(browserTarget);
   const browserOptions = await context.validateOptions<JsonObject & BrowserBuilderSchema>(
     rawBrowserOptions,
     browserBuilderName,
   );
-
 
   // Initialize zone.js
   const root = context.workspaceRoot;
@@ -52,43 +52,36 @@ async function _renderUniversal(
   }
 
   const projectMetadata = await context.getProjectMetadata(projectName);
-  const projectRoot = resolve(
-    normalize(root),
-    normalize((projectMetadata.root as string) || ''),
-  );
+  const projectRoot = resolve(normalize(root), normalize((projectMetadata.root as string) || ''));
 
   const { styles } = normalizeOptimization(browserOptions.optimization);
   const inlineCriticalCssProcessor = styles.inlineCritical
     ? new InlineCriticalCssProcessor({
-      minify: styles.minify,
-      deployUrl: browserOptions.deployUrl,
-    })
+        minify: styles.minify,
+        deployUrl: browserOptions.deployUrl,
+      })
     : undefined;
 
   for (const outputPath of browserResult.outputPaths) {
     const localeDirectory = path.relative(browserResult.baseOutputPath, outputPath);
     const browserIndexOutputPath = path.join(outputPath, 'index.html');
-    const indexHtml = await readFile(browserIndexOutputPath, 'utf8');
-    const serverBundlePath = await _getServerModuleBundlePath(options, context, serverResult, localeDirectory);
+    const indexHtml = await fs.promises.readFile(browserIndexOutputPath, 'utf8');
+    const serverBundlePath = await _getServerModuleBundlePath(
+      options,
+      context,
+      serverResult,
+      localeDirectory,
+    );
 
-    const {
-      AppServerModule,
-      AppServerModuleNgFactory,
-      renderModule,
-      renderModuleFactory,
-    } = await import(serverBundlePath);
+    const { AppServerModule, renderModule } = await import(serverBundlePath);
 
-    let renderModuleFn: (module: unknown, options: {}) => Promise<string>;
-    let AppServerModuleDef: unknown;
+    const renderModuleFn: ((module: unknown, options: {}) => Promise<string>) | undefined =
+      renderModule;
 
-    if (renderModuleFactory && AppServerModuleNgFactory) {
-      renderModuleFn = renderModuleFactory;
-      AppServerModuleDef = AppServerModuleNgFactory;
-    } else if (renderModule && AppServerModule) {
-      renderModuleFn = renderModule;
-      AppServerModuleDef = AppServerModule;
-    } else {
-      throw new Error(`renderModule method and/or AppServerModule were not exported from: ${serverBundlePath}.`);
+    if (!(renderModuleFn && AppServerModule)) {
+      throw new Error(
+        `renderModule method and/or AppServerModule were not exported from: ${serverBundlePath}.`,
+      );
     }
 
     // Load platform server module renderer
@@ -97,25 +90,27 @@ async function _renderUniversal(
       url: options.route,
     };
 
-    let html = await renderModuleFn(AppServerModuleDef, renderOpts);
+    let html = await renderModuleFn(AppServerModule, renderOpts);
     // Overwrite the client index file.
     const outputIndexPath = options.outputIndexPath
       ? path.join(root, options.outputIndexPath)
       : browserIndexOutputPath;
 
     if (inlineCriticalCssProcessor) {
-      const { content, warnings, errors } = await inlineCriticalCssProcessor.process(html, { outputPath });
+      const { content, warnings, errors } = await inlineCriticalCssProcessor.process(html, {
+        outputPath,
+      });
       html = content;
 
       if (warnings.length || errors.length) {
         spinner.stop();
-        warnings.forEach(m => context.logger.warn(m));
-        errors.forEach(m => context.logger.error(m));
+        warnings.forEach((m) => context.logger.warn(m));
+        errors.forEach((m) => context.logger.error(m));
         spinner.start();
       }
     }
 
-    await writeFile(outputIndexPath, html);
+    await fs.promises.writeFile(outputIndexPath, html);
 
     if (browserOptions.serviceWorker) {
       await augmentAppWithServiceWorker(
@@ -149,7 +144,7 @@ async function _getServerModuleBundlePath(
   }
 
   const re = /^main\.(?:[a-zA-Z0-9]{20}\.)?js$/;
-  const maybeMain = fs.readdirSync(outputPath).find(x => re.test(x));
+  const maybeMain = fs.readdirSync(outputPath).find((x) => re.test(x));
 
   if (!maybeMain) {
     throw new Error('Could not find the main bundle.');
@@ -167,7 +162,8 @@ async function _appShellBuilder(
 
   // Never run the browser target in watch mode.
   // If service worker is needed, it will be added in _renderUniversal();
-  const browserOptions = (await context.getTargetOptions(browserTarget)) as JsonObject & BrowserBuilderSchema;
+  const browserOptions = (await context.getTargetOptions(browserTarget)) as JsonObject &
+    BrowserBuilderSchema;
 
   const optimization = normalizeOptimization(browserOptions.optimization);
   optimization.styles.inlineCritical = false;
@@ -175,7 +171,7 @@ async function _appShellBuilder(
   const browserTargetRun = await context.scheduleTarget(browserTarget, {
     watch: false,
     serviceWorker: false,
-    optimization: (optimization as unknown as JsonObject),
+    optimization: optimization as unknown as JsonObject,
   });
   const serverTargetRun = await context.scheduleTarget(serverTarget, {
     watch: false,
@@ -184,9 +180,10 @@ async function _appShellBuilder(
   let spinner: Spinner | undefined;
 
   try {
+    // Using `.result` instead of `.output` causes Webpack FS cache not to be created.
     const [browserResult, serverResult] = await Promise.all([
-      browserTargetRun.result as unknown as BrowserBuilderOutput,
-      serverTargetRun.result as unknown as ServerBuilderOutput,
+      browserTargetRun.output.toPromise() as Promise<BrowserBuilderOutput>,
+      serverTargetRun.output.toPromise() as Promise<ServerBuilderOutput>,
     ]);
 
     if (browserResult.success === false || browserResult.baseOutputPath === undefined) {
@@ -206,8 +203,8 @@ async function _appShellBuilder(
 
     return { success: false, error: err.message };
   } finally {
-    // Just be good citizens and stop those jobs.
-    await Promise.all([browserTargetRun.stop(), serverTargetRun.stop()]);
+    // workaround for [tsetse] All Promises in async functions must either be awaited or used in an expression.
+    const _ = Promise.all([browserTargetRun.stop(), serverTargetRun.stop()]);
   }
 }
 

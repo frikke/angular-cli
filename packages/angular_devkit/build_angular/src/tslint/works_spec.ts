@@ -1,26 +1,20 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { Architect, Target } from '@angular-devkit/architect';
 import { WorkspaceNodeModulesArchitectHost } from '@angular-devkit/architect/node';
 import { TestingArchitectHost } from '@angular-devkit/architect/testing';
-import {
-  logging,
-  normalize,
-  schema,
-  workspaces,
-} from '@angular-devkit/core';
+import { logging, normalize, schema, workspaces } from '@angular-devkit/core';
 import { NodeJsSyncHost } from '@angular-devkit/core/node';
 import { workspaceRoot } from '../test-utils';
 
-
 const lintTarget: Target = { project: 'app', target: 'lint' };
 
-// tslint:disable-next-line:no-big-function
 describe('Tslint Target', () => {
   // const filesWithErrors = { 'src/foo.ts': 'const foo = "";\n' };
   let testArchitectHost: TestingArchitectHost;
@@ -48,19 +42,19 @@ describe('Tslint Target', () => {
     const output = await run.result;
     expect(output.success).toBe(true);
     await run.stop();
-  }, 30000);
+  });
 
   it(`should show project name as status and in the logs`, async () => {
     // Check logs.
     const logger = new logging.Logger('lint-info');
     const allLogs: string[] = [];
-    logger.subscribe(entry => allLogs.push(entry.message));
+    logger.subscribe((entry) => allLogs.push(entry.message));
 
     const run = await architect.scheduleTarget(lintTarget, {}, { logger });
 
     // Check status updates.
     const allStatus: string[] = [];
-    run.progress.subscribe(progress => {
+    run.progress.subscribe((progress) => {
       if (progress.status !== undefined) {
         allStatus.push(progress.status);
       }
@@ -81,13 +75,13 @@ describe('Tslint Target', () => {
     // Check logs.
     const logger = new logging.Logger('lint-info');
     const allLogs: string[] = [];
-    logger.subscribe(entry => allLogs.push(entry.message));
+    logger.subscribe((entry) => allLogs.push(entry.message));
 
     const run = await architect.scheduleTarget(lintTarget, overrides, { logger });
 
     // Check status updates.
     const allStatus: string[] = [];
-    run.progress.subscribe(progress => {
+    run.progress.subscribe((progress) => {
       if (progress.status !== undefined) {
         allStatus.push(progress.status);
       }
@@ -99,7 +93,7 @@ describe('Tslint Target', () => {
     expect(allStatus).toContain(jasmine.stringMatching(/linting.*"app".*/i));
     expect(allLogs).not.toContain(jasmine.stringMatching(/linting.*"app".*/i));
     await run.stop();
-  }, 30000);
+  });
 
   // it('should report lint error once', (done) => {
   //   host.writeMultipleFiles({'src/app/app.component.ts': 'const foo = "";\n' });

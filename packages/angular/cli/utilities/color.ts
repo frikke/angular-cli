@@ -1,19 +1,16 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import * as ansiColors from 'ansi-colors';
 import { WriteStream } from 'tty';
 
 type AnsiColors = typeof ansiColors;
-
-// Typings do not contain the function call (added in Node.js v9.9.0)
-const supportsColor =
-  process.stdout instanceof WriteStream &&
-  ((process.stdout as unknown) as { getColorDepth(): number }).getColorDepth() > 1;
+const supportsColor = process.stdout instanceof WriteStream && process.stdout.getColorDepth() > 1;
 
 export function removeColor(text: string): string {
   // This has been created because when colors.enabled is false unstyle doesn't work

@@ -1,15 +1,14 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { Path, getSystemPath, normalize, schema, virtualFs } from '@angular-devkit/core';
 import { NodeJsSyncHost } from '@angular-devkit/core/node';
-import {
-  workflow,
-} from '@angular-devkit/schematics';  // tslint:disable-line:no-implicit-dependencies
+import { workflow } from '@angular-devkit/schematics';
 import { BuiltinTaskExecutor } from '../../tasks/node';
 import { FileSystemEngine } from '../description';
 import { OptionTransform } from '../file-system-engine-host-base';
@@ -20,6 +19,7 @@ export interface NodeWorkflowOptions {
   force?: boolean;
   dryRun?: boolean;
   packageManager?: string;
+  packageManagerForce?: boolean;
   packageRegistry?: string;
   registry?: schema.CoreSchemaRegistry;
   resolvePaths?: string[];
@@ -61,6 +61,7 @@ export class NodeWorkflow extends workflow.BaseWorkflow {
     engineHost.registerTaskExecutor(BuiltinTaskExecutor.NodePackage, {
       allowPackageManagerOverride: true,
       packageManager: options.packageManager,
+      force: options.packageManagerForce,
       rootDirectory: root && getSystemPath(root),
       registry: options.packageRegistry,
     });
@@ -83,10 +84,10 @@ export class NodeWorkflow extends workflow.BaseWorkflow {
     this._context = [];
   }
 
-  get engine(): FileSystemEngine {
+  override get engine(): FileSystemEngine {
     return this._engine as FileSystemEngine;
   }
-  get engineHost(): NodeModulesEngineHost {
+  override get engineHost(): NodeModulesEngineHost {
     return this._engineHost as NodeModulesEngineHost;
   }
 }

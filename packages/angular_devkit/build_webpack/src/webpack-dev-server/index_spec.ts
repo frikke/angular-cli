@@ -1,19 +1,19 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { Architect } from '@angular-devkit/architect';
 import { WorkspaceNodeModulesArchitectHost } from '@angular-devkit/architect/node';
 import { TestingArchitectHost } from '@angular-devkit/architect/testing';
 import { schema, workspaces } from '@angular-devkit/core';
 import { NodeJsSyncHost } from '@angular-devkit/core/node';
-import fetch from 'node-fetch';  // tslint:disable-line:no-implicit-dependencies
+import fetch from 'node-fetch'; // eslint-disable-line import/no-extraneous-dependencies
 import * as path from 'path';
 import { DevServerBuildOutput } from './index';
-
 
 describe('Dev Server Builder', () => {
   let testArchitectHost: TestingArchitectHost;
@@ -33,8 +33,11 @@ describe('Dev Server Builder', () => {
       workspaces.createWorkspaceHost(vfHost),
     );
 
-    testArchitectHost = new TestingArchitectHost(workspaceRoot, workspaceRoot,
-      new WorkspaceNodeModulesArchitectHost(workspace, workspaceRoot));
+    testArchitectHost = new TestingArchitectHost(
+      workspaceRoot,
+      workspaceRoot,
+      new WorkspaceNodeModulesArchitectHost(workspace, workspaceRoot),
+    );
     architect = new Architect(testArchitectHost, registry);
   }
 
@@ -46,7 +49,7 @@ describe('Dev Server Builder', () => {
 
   it('works', async () => {
     const run = await architect.scheduleTarget(webpackTargetSpec);
-    const output = await run.result as DevServerBuildOutput;
+    const output = (await run.result) as DevServerBuildOutput;
     expect(output.success).toBe(true);
 
     const response = await fetch(`http://${output.address}:${output.port}/bundle.js`);
@@ -57,7 +60,7 @@ describe('Dev Server Builder', () => {
 
   it('works and returns emitted files', async () => {
     const run = await architect.scheduleTarget(webpackTargetSpec);
-    const output = await run.result as DevServerBuildOutput;
+    const output = (await run.result) as DevServerBuildOutput;
 
     expect(output.success).toBe(true);
     expect(output.emittedFiles).toContain({

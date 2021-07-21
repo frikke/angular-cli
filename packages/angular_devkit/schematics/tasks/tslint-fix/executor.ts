@@ -1,17 +1,17 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import * as fs from 'fs';
 import * as path from 'path';
-import * as tsLint from 'tslint';  // tslint:disable-line:no-implicit-dependencies
-import * as ts from 'typescript';  // tslint:disable-line:no-implicit-dependencies
+import * as tsLint from 'tslint'; // eslint-disable-line import/no-extraneous-dependencies
+import * as ts from 'typescript'; // eslint-disable-line import/no-extraneous-dependencies
 import { SchematicContext, TaskExecutor } from '../../src';
 import { TslintFixTaskOptions } from './options';
-
 
 function _loadConfiguration(
   Configuration: typeof tsLint.Configuration,
@@ -30,7 +30,6 @@ function _loadConfiguration(
   }
 }
 
-
 function _getFileContent(
   file: string,
   options: TslintFixTaskOptions,
@@ -40,8 +39,7 @@ function _getFileContent(
   if (program) {
     const source = program.getSourceFile(file);
     if (!source) {
-      const message
-        = `File '${file}' is not part of the TypeScript project '${options.tsConfigPath}'.`;
+      const message = `File '${file}' is not part of the TypeScript project '${options.tsConfigPath}'.`;
       throw new Error(message);
     }
 
@@ -58,14 +56,13 @@ function _getFileContent(
   }
 }
 
-
 function _listAllFiles(root: string): string[] {
   const result: string[] = [];
 
   function _recurse(location: string) {
     const dir = fs.readdirSync(path.join(root, location));
 
-    dir.forEach(name => {
+    dir.forEach((name) => {
       const loc = path.join(location, name);
       if (fs.statSync(path.join(root, loc)).isDirectory()) {
         _recurse(loc);
@@ -83,18 +80,18 @@ function _listAllFiles(root: string): string[] {
 export default function (): TaskExecutor<TslintFixTaskOptions> {
   return async (options: TslintFixTaskOptions = {}, context: SchematicContext) => {
     const root = process.cwd();
-    const tslint = await import('tslint'); // tslint:disable-line:no-implicit-dependencies
+    const tslint = await import('tslint'); // eslint-disable-line import/no-extraneous-dependencies
 
-    const includes = (
-      Array.isArray(options.includes)
-        ? options.includes
-        : (options.includes ? [options.includes] : [])
-    );
-    const files = (
-      Array.isArray(options.files)
-        ? options.files
-        : (options.files ? [options.files] : [])
-    );
+    const includes = Array.isArray(options.includes)
+      ? options.includes
+      : options.includes
+      ? [options.includes]
+      : [];
+    const files = Array.isArray(options.files)
+      ? options.files
+      : options.files
+      ? [options.files]
+      : [];
 
     const Linter = tslint.Linter;
     const Configuration = tslint.Configuration;
@@ -114,23 +111,28 @@ export default function (): TaskExecutor<TslintFixTaskOptions> {
 
     if (includes.length > 0) {
       const allFilesRel = _listAllFiles(root);
-      const pattern = '^('
-        + (includes as string[])
-          .map(ex => '('
-            + ex.split(/[\/\\]/g).map(f => f
-              .replace(/[\-\[\]{}()+?.^$|]/g, '\\$&')
-              .replace(/^\*\*/g, '(.+?)?')
-              .replace(/\*/g, '[^/\\\\]*'))
-              .join('[\/\\\\]')
-            + ')')
-          .join('|')
-        + ')($|/|\\\\)';
+      const pattern =
+        '^(' +
+        includes
+          .map(
+            (ex) =>
+              '(' +
+              ex
+                .split(/[\/\\]/g)
+                .map((f) =>
+                  f
+                    .replace(/[\-\[\]{}()+?.^$|]/g, '\\$&')
+                    .replace(/^\*\*/g, '(.+?)?')
+                    .replace(/\*/g, '[^/\\\\]*'),
+                )
+                .join('[/\\\\]') +
+              ')',
+          )
+          .join('|') +
+        ')($|/|\\\\)';
       const re = new RegExp(pattern);
 
-      filesToLint.push(...allFilesRel
-        .filter(x => re.test(x))
-        .map(x => path.join(root, x)),
-      );
+      filesToLint.push(...allFilesRel.filter((x) => re.test(x)).map((x) => path.join(root, x)));
     }
 
     const lintOptions = {

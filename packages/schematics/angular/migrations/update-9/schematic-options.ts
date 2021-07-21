@@ -1,16 +1,17 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { json } from '@angular-devkit/core';
 import { Rule } from '@angular-devkit/schematics';
 import { updateWorkspace } from '../../utility/workspace';
 
-export default function(): Rule {
-  return updateWorkspace(workspace => {
+export default function (): Rule {
+  return updateWorkspace((workspace) => {
     // Update root level schematics options if present
     const rootSchematics = workspace.extensions.schematics;
     if (rootSchematics && json.isJsonObject(rootSchematics)) {

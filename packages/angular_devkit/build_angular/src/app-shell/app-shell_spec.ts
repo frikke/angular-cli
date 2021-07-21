@@ -1,14 +1,16 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-// tslint:disable:no-big-function
+
 import { Architect } from '@angular-devkit/architect';
 import { getSystemPath, join, normalize, virtualFs } from '@angular-devkit/core';
-import * as express from 'express'; // tslint:disable-line:no-implicit-dependencies
+import express from 'express'; // eslint-disable-line import/no-extraneous-dependencies
+import * as http from 'http';
+import { AddressInfo } from 'net';
 import { createArchitect, host } from '../test-utils';
 
 describe('AppShell Builder', () => {
@@ -125,9 +127,13 @@ describe('AppShell Builder', () => {
   };
 
   it('works (basic)', async () => {
-    host.replaceInFile('src/app/app.module.ts', /    BrowserModule/, `
+    host.replaceInFile(
+      'src/app/app.module.ts',
+      / {4}BrowserModule/,
+      `
       BrowserModule.withServerTransition({ appId: 'some-app' })
-    `);
+    `,
+    );
 
     const run = await architect.scheduleTarget(target);
     const output = await run.result;
@@ -251,19 +257,25 @@ describe('AppShell Builder', () => {
     // Serve the app using a simple static server.
     const app = express();
     app.use('/', express.static(getSystemPath(join(host.root(), 'dist')) + '/'));
-    const server = app.listen(4200);
+    const server = await new Promise<http.Server>((resolve) => {
+      const innerServer = app.listen(0, 'localhost', () => resolve(innerServer));
+    });
+    try {
+      const serverPort = (server.address() as AddressInfo).port;
+      // Load app in protractor, then check service worker status.
+      const protractorRun = await architect.scheduleTarget(
+        { project: 'app-e2e', target: 'e2e' },
+        { baseUrl: `http://localhost:${serverPort}/`, devServerTarget: '' },
+      );
 
-    // Load app in protractor, then check service worker status.
-    const protractorRun = await architect.scheduleTarget(
-      { project: 'app-e2e', target: 'e2e' },
-      { devServerTarget: undefined } as {},
-    );
-    const protractorOutput = await protractorRun.result;
-    await protractorRun.stop();
-    expect(protractorOutput.success).toBe(true);
+      const protractorOutput = await protractorRun.result;
+      await protractorRun.stop();
 
-    // Close the express server.
-    server.close();
+      expect(protractorOutput.success).toBe(true);
+    } finally {
+      // Close the express server.
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
   });
 
   it('critical CSS is inlined', async () => {
@@ -283,6 +295,8 @@ describe('AppShell Builder', () => {
 
     expect(content).toContain('app-shell works!');
     expect(content).toContain('p{color:#000;}');
-    expect(content).toMatch(/<link rel="stylesheet" href="styles\.[a-z0-9]+\.css" media="print" onload="this\.media='all'">/);
+    expect(content).toMatch(
+      /<link rel="stylesheet" href="styles\.[a-z0-9]+\.css" media="print" onload="this\.media='all'">/,
+    );
   });
 });

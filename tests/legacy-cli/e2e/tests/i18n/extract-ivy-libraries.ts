@@ -5,11 +5,6 @@ import { ng } from '../../utils/process';
 import { readNgVersion } from '../../utils/version';
 
 export default async function() {
-  // Ivy only test
-  if (getGlobalVariable('argv')['ve']) {
-    return;
-  }
-
   // Setup a library
   await ng('generate', 'library', 'i18n-lib-test');
   await replaceInFile(
@@ -19,7 +14,7 @@ export default async function() {
   );
 
   // Build library
-  await ng('build', 'i18n-lib-test');
+  await ng('build', 'i18n-lib-test', '--configuration=development');
 
   // Consume library in application
   await writeFile(
@@ -61,7 +56,7 @@ export default async function() {
   await installPackage(localizeVersion);
 
   // Extract messages
-  await ng('extract-i18n', '--ivy');
+  await ng('extract-i18n');
   await expectFileToMatch('messages.xlf', 'Hello world');
   await expectFileToMatch('messages.xlf', 'i18n-lib-test works!');
   await expectFileToMatch('messages.xlf', 'src/app/app.component.html');

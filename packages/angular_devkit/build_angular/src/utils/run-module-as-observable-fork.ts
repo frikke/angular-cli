@@ -1,25 +1,26 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { BuilderOutput } from '@angular-devkit/architect';
 import { ForkOptions, fork } from 'child_process';
 import { resolve } from 'path';
 import { Observable } from 'rxjs';
-const treeKill = require('tree-kill');
 
+const treeKill = require('tree-kill');
 
 export function runModuleAsObservableFork(
   cwd: string,
   modulePath: string,
   exportName: string | undefined,
-  // tslint:disable-next-line:no-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   args: any[],
 ): Observable<BuilderOutput> {
-  return new Observable(obs => {
+  return new Observable((obs) => {
     const workerPath: string = resolve(__dirname, './run-module-worker.js');
 
     const debugArgRegex = /--inspect(?:-brk|-port)?|--debug(?:-brk|-port)/;
@@ -28,10 +29,10 @@ export function runModuleAsObservableFork(
       // Workaround for https://github.com/nodejs/node/issues/9435
       return !debugArgRegex.test(arg);
     });
-    const forkOptions: ForkOptions = {
+    const forkOptions: ForkOptions = ({
       cwd,
       execArgv,
-    } as {} as ForkOptions;
+    } as {}) as ForkOptions;
 
     // TODO: support passing in a logger to use as stdio streams
     // if (logger) {

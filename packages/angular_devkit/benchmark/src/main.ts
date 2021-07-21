@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
@@ -11,14 +11,13 @@ import { logging, tags } from '@angular-devkit/core';
 import { ProcessOutput } from '@angular-devkit/core/node';
 import * as ansiColors from 'ansi-colors';
 import { appendFileSync, writeFileSync } from 'fs';
-import * as minimist from 'minimist';
+import minimist from 'minimist';
 import { filter, map, toArray } from 'rxjs/operators';
 import { Command } from '../src/command';
 import { defaultReporter } from '../src/default-reporter';
 import { defaultStatsCapture } from '../src/default-stats-capture';
 import { runBenchmark } from '../src/run-benchmark';
 import { runBenchmarkWatch } from './run-benchmark-watch';
-
 
 export interface MainOptions {
   args: string[];
@@ -31,7 +30,6 @@ export async function main({
   stdout = process.stdout,
   stderr = process.stderr,
 }: MainOptions): Promise<0 | 1> {
-
   // Show usage of the CLI tool, and exit the process.
   function usage(logger: logging.Logger) {
     logger.info(tags.stripIndent`
@@ -77,10 +75,7 @@ export async function main({
   // Parse the command line.
   const argv = minimist(args, {
     boolean: ['help', 'verbose', 'overwrite-output-file'],
-    string: [
-      'watch-matcher',
-      'watch-script',
-    ],
+    string: ['watch-matcher', 'watch-script'],
     default: {
       'exit-code': 0,
       'iterations': 5,
@@ -94,13 +89,16 @@ export async function main({
   }) as {} as BenchmarkCliArgv;
 
   // Create the DevKit Logger used through the CLI.
-  const logger = new logging.TransformLogger(
-    'benchmark-prefix-logger',
-    stream => stream.pipe(map(entry => {
-      if (argv['prefix']) { entry.message = `${argv['prefix']} ${entry.message}`; }
+  const logger = new logging.TransformLogger('benchmark-prefix-logger', (stream) =>
+    stream.pipe(
+      map((entry) => {
+        if (argv['prefix']) {
+          entry.message = `${argv['prefix']} ${entry.message}`;
+        }
 
-      return entry;
-    })),
+        return entry;
+      }),
+    ),
   );
 
   // Create a separate instance to prevent unintended global changes to the color configuration
@@ -108,32 +106,29 @@ export async function main({
   const colors = (ansiColors as typeof ansiColors & { create: () => typeof ansiColors }).create();
 
   // Log to console.
-  logger
-    .pipe(filter(entry => (entry.level != 'debug' || argv['verbose'])))
-    .subscribe(entry => {
-      let color: (s: string) => string = x => colors.dim.white(x);
-      let output = stdout;
-      switch (entry.level) {
-        case 'info':
-          color = s => s;
-          break;
-        case 'warn':
-          color = colors.yellow;
-          output = stderr;
-          break;
-        case 'error':
-          color = colors.red;
-          output = stderr;
-          break;
-        case 'fatal':
-          color = (x: string) => colors.bold.red(x);
-          output = stderr;
-          break;
-      }
+  logger.pipe(filter((entry) => entry.level != 'debug' || argv['verbose'])).subscribe((entry) => {
+    let color: (s: string) => string = (x) => colors.dim.white(x);
+    let output = stdout;
+    switch (entry.level) {
+      case 'info':
+        color = (s) => s;
+        break;
+      case 'warn':
+        color = colors.yellow;
+        output = stderr;
+        break;
+      case 'error':
+        color = colors.red;
+        output = stderr;
+        break;
+      case 'fatal':
+        color = (x: string) => colors.bold.red(x);
+        output = stderr;
+        break;
+    }
 
-      output.write(color(entry.message) + '\n');
-    });
-
+    output.write(color(entry.message) + '\n');
+  });
 
   // Print help.
   if (argv['help']) {
@@ -152,7 +147,7 @@ export async function main({
     'output-file': outFile,
     iterations,
     retries,
-   } = argv;
+  } = argv;
 
   // Exit early if we can't find the command to benchmark.
   if (watchMatcher && !watchScript) {
@@ -179,8 +174,9 @@ export async function main({
     if (argv['overwrite-output-file']) {
       writeFileSync(outFile, '');
     }
-    logger.pipe(filter(entry => (entry.level != 'debug' || argv['verbose'])))
-      .subscribe(entry => appendFileSync(outFile, `${entry.message}\n`));
+    logger
+      .pipe(filter((entry) => entry.level != 'debug' || argv['verbose']))
+      .subscribe((entry) => appendFileSync(outFile, `${entry.message}\n`));
   }
 
   // Run benchmark on given command, capturing stats and reporting them.
@@ -197,20 +193,24 @@ export async function main({
     let res$;
     if (watchMatcher && watchScript) {
       res$ = runBenchmarkWatch({
-        command, captures, reporters, iterations, retries, logger,
-        watchCommand: new Command('node', [watchScript]), watchMatcher, watchTimeout,
+        command,
+        captures,
+        reporters,
+        iterations,
+        retries,
+        logger,
+        watchCommand: new Command('node', [watchScript]),
+        watchMatcher,
+        watchTimeout,
       });
     } else {
-      res$ = runBenchmark(
-        { command, captures, reporters, iterations, retries, logger },
-      );
+      res$ = runBenchmark({ command, captures, reporters, iterations, retries, logger });
     }
 
     const res = await res$.pipe(toArray()).toPromise();
     if (res.length === 0) {
       return 1;
     }
-
   } catch (error) {
     if (error.message) {
       logger.fatal(error.message);
@@ -227,6 +227,8 @@ export async function main({
 if (require.main === module) {
   const args = process.argv.slice(2);
   main({ args })
-    .then(exitCode => process.exitCode = exitCode)
-    .catch(e => { throw (e); });
+    .then((exitCode) => (process.exitCode = exitCode))
+    .catch((e) => {
+      throw e;
+    });
 }

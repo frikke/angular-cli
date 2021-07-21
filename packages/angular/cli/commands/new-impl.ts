@@ -1,33 +1,29 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { Arguments } from '../models/interface';
 import { SchematicCommand } from '../models/schematic-command';
-import { ensureCompatibleNpm } from '../utilities/package-manager';
+import { VERSION } from '../models/version';
 import { Schema as NewCommandSchema } from './new';
 
-
 export class NewCommand extends SchematicCommand<NewCommandSchema> {
-  public readonly allowMissingWorkspace = true;
-  schematicName = 'ng-new';
+  public override readonly allowMissingWorkspace = true;
+  override schematicName = 'ng-new';
 
-  async initialize(options: NewCommandSchema & Arguments) {
-    this.collectionName = options.collection || await this.getDefaultSchematicCollection();
+  override async initialize(options: NewCommandSchema & Arguments) {
+    this.collectionName = options.collection || (await this.getDefaultSchematicCollection());
 
     return super.initialize(options);
   }
 
   public async run(options: NewCommandSchema & Arguments) {
-    await ensureCompatibleNpm(this.context.root);
-
     // Register the version of the CLI in the registry.
-    const packageJson = require('../package.json');
-    const version = packageJson.version;
-
+    const version = VERSION.full;
     this._workflow.registry.addSmartDefaultProvider('ng-cli-version', () => version);
 
     return this.runSchematic({
@@ -39,5 +35,4 @@ export class NewCommand extends SchematicCommand<NewCommandSchema> {
       force: !!options.force,
     });
   }
-
 }

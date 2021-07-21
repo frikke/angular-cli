@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
@@ -18,7 +18,7 @@ import { updateI18nConfig } from './update-i18n';
 import { updateServerMainFile } from './update-server-main-file';
 import { updateWorkspaceConfig } from './update-workspace-config';
 
-export default function(): Rule {
+export default function (): Rule {
   return () => {
     return chain([
       updateWorkspaceConfig(),
@@ -31,7 +31,7 @@ export default function(): Rule {
       removeTsickle(),
       addTsLib(),
       (tree, context) => {
-        const packageChanges = tree.actions.some(a => a.path.endsWith('/package.json'));
+        const packageChanges = tree.actions.some((a) => a.path.endsWith('/package.json'));
         if (packageChanges) {
           context.addTask(new NodePackageInstallTask());
         }

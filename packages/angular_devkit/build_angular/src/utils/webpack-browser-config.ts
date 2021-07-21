@@ -1,31 +1,21 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { BuilderContext } from '@angular-devkit/architect';
-import {
-  getSystemPath,
-  logging,
-  normalize,
-  resolve,
-} from '@angular-devkit/core';
+import { getSystemPath, logging, normalize, resolve } from '@angular-devkit/core';
 import * as path from 'path';
-import * as webpack from 'webpack';
+import { Configuration, javascript } from 'webpack';
 import { merge as webpackMerge } from 'webpack-merge';
 import { Schema as BrowserBuilderSchema } from '../browser/schema';
-import {
-  NormalizedBrowserBuilderSchema,
-  defaultProgress,
-  normalizeBrowserSchema,
-} from '../utils';
+import { NormalizedBrowserBuilderSchema, defaultProgress, normalizeBrowserSchema } from '../utils';
 import { WebpackConfigOptions } from '../utils/build-options';
 import { readTsconfig } from '../utils/read-tsconfig';
 import { BuilderWatchPlugin, BuilderWatcherFactory } from '../webpack/plugins/builder-watch-plugin';
-import { getEsVersionForFileName } from '../webpack/utils/helpers';
-import { profilingEnabled } from './environment-options';
 import { I18nOptions, configureI18nBuild } from './i18n-options';
 
 export type BrowserWebpackConfigOptions = WebpackConfigOptions<NormalizedBrowserBuilderSchema>;
@@ -35,25 +25,13 @@ export async function generateWebpackConfig(
   projectRoot: string,
   sourceRoot: string | undefined,
   options: NormalizedBrowserBuilderSchema,
-  webpackPartialGenerator: (wco: BrowserWebpackConfigOptions) => webpack.Configuration[],
+  webpackPartialGenerator: (wco: BrowserWebpackConfigOptions) => Configuration[],
   logger: logging.LoggerApi,
   extraBuildOptions: Partial<NormalizedBrowserBuilderSchema>,
-): Promise<webpack.Configuration> {
+): Promise<Configuration> {
   // Ensure Build Optimizer is only used with AOT.
   if (options.buildOptimizer && !options.aot) {
     throw new Error(`The 'buildOptimizer' option cannot be used without 'aot'.`);
-  }
-
-  // Ensure Rollup Concatenation is only used with compatible options.
-  if (options.experimentalRollupPass) {
-    if (!options.aot) {
-      throw new Error(`The 'experimentalRollupPass' option cannot be used without 'aot'.`);
-    }
-
-    if (options.vendorChunk || options.commonChunk || options.namedChunks) {
-      throw new Error(`The 'experimentalRollupPass' option cannot be used with the`
-        + `'vendorChunk', 'commonChunk', 'namedChunks' options set to true.`);
-    }
   }
 
   const tsConfigPath = path.resolve(workspaceRoot, options.tsConfig);
@@ -61,8 +39,6 @@ export async function generateWebpackConfig(
 
   const ts = await import('typescript');
   const scriptTarget = tsConfig.options.target || ts.ScriptTarget.ES5;
-
-  const supportES2015 = scriptTarget !== ts.ScriptTarget.JSON && scriptTarget > ts.ScriptTarget.ES5;
 
   const buildOptions: NormalizedBrowserBuilderSchema = { ...options, ...extraBuildOptions };
   const wco: BrowserWebpackConfigOptions = {
@@ -80,50 +56,20 @@ export async function generateWebpackConfig(
 
   const webpackConfig = webpackMerge(webpackPartialGenerator(wco));
 
-  if (supportES2015) {
-    if (!webpackConfig.resolve) {
-      webpackConfig.resolve = {};
-    }
-    if (Array.isArray(webpackConfig.resolve.alias)) {
-      webpackConfig.resolve.alias.push({
-        alias: 'zone.js/dist/zone',
-        name: 'zone.js/dist/zone-evergreen',
-      });
-    } else {
-      if (!webpackConfig.resolve.alias) {
-        webpackConfig.resolve.alias = {};
-      }
-      webpackConfig.resolve.alias['zone.js/dist/zone'] = 'zone.js/dist/zone-evergreen';
-    }
-  }
-
-  if (profilingEnabled) {
-    const esVersionInFileName = getEsVersionForFileName(
-      tsConfig.options.target,
-      buildOptions.differentialLoadingNeeded,
-    );
-
-    const SpeedMeasurePlugin = await import('speed-measure-webpack-plugin');
-    const smp = new SpeedMeasurePlugin({
-      outputFormat: 'json',
-      outputTarget: path.resolve(
-        workspaceRoot,
-        `speed-measure-plugin${esVersionInFileName}.json`,
-      ),
-    });
-
-    return smp.wrap(webpackConfig);
-  }
-
   return webpackConfig;
 }
 
 export async function generateI18nBrowserWebpackConfigFromContext(
   options: BrowserBuilderSchema,
   context: BuilderContext,
-  webpackPartialGenerator: (wco: BrowserWebpackConfigOptions) => webpack.Configuration[],
+  webpackPartialGenerator: (wco: BrowserWebpackConfigOptions) => Configuration[],
   extraBuildOptions: Partial<NormalizedBrowserBuilderSchema> = {},
-): Promise<{ config: webpack.Configuration; projectRoot: string; projectSourceRoot?: string, i18n: I18nOptions }> {
+): Promise<{
+  config: Configuration;
+  projectRoot: string;
+  projectSourceRoot?: string;
+  i18n: I18nOptions;
+}> {
   const { buildOptions, i18n } = await configureI18nBuild(context, options);
   const result = await generateBrowserWebpackConfigFromContext(
     buildOptions,
@@ -157,25 +103,14 @@ export async function generateI18nBrowserWebpackConfigFromContext(
       (data, locale) => data + locale.files.map((file) => file.integrity || '').join('|'),
       '',
     );
-    if (!config.plugins) {
-      config.plugins = [];
-    }
+
+    config.plugins ??= [];
     config.plugins.push({
-      apply(compiler: webpack.Compiler) {
-        compiler.hooks.compilation.tap('build-angular', compilation => {
-          // Webpack typings do not contain template hashForChunk hook
-          // tslint:disable-next-line: no-any
-          (compilation.mainTemplate.hooks as any).hashForChunk.tap(
+      apply(compiler) {
+        compiler.hooks.compilation.tap('build-angular', (compilation) => {
+          javascript.JavascriptModulesPlugin.getCompilationHooks(compilation).chunkHash.tap(
             'build-angular',
-            (hash: { update(data: string): void }) => {
-              hash.update('$localize' + i18nHash);
-            },
-          );
-          // Webpack typings do not contain hooks property
-          // tslint:disable-next-line: no-any
-          (compilation.chunkTemplate as any).hooks.hashForChunk.tap(
-            'build-angular',
-            (hash: { update(data: string): void }) => {
+            (_, hash) => {
               hash.update('$localize' + i18nHash);
             },
           );
@@ -189,9 +124,9 @@ export async function generateI18nBrowserWebpackConfigFromContext(
 export async function generateBrowserWebpackConfigFromContext(
   options: BrowserBuilderSchema,
   context: BuilderContext,
-  webpackPartialGenerator: (wco: BrowserWebpackConfigOptions) => webpack.Configuration[],
+  webpackPartialGenerator: (wco: BrowserWebpackConfigOptions) => Configuration[],
   extraBuildOptions: Partial<NormalizedBrowserBuilderSchema> = {},
-): Promise<{ config: webpack.Configuration; projectRoot: string; projectSourceRoot?: string }> {
+): Promise<{ config: Configuration; projectRoot: string; projectSourceRoot?: string }> {
   const projectName = context.target && context.target.project;
   if (!projectName) {
     throw new Error('The builder requires a target.');
@@ -205,12 +140,7 @@ export async function generateBrowserWebpackConfigFromContext(
     ? resolve(workspaceRoot, normalize(projectSourceRoot))
     : undefined;
 
-  const normalizedOptions = normalizeBrowserSchema(
-    workspaceRoot,
-    projectRoot,
-    sourceRoot,
-    options,
-  );
+  const normalizedOptions = normalizeBrowserSchema(workspaceRoot, projectRoot, sourceRoot, options);
 
   const config = await generateWebpackConfig(
     getSystemPath(workspaceRoot),

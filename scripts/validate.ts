@@ -1,11 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-// tslint:disable:no-implicit-dependencies
+
 import { logging, tags } from '@angular-devkit/core';
 import { execSync } from 'child_process';
 import templates from './templates';
@@ -13,7 +13,7 @@ import validateBuildFiles from './validate-build-files';
 import validateLicenses from './validate-licenses';
 import validateUserAnalytics from './validate-user-analytics';
 
-export default async function (options: { verbose: boolean; ci: boolean }, logger: logging.Logger) {
+export default async function (options: { verbose: boolean }, logger: logging.Logger) {
   let error = false;
 
   if (execSync(`git status --porcelain`).toString()) {
@@ -40,18 +40,16 @@ export default async function (options: { verbose: boolean; ci: boolean }, logge
 
   logger.info('');
   logger.info('Running license validation...');
-  error = await validateLicenses({}, logger.createChild('validate-commits')) != 0
-       || error;
+  error = (await validateLicenses({}, logger.createChild('validate-commits'))) != 0 || error;
 
   logger.info('');
   logger.info('Running BUILD files validation...');
-  error = await validateBuildFiles({}, logger.createChild('validate-build-files')) != 0
-       || error;
+  error = (await validateBuildFiles({}, logger.createChild('validate-build-files'))) != 0 || error;
 
   logger.info('');
   logger.info('Running User Analytics validation...');
-  error = await validateUserAnalytics({}, logger.createChild('validate-user-analytics')) != 0
-    || error;
+  error =
+    (await validateUserAnalytics({}, logger.createChild('validate-user-analytics'))) != 0 || error;
 
   if (error) {
     return 101;

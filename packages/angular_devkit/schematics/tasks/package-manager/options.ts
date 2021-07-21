@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 export const NodePackageName = 'node-package';
 
 export interface NodePackageTaskFactoryOptions {
@@ -12,6 +13,7 @@ export interface NodePackageTaskFactoryOptions {
   packageManager?: string;
   allowPackageManagerOverride?: boolean;
   registry?: string;
+  force?: boolean;
 }
 
 export interface NodePackageTaskOptions {

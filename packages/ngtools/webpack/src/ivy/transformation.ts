@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { constructorParametersDownlevelTransform } from '@angular/compiler-cli';
 import * as ts from 'typescript';
 import { elideImports } from '../transformers/elide_imports';
@@ -24,7 +25,7 @@ export function createAotTransformers(
   const removeClassMetadata = !options.emitClassMetadata;
   const removeNgModuleScope = !options.emitNgModuleScope;
   if (removeClassMetadata || removeNgModuleScope) {
-    // tslint:disable-next-line: no-non-null-assertion
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     transformers.before!.push(
       removeIvyJitSupportCalls(removeClassMetadata, removeNgModuleScope, getTypeChecker),
     );
@@ -35,13 +36,23 @@ export function createAotTransformers(
 
 export function createJitTransformers(
   builder: ts.BuilderProgram,
-  options: { directTemplateLoading?: boolean },
+  options: {
+    directTemplateLoading?: boolean;
+    inlineStyleMimeType?: string;
+    inlineStyleFileExtension?: string;
+  },
 ): ts.CustomTransformers {
   const getTypeChecker = () => builder.getProgram().getTypeChecker();
 
   return {
     before: [
-      replaceResources(() => true, getTypeChecker, options.directTemplateLoading),
+      replaceResources(
+        () => true,
+        getTypeChecker,
+        options.directTemplateLoading,
+        options.inlineStyleMimeType,
+        options.inlineStyleFileExtension,
+      ),
       constructorParametersDownlevelTransform(builder.getProgram()),
     ],
   };
@@ -89,7 +100,11 @@ export function replaceBootstrap(
             bootstrapImport = nodeFactory.createImportDeclaration(
               undefined,
               undefined,
-              nodeFactory.createImportClause(false, undefined, nodeFactory.createNamespaceImport(bootstrapNamespace)),
+              nodeFactory.createImportClause(
+                false,
+                undefined,
+                nodeFactory.createNamespaceImport(bootstrapNamespace),
+              ),
               nodeFactory.createStringLiteral('@angular/platform-browser'),
             );
           }
@@ -117,11 +132,11 @@ export function replaceBootstrap(
           replacedNodes,
           getTypeChecker,
           context.getCompilerOptions(),
-        ).map((op) => op.target);
-        if (removals.length > 0) {
+        );
+        if (removals.size > 0) {
           updatedSourceFile = ts.visitEachChild(
             updatedSourceFile,
-            (node) => (removals.includes(node) ? undefined : node),
+            (node) => (removals.has(node) ? undefined : node),
             context,
           );
         }

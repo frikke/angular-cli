@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
@@ -9,9 +9,8 @@
 import { basename, normalize } from '@angular-devkit/core';
 import * as path from 'path';
 import { ScriptTarget } from 'typescript';
-import { Options, SourceMapDevToolPlugin } from 'webpack';
+import { Configuration, SourceMapDevToolPlugin } from 'webpack';
 import { ExtraEntryPoint, ExtraEntryPointClass } from '../../browser/schema';
-import { withWebpackFourOrFive } from '../../utils/webpack-version';
 
 export interface HashFormat {
   chunk: string;
@@ -47,7 +46,7 @@ export function normalizeExtraEntryPoints(
   extraEntryPoints: ExtraEntryPoint[],
   defaultBundleName: string,
 ): NormalizedEntryPoint[] {
-  return extraEntryPoints.map(entry => {
+  return extraEntryPoints.map((entry) => {
     if (typeof entry === 'string') {
       return { input: entry, inject: true, bundleName: defaultBundleName };
     }
@@ -58,9 +57,7 @@ export function normalizeExtraEntryPoints(
       bundleName = entry.bundleName;
     } else if (!inject) {
       // Lazy entry points use the file name as bundle name.
-      bundleName = basename(
-        normalize(entry.input.replace(/\.(js|css|scss|sass|less|styl)$/i, '')),
-      );
+      bundleName = basename(normalize(entry.input.replace(/\.(js|css|scss|sass|less|styl)$/i, '')));
     } else {
       bundleName = defaultBundleName;
     }
@@ -119,10 +116,10 @@ export function isPolyfillsEntry(name: string): boolean {
   return name === 'polyfills' || name === 'polyfills-es5';
 }
 
-export function getWatchOptions(poll: number | undefined): Options.WatchOptions {
+export function getWatchOptions(poll: number | undefined): Configuration['watchOptions'] {
   return {
     poll,
-    ignored: poll === undefined ? undefined : withWebpackFourOrFive(/[\\\/]node_modules[\\\/]/, 'node_modules/**'),
+    ignored: poll === undefined ? '**/$_lazy_route_resources' : 'node_modules/**',
   };
 }
 

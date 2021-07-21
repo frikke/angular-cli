@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
@@ -26,10 +26,7 @@ export {
   Type,
 } from './browser/schema';
 
-export {
-  buildWebpackBrowser as executeBrowserBuilder,
-  BrowserBuilderOutput,
-} from './browser';
+export { buildWebpackBrowser as executeBrowserBuilder, BrowserBuilderOutput } from './browser';
 
 export {
   serveWebpackBrowser as executeDevServerBuilder,
@@ -37,21 +34,11 @@ export {
   DevServerBuilderOutput,
 } from './dev-server';
 
-export {
-  execute as executeExtractI18nBuilder,
-  ExtractI18nBuilderOptions,
-} from './extract-i18n';
+export { execute as executeExtractI18nBuilder, ExtractI18nBuilderOptions } from './extract-i18n';
 
-export {
-  execute as executeKarmaBuilder,
-  KarmaBuilderOptions,
-  KarmaConfigOptions,
-} from './karma';
+export { execute as executeKarmaBuilder, KarmaBuilderOptions, KarmaConfigOptions } from './karma';
 
-export {
-  execute as executeProtractorBuilder,
-  ProtractorBuilderOptions,
-} from './protractor';
+export { execute as executeProtractorBuilder, ProtractorBuilderOptions } from './protractor';
 
 export {
   execute as executeServerBuilder,
@@ -59,7 +46,4 @@ export {
   ServerBuilderOutput,
 } from './server';
 
-export {
-  execute as executeNgPackagrBuilder,
-  NgPackagrBuilderOptions,
-} from './ng-packagr';
+export { execute as executeNgPackagrBuilder, NgPackagrBuilderOptions } from './ng-packagr';

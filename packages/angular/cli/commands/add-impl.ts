@@ -1,15 +1,16 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { analytics, tags } from '@angular-devkit/core';
 import { NodePackageDoesNotSupportSchematics } from '@angular-devkit/schematics/tools';
 import { dirname, join } from 'path';
 import { intersects, prerelease, rcompare, satisfies, valid, validRange } from 'semver';
-import { PackageManager } from '../lib/config/schema';
+import { PackageManager } from '../lib/config/workspace-schema';
 import { isPackageNameSafeForAnalytics } from '../models/analytics';
 import { Arguments } from '../models/interface';
 import { RunSchematicOptions, SchematicCommand } from '../models/schematic-command';
@@ -22,15 +23,17 @@ import {
   fetchPackageManifest,
   fetchPackageMetadata,
 } from '../utilities/package-metadata';
+import { askConfirmation } from '../utilities/prompt';
 import { Spinner } from '../utilities/spinner';
+import { isTTY } from '../utilities/tty';
 import { Schema as AddCommandSchema } from './add';
 
 const npa = require('npm-package-arg');
 
 export class AddCommand extends SchematicCommand<AddCommandSchema> {
-  readonly allowPrivateSchematics = true;
+  override readonly allowPrivateSchematics = true;
 
-  async initialize(options: AddCommandSchema & Arguments) {
+  override async initialize(options: AddCommandSchema & Arguments) {
     if (options.registry) {
       return super.initialize({ ...options, packageRegistry: options.registry });
     } else {
@@ -128,7 +131,7 @@ export class AddCommand extends SchematicCommand<AddCommandSchema> {
         // 'latest' is invalid so search for most recent matching package
         const versionManifests = Object.values(packageMetadata.versions).filter(
           (value: PackageManifest) => !prerelease(value.version) && !value.deprecated,
-        ) as PackageManifest[];
+        );
 
         versionManifests.sort((a, b) => rcompare(a.version, b.version, true));
 
@@ -167,9 +170,7 @@ export class AddCommand extends SchematicCommand<AddCommandSchema> {
       collectionName = manifest.name;
 
       if (await this.hasMismatchedPeer(manifest)) {
-        spinner.warn(
-          'Package has unmet peer dependencies. Adding the package may not succeed.',
-        );
+        spinner.warn('Package has unmet peer dependencies. Adding the package may not succeed.');
       } else {
         spinner.succeed(`Package information loaded.`);
       }
@@ -179,45 +180,62 @@ export class AddCommand extends SchematicCommand<AddCommandSchema> {
       return 1;
     }
 
-    try {
-      spinner.start('Installing package...');
-      if (savePackage === false) {
-        // Temporary packages are located in a different directory
-        // Hence we need to resolve them using the temp path
-        const tempPath = installTempPackage(
-          packageIdentifier.raw,
-          undefined,
-          packageManager,
-          options.registry ? [`--registry="${options.registry}"`] : undefined,
-        );
-        const resolvedCollectionPath = require.resolve(
-          join(collectionName, 'package.json'),
-          {
-            paths: [tempPath],
-          },
-        );
+    if (!options.skipConfirmation) {
+      const confirmationResponse = await askConfirmation(
+        `\nThe package ${colors.blue(packageIdentifier.raw)} will be installed and executed.\n` +
+          'Would you like to proceed?',
+        true,
+        false,
+      );
 
-        collectionName = dirname(resolvedCollectionPath);
-      } else {
-        installPackage(
-          packageIdentifier.raw,
-          undefined,
-          packageManager,
-          savePackage,
-          options.registry ? [`--registry="${options.registry}"`] : undefined,
-        );
+      if (!confirmationResponse) {
+        if (!isTTY) {
+          this.logger.error(
+            'No terminal detected. ' +
+              `'--skip-confirmation' can be used to bypass installation confirmation. ` +
+              `Ensure package name is correct prior to '--skip-confirmation' option usage.`,
+          );
+        }
+        this.logger.error('Command aborted.');
+
+        return 1;
       }
-      spinner.succeed('Package successfully installed.');
-    } catch (error) {
-      spinner.fail(`Package installation failed: ${error.message}`);
+    }
 
-      return 1;
+    if (savePackage === false) {
+      // Temporary packages are located in a different directory
+      // Hence we need to resolve them using the temp path
+      const { status, tempNodeModules } = await installTempPackage(
+        packageIdentifier.raw,
+        packageManager,
+        options.registry ? [`--registry="${options.registry}"`] : undefined,
+      );
+      const resolvedCollectionPath = require.resolve(join(collectionName, 'package.json'), {
+        paths: [tempNodeModules],
+      });
+
+      if (status !== 0) {
+        return status;
+      }
+
+      collectionName = dirname(resolvedCollectionPath);
+    } else {
+      const status = await installPackage(
+        packageIdentifier.raw,
+        packageManager,
+        savePackage,
+        options.registry ? [`--registry="${options.registry}"`] : undefined,
+      );
+
+      if (status !== 0) {
+        return status;
+      }
     }
 
     return this.executeSchematic(collectionName, options['--']);
   }
 
-  async reportAnalytics(
+  override async reportAnalytics(
     paths: string[],
     options: AddCommandSchema & Arguments,
     dimensions: (boolean | number | string)[] = [],

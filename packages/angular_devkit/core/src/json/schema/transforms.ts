@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { JsonObject, JsonValue, isJsonArray, isJsonObject } from '../interface';
 import { JsonPointer } from './interface';
 import { JsonSchema } from './schema';
@@ -73,20 +74,22 @@ export function addUndefinedDefaults(
         const propertySchemas = schemaObject.oneOf || schemaObject.anyOf;
         const allProperties = Object.keys(value);
         // Locate a schema which declares all the properties that the object contains.
-        const adjustedSchema = isJsonArray(propertySchemas) && propertySchemas.find(s => {
-          if (!isJsonObject(s)) {
+        const adjustedSchema =
+          isJsonArray(propertySchemas) &&
+          propertySchemas.find((s) => {
+            if (!isJsonObject(s)) {
+              return false;
+            }
+
+            const schemaType = getTypesOfSchema(s);
+            if (schemaType.size === 1 && schemaType.has('object') && isJsonObject(s.properties)) {
+              const properties = Object.keys(s.properties);
+
+              return allProperties.every((key) => properties.includes(key));
+            }
+
             return false;
-          }
-
-          const schemaType = getTypesOfSchema(s);
-          if (schemaType.size === 1 && schemaType.has('object') && isJsonObject(s.properties)) {
-            const properties = Object.keys(s.properties);
-
-            return allProperties.every(key => properties.includes(key));
-          }
-
-          return false;
-        });
+          });
 
         if (adjustedSchema && isJsonObject(adjustedSchema)) {
           newValue[propName] = addUndefinedDefaults(value, _pointer, adjustedSchema);

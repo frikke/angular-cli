@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { BuilderContext, BuilderOutput, createBuilder } from '@angular-devkit/architect';
 import { runWebpack } from '@angular-devkit/build-webpack';
 import { json, tags } from '@angular-devkit/core';
@@ -12,7 +13,7 @@ import * as path from 'path';
 import { Observable, from } from 'rxjs';
 import { concatMap, map } from 'rxjs/operators';
 import { ScriptTarget } from 'typescript';
-import * as webpack from 'webpack';
+import webpack from 'webpack';
 import { ExecutionTransformer } from '../transforms';
 import { NormalizedBrowserBuilderSchema, deleteOutputDir } from '../utils';
 import { i18nInlineEmittedFiles } from '../utils/i18n-inlining';
@@ -22,27 +23,33 @@ import { readTsconfig } from '../utils/read-tsconfig';
 import { assertCompatibleAngularVersion } from '../utils/version';
 import { generateI18nBrowserWebpackConfigFromContext } from '../utils/webpack-browser-config';
 import {
-  getAotConfig,
   getCommonConfig,
   getServerConfig,
   getStatsConfig,
   getStylesConfig,
+  getTypeScriptConfig,
 } from '../webpack/configs';
 import { webpackStatsLogger } from '../webpack/utils/stats';
 import { Schema as ServerBuilderOptions } from './schema';
 
-// If success is true, outputPath should be set.
-export type ServerBuilderOutput = json.JsonObject & BuilderOutput & {
-  baseOutputPath: string;
-  outputPaths: string[];
-  /**
-   * @deprecated in version 9. Use 'outputPaths' instead.
-   */
-  outputPath: string;
-};
+/**
+ * @experimental Direct usage of this type is considered experimental.
+ */
+export type ServerBuilderOutput = json.JsonObject &
+  BuilderOutput & {
+    baseOutputPath: string;
+    outputPaths: string[];
+    /**
+     * @deprecated in version 9. Use 'outputPaths' instead.
+     */
+    outputPath: string;
+  };
 
 export { ServerBuilderOptions };
 
+/**
+ * @experimental Direct usage of this function is considered experimental.
+ */
 export function execute(
   options: ServerBuilderOptions,
   context: BuilderContext,
@@ -53,7 +60,7 @@ export function execute(
   const root = context.workspaceRoot;
 
   // Check Angular version.
-  assertCompatibleAngularVersion(root, context.logger);
+  assertCompatibleAngularVersion(root);
 
   const tsConfig = readTsconfig(options.tsConfig, root);
   const target = tsConfig.options.target || ScriptTarget.ES5;
@@ -62,11 +69,13 @@ export function execute(
 
   if (typeof options.bundleDependencies === 'string') {
     options.bundleDependencies = options.bundleDependencies === 'all';
-    context.logger.warn(`Option 'bundleDependencies' string value is deprecated since version 9. Use a boolean value instead.`);
+    context.logger.warn(
+      `Option 'bundleDependencies' string value is deprecated since version 9. Use a boolean value instead.`,
+    );
   }
 
   if (!options.bundleDependencies && tsConfig.options.enableIvy) {
-    // tslint:disable-next-line: no-implicit-dependencies
+    // eslint-disable-next-line import/no-extraneous-dependencies
     const { __processed_by_ivy_ngcc__, main = '' } = require('@angular/core/package.json');
     if (
       !__processed_by_ivy_ngcc__ ||
@@ -91,8 +100,8 @@ export function execute(
           }
         },
       }).pipe(
-        concatMap(async output => {
-          const { emittedFiles = [], webpackStats } = output;
+        concatMap(async (output) => {
+          const { emittedFiles = [], outputPath, webpackStats } = output;
           if (!webpackStats) {
             throw new Error('Webpack stats build result is required.');
           }
@@ -108,8 +117,7 @@ export function execute(
               baseOutputPath,
               Array.from(outputPaths.values()),
               [],
-              // tslint:disable-next-line: no-non-null-assertion
-              webpackStats.outputPath!,
+              outputPath,
               target <= ScriptTarget.ES5,
               options.i18nMissingTranslation,
             );
@@ -121,7 +129,7 @@ export function execute(
         }),
       );
     }),
-    map(output => {
+    map((output) => {
       if (!output.success) {
         return output as ServerBuilderOutput;
       }
@@ -136,9 +144,7 @@ export function execute(
   );
 }
 
-export default createBuilder<json.JsonObject & ServerBuilderOptions, ServerBuilderOutput>(
-  execute,
-);
+export default createBuilder<json.JsonObject & ServerBuilderOptions, ServerBuilderOutput>(execute);
 
 async function initialize(
   options: ServerBuilderOptions,
@@ -157,12 +163,12 @@ async function initialize(
       platform: 'server',
     } as NormalizedBrowserBuilderSchema,
     context,
-    wco => [
+    (wco) => [
       getCommonConfig(wco),
       getServerConfig(wco),
       getStylesConfig(wco),
       getStatsConfig(wco),
-      getAotConfig(wco),
+      getTypeScriptConfig(wco),
     ],
   );
 
@@ -172,10 +178,7 @@ async function initialize(
   }
 
   if (options.deleteOutputPath) {
-    deleteOutputDir(
-      context.workspaceRoot,
-      originalOutputPath,
-    );
+    deleteOutputDir(context.workspaceRoot, originalOutputPath);
   }
 
   return { config: transformedConfig || config, i18n };

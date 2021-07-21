@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 const fs = require('fs');
 const path = require('path');
 const {
@@ -54,7 +55,7 @@ class FetchingJSONSchemaStore extends JSONSchemaStore {
   }
 
   async fetch(address) {
-    const URL = require("url");
+    const URL = require('url');
     const url = URL.parse(address);
     let content = null;
     if (url.protocol === 'ng-cli:') {
@@ -62,7 +63,7 @@ class FetchingJSONSchemaStore extends JSONSchemaStore {
       content = fs.readFileSync(filePath, 'utf-8').trim();
     } else if (url.hostname) {
       try {
-        const fetch = require("node-fetch");
+        const fetch = require('node-fetch');
         const response = await fetch(address);
         content = response.text();
       } catch (e) {
@@ -89,15 +90,14 @@ class FetchingJSONSchemaStore extends JSONSchemaStore {
 
     content = appendDeprecatedDescription(content);
 
-    return parseJSON(content, "JSON Schema", address);
+    return parseJSON(content, 'JSON Schema', address);
   }
 }
 
-
 /**
  * Create the TS file from the schema, and overwrite the outPath (or log).
- * @param {string} inPath 
- * @param {string} outPath 
+ * @param {string} inPath
+ * @param {string} outPath
  */
 async function main(inPath, outPath) {
   const content = await generate(inPath);
@@ -111,7 +111,6 @@ async function main(inPath, outPath) {
   outPath = path.resolve(buildWorkspaceDirectory, outPath);
   fs.writeFileSync(outPath, content, 'utf-8');
 }
-
 
 async function generate(inPath) {
   // Best description of how to use the API was found at
@@ -171,7 +170,7 @@ if (require.main === module) {
 
   main(argv[0], argv[1])
     .then(() => process.exit(0))
-    .catch(err => {
+    .catch((err) => {
       console.error('An error happened:');
       console.error(err);
       process.exit(127);

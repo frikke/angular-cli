@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { EmptyTree } from '@angular-devkit/schematics';
 import { SchematicTestRunner, UnitTestTree } from '@angular-devkit/schematics/testing';
 
@@ -40,7 +41,9 @@ describe('Migration of tslint to version 6', () => {
     };
     tree.create(TSLINT_PATH, JSON.stringify(config, null, 2));
 
-    const newTree = await schematicRunner.runSchematicAsync('tslint-add-deprecation-rule', {}, tree).toPromise();
+    const newTree = await schematicRunner
+      .runSchematicAsync('tslint-add-deprecation-rule', {}, tree)
+      .toPromise();
     const { rules } = JSON.parse(newTree.readContent(TSLINT_PATH));
     expect(rules['deprecation'].severity).toBe('warning');
   });
@@ -57,7 +60,9 @@ describe('Migration of tslint to version 6', () => {
     };
     tree.create(TSLINT_PATH, JSON.stringify(config, null, 2));
 
-    const newTree = await schematicRunner.runSchematicAsync('tslint-add-deprecation-rule', {}, tree).toPromise();
+    const newTree = await schematicRunner
+      .runSchematicAsync('tslint-add-deprecation-rule', {}, tree)
+      .toPromise();
     const { rules } = JSON.parse(newTree.readContent(TSLINT_PATH));
     expect(rules['deprecation']).toBe(false);
   });
@@ -76,7 +81,9 @@ describe('Migration of tslint to version 6', () => {
     };
     tree.create(TSLINT_PATH, JSON.stringify(config, null, 2));
 
-    const newTree = await schematicRunner.runSchematicAsync('tslint-add-deprecation-rule', {}, tree).toPromise();
+    const newTree = await schematicRunner
+      .runSchematicAsync('tslint-add-deprecation-rule', {}, tree)
+      .toPromise();
     const { rules } = JSON.parse(newTree.readContent(TSLINT_PATH));
     expect(rules['deprecation'].severity).toBe('error');
   });

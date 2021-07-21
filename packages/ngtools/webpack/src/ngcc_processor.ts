@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
@@ -9,12 +9,12 @@
 import { LogLevel, Logger, process as mainNgcc } from '@angular/compiler-cli/ngcc';
 import { spawnSync } from 'child_process';
 import { createHash } from 'crypto';
-import { Resolver, ResolverFactory } from 'enhanced-resolve';
+import { Resolver } from 'enhanced-resolve';
 import { accessSync, constants, existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import * as path from 'path';
 import * as ts from 'typescript';
-import { InputFileSystem } from 'webpack';
 import { time, timeEnd } from './benchmark';
+import { InputFileSystem } from './ivy/system';
 
 // We cannot create a plugin for this, because NGTSC requires addition type
 // information which ngcc creates when processing a package which was compiled with NGC.
@@ -30,7 +30,6 @@ export class NgccProcessor {
   private _processedModules = new Set<string>();
   private _logger: NgccLogger;
   private _nodeModulesDirectory: string;
-  private _resolver: Resolver;
 
   constructor(
     private readonly propertiesToConsider: string[],
@@ -39,19 +38,10 @@ export class NgccProcessor {
     private readonly basePath: string,
     private readonly tsConfigPath: string,
     private readonly inputFileSystem: InputFileSystem,
-    private readonly symlinks: boolean | undefined,
+    private readonly resolver: Resolver,
   ) {
     this._logger = new NgccLogger(this.compilationWarnings, this.compilationErrors);
     this._nodeModulesDirectory = this.findNodeModulesDirectory(this.basePath);
-
-    this._resolver = ResolverFactory.createResolver({
-      // NOTE: @types/webpack InputFileSystem is missing some methods
-      // tslint:disable-next-line: no-any
-      fileSystem: this.inputFileSystem as any,
-      extensions: ['.json'],
-      useSyncFileSystemCalls: true,
-      symlinks,
-    });
   }
 
   /** Process the entire node modules tree. */
@@ -131,14 +121,14 @@ export class NgccProcessor {
       process.execPath,
       [
         require.resolve('@angular/compiler-cli/ngcc/main-ngcc.js'),
-        '--source', /** basePath */
+        '--source' /** basePath */,
         this._nodeModulesDirectory,
-        '--properties', /** propertiesToConsider */
+        '--properties' /** propertiesToConsider */,
         ...this.propertiesToConsider,
-        '--first-only', /** compileAllFormats */
-        '--create-ivy-entry-points', /** createNewEntryPointFormats */
+        '--first-only' /** compileAllFormats */,
+        '--create-ivy-entry-points' /** createNewEntryPointFormats */,
         '--async',
-        '--tsconfig', /** tsConfigPath */
+        '--tsconfig' /** tsConfigPath */,
         this.tsConfigPath,
         '--use-program-dependencies',
       ],
@@ -173,8 +163,11 @@ export class NgccProcessor {
     resolvedModule: ts.ResolvedModule | ts.ResolvedTypeReferenceDirective,
   ): void {
     const resolvedFileName = resolvedModule.resolvedFileName;
-    if (!resolvedFileName || moduleName.startsWith('.')
-      || this._processedModules.has(resolvedFileName)) {
+    if (
+      !resolvedFileName ||
+      moduleName.startsWith('.') ||
+      this._processedModules.has(resolvedFileName)
+    ) {
       // Skip when module is unknown, relative or NGCC compiler is not found or already processed.
       return;
     }
@@ -204,10 +197,7 @@ export class NgccProcessor {
 
     // Purge this file from cache, since NGCC add new mainFields. Ex: module_ivy_ngcc
     // which are unknown in the cached file.
-    if (this.inputFileSystem.purge) {
-      // tslint:disable-next-line: no-any
-      (this.inputFileSystem.purge as any)(packageJsonPath);
-    }
+    this.inputFileSystem.purge?.(packageJsonPath);
 
     this._processedModules.add(resolvedFileName);
   }
@@ -221,7 +211,11 @@ export class NgccProcessor {
    */
   private tryResolvePackage(moduleName: string, resolvedFileName: string): string | undefined {
     try {
-      const resolvedPath = this._resolver.resolveSync({}, resolvedFileName, `${moduleName}/package.json`);
+      const resolvedPath = this.resolver.resolveSync(
+        {},
+        resolvedFileName,
+        `${moduleName}/package.json`,
+      );
 
       return resolvedPath || undefined;
     } catch {
@@ -254,9 +248,10 @@ class NgccLogger implements Logger {
   constructor(
     private readonly compilationWarnings: (Error | string)[],
     private readonly compilationErrors: (Error | string)[],
-  ) { }
+  ) {}
 
-  debug(..._args: string[]) { }
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  debug() {}
 
   info(...args: string[]) {
     // Log to stderr because it's a progress-like info message.

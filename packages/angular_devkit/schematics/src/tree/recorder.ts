@@ -1,14 +1,14 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { ContentHasMutatedException } from '../exception/exception';
 import { UpdateBuffer } from '../utility/update-buffer';
 import { FileEntry, UpdateRecorder } from './interface';
-
 
 export class UpdateRecorderBase implements UpdateRecorder {
   protected _path: string;
@@ -27,18 +27,20 @@ export class UpdateRecorderBase implements UpdateRecorder {
     const c2 = entry.content.byteLength > 2 && entry.content.readUInt8(2);
 
     // Check if we're BOM.
-    if (c0 == 0xEF && c1 == 0xBB && c2 == 0xBF) {
+    if (c0 == 0xef && c1 == 0xbb && c2 == 0xbf) {
       return new UpdateRecorderBom(entry);
-    } else if (c0 === 0xFF && c1 == 0xFE) {
+    } else if (c0 === 0xff && c1 == 0xfe) {
       return new UpdateRecorderBom(entry);
-    } else if (c0 === 0xFE && c1 == 0xFF) {
+    } else if (c0 === 0xfe && c1 == 0xff) {
       return new UpdateRecorderBom(entry);
     }
 
     return new UpdateRecorderBase(entry);
   }
 
-  get path() { return this._path; }
+  get path() {
+    return this._path;
+  }
 
   // These just record changes.
   insertLeft(index: number, content: Buffer | string): UpdateRecorder {
@@ -68,21 +70,20 @@ export class UpdateRecorderBase implements UpdateRecorder {
   }
 }
 
-
 export class UpdateRecorderBom extends UpdateRecorderBase {
   constructor(entry: FileEntry, private _delta = 1) {
     super(entry);
   }
 
-  insertLeft(index: number, content: Buffer | string) {
+  override insertLeft(index: number, content: Buffer | string) {
     return super.insertLeft(index + this._delta, content);
   }
 
-  insertRight(index: number, content: Buffer | string) {
+  override insertRight(index: number, content: Buffer | string) {
     return super.insertRight(index + this._delta, content);
   }
 
-  remove(index: number, length: number) {
+  override remove(index: number, length: number) {
     return super.remove(index + this._delta, length);
   }
 }

@@ -48,9 +48,7 @@ ts_library(
     module_root = "src/index.d.ts",
     deps = [
         "//packages/angular_devkit/architect",
-        "//packages/angular_devkit/core",
         "@npm//@types/node",
-        "@npm//@types/webpack",
         "@npm//@types/webpack-dev-server",
         "@npm//rxjs",
         "@npm//webpack",
@@ -88,7 +86,6 @@ ts_library(
         "@npm//@angular/platform-browser-dynamic",
         "@npm//@types/node-fetch",
         "@npm//node-fetch",
-        "@npm//raw-loader",
         "@npm//tslib",
         "@npm//zone.js",
     ],

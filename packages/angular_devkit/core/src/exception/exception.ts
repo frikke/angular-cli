@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
@@ -12,24 +12,32 @@ export class BaseException extends Error {
   }
 }
 
-
 export class UnknownException extends BaseException {
-  constructor(message: string) { super(message); }
+  constructor(message: string) {
+    super(message);
+  }
 }
-
 
 // Exceptions
 export class FileDoesNotExistException extends BaseException {
-  constructor(path: string) { super(`Path "${path}" does not exist.`); }
+  constructor(path: string) {
+    super(`Path "${path}" does not exist.`);
+  }
 }
 export class FileAlreadyExistException extends BaseException {
-  constructor(path: string) { super(`Path "${path}" already exist.`); }
+  constructor(path: string) {
+    super(`Path "${path}" already exist.`);
+  }
 }
 export class PathIsDirectoryException extends BaseException {
-  constructor(path: string) { super(`Path "${path}" is a directory.`); }
+  constructor(path: string) {
+    super(`Path "${path}" is a directory.`);
+  }
 }
 export class PathIsFileException extends BaseException {
-  constructor(path: string) { super(`Path "${path}" is a file.`); }
+  constructor(path: string) {
+    super(`Path "${path}" is a file.`);
+  }
 }
 export class ContentHasMutatedException extends BaseException {
   constructor(path: string) {
@@ -37,7 +45,9 @@ export class ContentHasMutatedException extends BaseException {
   }
 }
 export class InvalidUpdateRecordException extends BaseException {
-  constructor() { super(`Invalid record instance.`); }
+  constructor() {
+    super(`Invalid record instance.`);
+  }
 }
 export class MergeConflictException extends BaseException {
   constructor(path: string) {
@@ -46,9 +56,13 @@ export class MergeConflictException extends BaseException {
 }
 
 export class UnimplementedException extends BaseException {
-  constructor() { super('This function is unimplemented.'); }
+  constructor() {
+    super('This function is unimplemented.');
+  }
 }
 
 export class UnsupportedPlatformException extends BaseException {
-  constructor() { super('This platform is not supported by this code path.'); }
+  constructor() {
+    super('This platform is not supported by this code path.');
+  }
 }

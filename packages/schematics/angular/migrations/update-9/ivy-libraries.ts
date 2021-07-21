@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
@@ -20,7 +20,7 @@ import { Builders } from '../../utility/workspace-models';
  * - Create a prod tsconfig for which disables Ivy and enables VE compilations.
  */
 export function updateLibraries(): Rule {
-  return updateWorkspace(workspace => {
+  return updateWorkspace((workspace) => {
     const followupRules: Rule[] = [];
 
     for (const [, project] of workspace.projects) {

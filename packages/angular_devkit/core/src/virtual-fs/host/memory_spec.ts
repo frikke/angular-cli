@@ -1,19 +1,18 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-// tslint:disable:no-implicit-dependencies
-// tslint:disable:no-non-null-assertion
-import { fragment, normalize } from '@angular-devkit/core';
+
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+import { fragment, normalize } from '../path';
 import { stringToFileBuffer } from './buffer';
 import { SimpleMemoryHost } from './memory';
 import { SyncDelegateHost } from './sync';
 
 describe('SimpleMemoryHost', () => {
-
   it('can watch', () => {
     const host = new SyncDelegateHost(new SimpleMemoryHost());
 
@@ -24,10 +23,10 @@ describe('SimpleMemoryHost', () => {
     let noRecursiveFileCalled = 0;
     let diffFile = 0;
 
-    host.watch(normalize('/sub'), { recursive: true }) !.subscribe(() => recursiveCalled++);
-    host.watch(normalize('/sub')) !.subscribe(() => noRecursiveCalled++);
-    host.watch(normalize('/sub/file2')) !.subscribe(() => noRecursiveFileCalled++);
-    host.watch(normalize('/sub/file3')) !.subscribe(() => diffFile++);
+    host.watch(normalize('/sub'), { recursive: true })!.subscribe(() => recursiveCalled++);
+    host.watch(normalize('/sub'))!.subscribe(() => noRecursiveCalled++);
+    host.watch(normalize('/sub/file2'))!.subscribe(() => noRecursiveFileCalled++);
+    host.watch(normalize('/sub/file3'))!.subscribe(() => diffFile++);
 
     host.write(normalize('/sub/file2'), stringToFileBuffer(''));
 
@@ -105,10 +104,12 @@ describe('SimpleMemoryHost', () => {
     host.write(normalize('/sub/sub1/file3'), buffer);
     host.write(normalize('/file4'), buffer);
 
-    expect(host.list(normalize('/sub')))
-      .toEqual([fragment('file1'), fragment('file2'), fragment('sub1')]);
-    expect(host.list(normalize('/')))
-      .toEqual([fragment('sub'), fragment('file4')]);
+    expect(host.list(normalize('/sub'))).toEqual([
+      fragment('file1'),
+      fragment('file2'),
+      fragment('sub1'),
+    ]);
+    expect(host.list(normalize('/'))).toEqual([fragment('sub'), fragment('file4')]);
     expect(host.list(normalize('/inexistent'))).toEqual([]);
   });
 

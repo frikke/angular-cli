@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { readFileSync } from 'fs';
 import {
   TransformJavascriptOptions,
@@ -14,12 +15,8 @@ import {
 } from '../helpers/transform-javascript';
 import { getPrefixClassesTransformer, testPrefixClasses } from '../transforms/prefix-classes';
 import { getPrefixFunctionsTransformer } from '../transforms/prefix-functions';
-import {
-  createScrubFileTransformerFactory,
-  testScrubFile,
-} from '../transforms/scrub-file';
+import { createScrubFileTransformerFactory, testScrubFile } from '../transforms/scrub-file';
 import { getWrapEnumsTransformer } from '../transforms/wrap-enums';
-
 
 // Angular packages are known to have no side effects.
 const knownSideEffectFreeAngularModules = [
@@ -40,12 +37,6 @@ const knownSideEffectFreeAngularModules = [
   /[\\/]node_modules[\\/]rxjs[\\/]/,
 ];
 
-// Factories created by AOT are known to have no side effects.
-const ngFactories = [
-  '.ngfactory.js',
-  '.ngstyle.js',
-];
-
 // Known locations for the source files of @angular/core.
 const coreFilesRegex = /[\\/]node_modules[\\/]@angular[\\/]core[\\/][f]?esm2015[\\/]/;
 
@@ -59,8 +50,7 @@ function isKnownSideEffectFree(filePath: string) {
     return false;
   }
 
-  return ngFactories.some((s) => filePath.endsWith(s)) ||
-    knownSideEffectFreeAngularModules.some((re) => re.test(filePath));
+  return knownSideEffectFreeAngularModules.some((re) => re.test(filePath));
 }
 
 export interface BuildOptimizerOptions {

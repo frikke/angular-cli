@@ -1,15 +1,14 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-// tslint:disable:no-implicit-dependencies
+
 import { logging } from '@angular-devkit/core';
 import * as fs from 'fs';
 import * as path from 'path';
-
 
 function _runTemplate(inputPath: string, outputPath: string, logger: logging.Logger) {
   inputPath = path.resolve(__dirname, inputPath);
@@ -27,7 +26,7 @@ function _runTemplate(inputPath: string, outputPath: string, logger: logging.Log
   fs.writeFileSync(outputPath, content, 'utf-8');
 }
 
-export default async function(_options: {}, logger: logging.Logger): Promise<number> {
+export default async function (_options: {}, logger: logging.Logger): Promise<number> {
   _runTemplate('./templates/readme', '../README.md', logger);
   _runTemplate('./templates/contributing', '../CONTRIBUTING.md', logger);
 

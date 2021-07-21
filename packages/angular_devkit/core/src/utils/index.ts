@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import * as tags from './literals';
 import * as strings from './strings';
 
@@ -17,13 +18,16 @@ export * from './lang';
 
 export { tags, strings };
 
-export type DeepReadonly<T> =
-  T extends (infer R)[] ? DeepReadonlyArray<R> :
-    T extends Function ? T :
-      T extends object ? DeepReadonlyObject<T> :
-        T;
+export type DeepReadonly<T> = T extends (infer R)[]
+  ? DeepReadonlyArray<R>
+  : T extends Function
+  ? T
+  : T extends object
+  ? DeepReadonlyObject<T>
+  : T;
 
 // This should be ReadonlyArray but it has implications.
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface DeepReadonlyArray<T> extends Array<DeepReadonly<T>> {}
 
 export type DeepReadonlyObject<T> = {

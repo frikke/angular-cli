@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -16,7 +17,10 @@ export interface ApplicationPresetOptions {
     translation?: unknown;
   };
 
-  angularLinker?: boolean;
+  angularLinker?: {
+    shouldLink: boolean;
+    jitMode: boolean;
+  };
 
   forceES5?: boolean;
   forceAsyncTransformation?: boolean;
@@ -27,7 +31,8 @@ export interface ApplicationPresetOptions {
 type I18nDiagnostics = import('@angular/localize/src/tools/src/diagnostics').Diagnostics;
 function createI18nDiagnostics(reporter: DiagnosticReporter | undefined): I18nDiagnostics {
   // Babel currently is synchronous so import cannot be used
-  const diagnostics: I18nDiagnostics = new (require('@angular/localize/src/tools/src/diagnostics').Diagnostics)();
+  const diagnostics: I18nDiagnostics =
+    new (require('@angular/localize/src/tools/src/diagnostics').Diagnostics)();
 
   if (!reporter) {
     return diagnostics;
@@ -124,22 +129,28 @@ export default function (api: unknown, options: ApplicationPresetOptions) {
   const plugins = [];
   let needRuntimeTransform = false;
 
-  if (options.angularLinker) {
+  if (options.angularLinker?.shouldLink) {
     // Babel currently is synchronous so import cannot be used
-    const {
-      createEs2015LinkerPlugin,
-    } = require('@angular/compiler-cli/linker/babel');
+    const { createEs2015LinkerPlugin } =
+      require('@angular/compiler-cli/linker/babel') as typeof import('@angular/compiler-cli/linker/babel');
 
-    plugins.push(createEs2015LinkerPlugin({
-      logger: createNgtscLogger(options.diagnosticReporter),
-      fileSystem: {
-        resolve: path.resolve,
-        exists: fs.existsSync,
-        dirname: path.dirname,
-        relative: path.relative,
-        readFile: fs.readFileSync,
-      },
-    }));
+    plugins.push(
+      createEs2015LinkerPlugin({
+        linkerJitMode: options.angularLinker.jitMode,
+        // This is a workaround until https://github.com/angular/angular/issues/42769 is fixed.
+        sourceMapping: false,
+        logger: createNgtscLogger(options.diagnosticReporter),
+        fileSystem: {
+          resolve: path.resolve,
+          exists: fs.existsSync,
+          dirname: path.dirname,
+          relative: path.relative,
+          readFile: fs.readFileSync,
+          // Node.JS types don't overlap the Compiler types.
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any,
+      }),
+    );
   }
 
   if (options.forceES5) {
@@ -170,7 +181,10 @@ export default function (api: unknown, options: ApplicationPresetOptions) {
 
   if (options.forceAsyncTransformation) {
     // Always transform async/await to support Zone.js
-    plugins.push(require('@babel/plugin-transform-async-to-generator').default);
+    plugins.push(
+      require('@babel/plugin-transform-async-to-generator').default,
+      require('@babel/plugin-proposal-async-generator-functions').default,
+    );
     needRuntimeTransform = true;
   }
 

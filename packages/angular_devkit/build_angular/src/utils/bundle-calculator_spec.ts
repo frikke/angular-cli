@@ -1,27 +1,28 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-import * as webpack from 'webpack';
+
+import { StatsCompilation } from 'webpack';
 import { Budget, Type } from '../browser/schema';
 import { ThresholdSeverity, checkBudgets } from './bundle-calculator';
 import { ProcessBundleResult } from './process-bundle';
 
 const KB = 1024;
 
-// tslint:disable-next-line: no-big-function
 describe('bundle-calculator', () => {
-  // tslint:disable-next-line: no-big-function
   describe('checkBudgets()', () => {
     it('yields maximum budgets exceeded', () => {
-      const budgets: Budget[] = [{
-        type: Type.Any,
-        maximumError: '1kb',
-      }];
-      const stats = {
+      const budgets: Budget[] = [
+        {
+          type: Type.Any,
+          maximumError: '1kb',
+        },
+      ];
+      const stats = ({
         chunks: [],
         assets: [
           {
@@ -33,7 +34,7 @@ describe('bundle-calculator', () => {
             size: 0.5 * KB,
           },
         ],
-      } as unknown as webpack.Stats.ToJsonOutput;
+      } as unknown) as StatsCompilation;
 
       const failures = Array.from(checkBudgets(budgets, stats, [] /* processResults */));
 
@@ -45,11 +46,13 @@ describe('bundle-calculator', () => {
     });
 
     it('yields minimum budgets exceeded', () => {
-      const budgets: Budget[] = [{
-        type: Type.Any,
-        minimumError: '1kb',
-      }];
-      const stats = {
+      const budgets: Budget[] = [
+        {
+          type: Type.Any,
+          minimumError: '1kb',
+        },
+      ];
+      const stats = ({
         chunks: [],
         assets: [
           {
@@ -61,7 +64,7 @@ describe('bundle-calculator', () => {
             size: 0.5 * KB,
           },
         ],
-      } as unknown as webpack.Stats.ToJsonOutput;
+      } as unknown) as StatsCompilation;
 
       const failures = Array.from(checkBudgets(budgets, stats, [] /* processResults */));
 
@@ -73,16 +76,19 @@ describe('bundle-calculator', () => {
     });
 
     it('yields exceeded bundle budgets', () => {
-      const budgets: Budget[] = [{
-        type: Type.Bundle,
-        name: 'foo',
-        maximumError: '1kb',
-      }];
-      const stats = {
+      const budgets: Budget[] = [
+        {
+          type: Type.Bundle,
+          name: 'foo',
+          maximumError: '1kb',
+        },
+      ];
+      const stats = ({
         chunks: [
           {
-            names: [ 'foo' ],
-            files: [ 'foo.js', 'bar.js' ],
+            id: 0,
+            names: ['foo'],
+            files: ['foo.js', 'bar.js'],
           },
         ],
         assets: [
@@ -95,7 +101,7 @@ describe('bundle-calculator', () => {
             size: 0.75 * KB,
           },
         ],
-      } as unknown as webpack.Stats.ToJsonOutput;
+      } as unknown) as StatsCompilation;
 
       const failures = Array.from(checkBudgets(budgets, stats, [] /* processResults */));
 
@@ -107,21 +113,24 @@ describe('bundle-calculator', () => {
     });
 
     it('yields exceeded differential bundle budgets', () => {
-      const budgets: Budget[] = [{
-        type: Type.Bundle,
-        name: 'foo',
-        maximumError: '1kb',
-      }];
-      const stats = {
+      const budgets: Budget[] = [
+        {
+          type: Type.Bundle,
+          name: 'foo',
+          maximumError: '1kb',
+        },
+      ];
+      const stats = ({
         chunks: [
           {
             id: 0,
-            names: [ 'foo' ],
-            files: [ 'foo.js', 'bar.js' ],
+            names: ['foo'],
+            files: ['foo.js', 'bar.js'],
           },
         ],
         assets: [],
-      } as unknown as webpack.Stats.ToJsonOutput;
+      } as unknown) as StatsCompilation;
+
       const processResults: ProcessBundleResult[] = [
         {
           name: '0',
@@ -150,21 +159,23 @@ describe('bundle-calculator', () => {
     });
 
     it('does *not* yield a combined differential bundle budget', () => {
-      const budgets: Budget[] = [{
-        type: Type.Bundle,
-        name: 'foo',
-        maximumError: '1kb',
-      }];
-      const stats = {
+      const budgets: Budget[] = [
+        {
+          type: Type.Bundle,
+          name: 'foo',
+          maximumError: '1kb',
+        },
+      ];
+      const stats = ({
         chunks: [
           {
             id: 0,
-            names: [ 'foo' ],
-            files: [ 'foo.js', 'bar.js' ],
+            names: ['foo'],
+            files: ['foo.js', 'bar.js'],
           },
         ],
         assets: [],
-      } as unknown as webpack.Stats.ToJsonOutput;
+      } as unknown) as StatsCompilation;
       const processResults: ProcessBundleResult[] = [
         {
           name: '0',
@@ -188,15 +199,19 @@ describe('bundle-calculator', () => {
     });
 
     it('yields exceeded initial budget', () => {
-      const budgets: Budget[] = [{
-        type: Type.Initial,
-        maximumError: '1kb',
-      }];
-      const stats = {
+      const budgets: Budget[] = [
+        {
+          type: Type.Initial,
+          maximumError: '1kb',
+        },
+      ];
+      const stats = ({
         chunks: [
           {
+            id: 0,
             initial: true,
-            files: [ 'foo.js', 'bar.js' ],
+            names: ['foo'],
+            files: ['foo.js', 'bar.js'],
           },
         ],
         assets: [
@@ -209,7 +224,7 @@ describe('bundle-calculator', () => {
             size: 0.75 * KB,
           },
         ],
-      } as unknown as webpack.Stats.ToJsonOutput;
+      } as unknown) as StatsCompilation;
 
       const failures = Array.from(checkBudgets(budgets, stats, [] /* processResults */));
 
@@ -221,26 +236,29 @@ describe('bundle-calculator', () => {
     });
 
     it('yields exceeded differential initial budget', () => {
-      const budgets: Budget[] = [{
-        type: Type.Initial,
-        maximumError: '1kb',
-      }];
-      const stats = {
+      const budgets: Budget[] = [
+        {
+          type: Type.Initial,
+          maximumError: '1kb',
+        },
+      ];
+      const stats = ({
         chunks: [
           {
             id: 0,
             initial: true,
-            files: [ 'foo.js', 'bar.js' ],
+            names: ['foo'],
+            files: ['foo.js', 'bar.js'],
           },
         ],
         assets: [],
-      } as unknown as webpack.Stats.ToJsonOutput;
+      } as unknown) as StatsCompilation;
       const processResults: ProcessBundleResult[] = [
         {
           name: '0',
           // Individual builds are under budget, but combined they are over.
           original: {
-            filename: 'initial-es2015.js',
+            filename: 'initial-es2017.js',
             size: 1.25 * KB,
           },
           downlevel: {
@@ -255,7 +273,7 @@ describe('bundle-calculator', () => {
       expect(failures.length).toBe(2);
       expect(failures).toContain({
         severity: ThresholdSeverity.Error,
-        message: jasmine.stringMatching('bundle initial-es2015 exceeded maximum budget.'),
+        message: jasmine.stringMatching('bundle initial-es2017 exceeded maximum budget.'),
       });
       expect(failures).toContain({
         severity: ThresholdSeverity.Error,
@@ -264,20 +282,23 @@ describe('bundle-calculator', () => {
     });
 
     it('does *not* yield a combined differential initial budget', () => {
-      const budgets: Budget[] = [{
-        type: Type.Initial,
-        maximumError: '1kb',
-      }];
-      const stats = {
+      const budgets: Budget[] = [
+        {
+          type: Type.Initial,
+          maximumError: '1kb',
+        },
+      ];
+      const stats = ({
         chunks: [
           {
             id: 0,
             initial: true,
-            files: [ 'foo.js', 'bar.js' ],
+            names: ['foo'],
+            files: ['foo.js', 'bar.js'],
           },
         ],
         assets: [],
-      } as unknown as webpack.Stats.ToJsonOutput;
+      } as unknown) as StatsCompilation;
       const processResults: ProcessBundleResult[] = [
         {
           name: '0',
@@ -301,15 +322,19 @@ describe('bundle-calculator', () => {
     });
 
     it('yields exceeded total scripts budget', () => {
-      const budgets: Budget[] = [{
-        type: Type.AllScript,
-        maximumError: '1kb',
-      }];
-      const stats = {
+      const budgets: Budget[] = [
+        {
+          type: Type.AllScript,
+          maximumError: '1kb',
+        },
+      ];
+      const stats = ({
         chunks: [
           {
+            id: 0,
             initial: true,
-            files: [ 'foo.js', 'bar.js' ],
+            names: ['foo'],
+            files: ['foo.js', 'bar.js'],
           },
         ],
         assets: [
@@ -326,7 +351,7 @@ describe('bundle-calculator', () => {
             size: 1.5 * KB,
           },
         ],
-      } as unknown as webpack.Stats.ToJsonOutput;
+      } as unknown) as StatsCompilation;
 
       const failures = Array.from(checkBudgets(budgets, stats, [] /* processResults */));
 
@@ -338,15 +363,19 @@ describe('bundle-calculator', () => {
     });
 
     it('yields exceeded total budget', () => {
-      const budgets: Budget[] = [{
-        type: Type.All,
-        maximumError: '1kb',
-      }];
-      const stats = {
+      const budgets: Budget[] = [
+        {
+          type: Type.All,
+          maximumError: '1kb',
+        },
+      ];
+      const stats = ({
         chunks: [
           {
+            id: 0,
             initial: true,
-            files: [ 'foo.js', 'bar.css' ],
+            names: ['foo'],
+            files: ['foo.js', 'bar.css'],
           },
         ],
         assets: [
@@ -359,7 +388,7 @@ describe('bundle-calculator', () => {
             size: 0.75 * KB,
           },
         ],
-      } as unknown as webpack.Stats.ToJsonOutput;
+      } as unknown) as StatsCompilation;
 
       const failures = Array.from(checkBudgets(budgets, stats, [] /* processResults */));
 
@@ -371,15 +400,19 @@ describe('bundle-calculator', () => {
     });
 
     it('skips component style budgets', () => {
-      const budgets: Budget[] = [{
-        type: Type.AnyComponentStyle,
-        maximumError: '1kb',
-      }];
-      const stats = {
+      const budgets: Budget[] = [
+        {
+          type: Type.AnyComponentStyle,
+          maximumError: '1kb',
+        },
+      ];
+      const stats = ({
         chunks: [
           {
+            id: 0,
             initial: true,
-            files: [ 'foo.css', 'bar.js' ],
+            names: ['foo'],
+            files: ['foo.css', 'bar.js'],
           },
         ],
         assets: [
@@ -392,7 +425,7 @@ describe('bundle-calculator', () => {
             size: 0.5 * KB,
           },
         ],
-      } as unknown as webpack.Stats.ToJsonOutput;
+      } as unknown) as StatsCompilation;
 
       const failures = Array.from(checkBudgets(budgets, stats, [] /* processResults */));
 
@@ -400,15 +433,19 @@ describe('bundle-calculator', () => {
     });
 
     it('yields exceeded individual script budget', () => {
-      const budgets: Budget[] = [{
-        type: Type.AnyScript,
-        maximumError: '1kb',
-      }];
-      const stats = {
+      const budgets: Budget[] = [
+        {
+          type: Type.AnyScript,
+          maximumError: '1kb',
+        },
+      ];
+      const stats = ({
         chunks: [
           {
+            id: 0,
             initial: true,
-            files: [ 'foo.js', 'bar.js' ],
+            names: ['foo'],
+            files: ['foo.js', 'bar.js'],
           },
         ],
         assets: [
@@ -421,7 +458,7 @@ describe('bundle-calculator', () => {
             size: 0.5 * KB,
           },
         ],
-      } as unknown as webpack.Stats.ToJsonOutput;
+      } as unknown) as StatsCompilation;
 
       const failures = Array.from(checkBudgets(budgets, stats, [] /* processResults */));
 
@@ -433,15 +470,19 @@ describe('bundle-calculator', () => {
     });
 
     it('yields exceeded individual file budget', () => {
-      const budgets: Budget[] = [{
-        type: Type.Any,
-        maximumError: '1kb',
-      }];
-      const stats = {
+      const budgets: Budget[] = [
+        {
+          type: Type.Any,
+          maximumError: '1kb',
+        },
+      ];
+      const stats = ({
         chunks: [
           {
+            id: 0,
             initial: true,
-            files: [ 'foo.ext', 'bar.ext' ],
+            names: ['foo'],
+            files: ['foo.ext', 'bar.ext'],
           },
         ],
         assets: [
@@ -454,7 +495,7 @@ describe('bundle-calculator', () => {
             size: 0.5 * KB,
           },
         ],
-      } as unknown as webpack.Stats.ToJsonOutput;
+      } as unknown) as StatsCompilation;
 
       const failures = Array.from(checkBudgets(budgets, stats, [] /* processResults */));
 
@@ -466,15 +507,19 @@ describe('bundle-calculator', () => {
     });
 
     it('does *not* yield a combined differential bundle budget for any script', () => {
-      const budgets: Budget[] = [{
-        type: Type.AnyScript,
-        maximumError: '1kb',
-      }];
-      const stats = {
+      const budgets: Budget[] = [
+        {
+          type: Type.AnyScript,
+          maximumError: '1kb',
+        },
+      ];
+      const stats = ({
         chunks: [
           {
+            id: 0,
             initial: true,
-            files: [ 'foo.js' ],
+            names: ['foo'],
+            files: ['foo.js'],
           },
         ],
         assets: [
@@ -483,7 +528,7 @@ describe('bundle-calculator', () => {
             size: 1.25 * KB,
           },
         ],
-      } as unknown as webpack.Stats.ToJsonOutput;
+      } as unknown) as StatsCompilation;
       const processResults: ProcessBundleResult[] = [
         {
           name: '0',
@@ -507,15 +552,19 @@ describe('bundle-calculator', () => {
     });
 
     it('does *not* yield a combined differential bundle budget for all script', () => {
-      const budgets: Budget[] = [{
-        type: Type.AllScript,
-        maximumError: '1kb',
-      }];
-      const stats = {
+      const budgets: Budget[] = [
+        {
+          type: Type.AllScript,
+          maximumError: '1kb',
+        },
+      ];
+      const stats = ({
         chunks: [
           {
+            id: 0,
             initial: true,
-            files: [ 'foo.js' ],
+            names: ['foo'],
+            files: ['foo.js'],
           },
         ],
         assets: [
@@ -524,7 +573,7 @@ describe('bundle-calculator', () => {
             size: 1.25 * KB,
           },
         ],
-      } as unknown as webpack.Stats.ToJsonOutput;
+      } as unknown) as StatsCompilation;
       const processResults: ProcessBundleResult[] = [
         {
           name: '0',
@@ -548,15 +597,19 @@ describe('bundle-calculator', () => {
     });
 
     it('does *not* yield a combined differential bundle budget for total budget', () => {
-      const budgets: Budget[] = [{
-        type: Type.All,
-        maximumError: '1kb',
-      }];
-      const stats = {
+      const budgets: Budget[] = [
+        {
+          type: Type.All,
+          maximumError: '1kb',
+        },
+      ];
+      const stats = ({
         chunks: [
           {
+            id: 0,
             initial: true,
-            files: [ 'foo.js' ],
+            names: ['foo'],
+            files: ['foo.js'],
           },
         ],
         assets: [
@@ -565,7 +618,7 @@ describe('bundle-calculator', () => {
             size: 1.25 * KB,
           },
         ],
-      } as unknown as webpack.Stats.ToJsonOutput;
+      } as unknown) as StatsCompilation;
       const processResults: ProcessBundleResult[] = [
         {
           name: '0',
@@ -589,15 +642,19 @@ describe('bundle-calculator', () => {
     });
 
     it('does *not* yield a combined differential bundle budget for individual file budget', () => {
-      const budgets: Budget[] = [{
-        type: Type.Any,
-        maximumError: '1kb',
-      }];
-      const stats = {
+      const budgets: Budget[] = [
+        {
+          type: Type.Any,
+          maximumError: '1kb',
+        },
+      ];
+      const stats = ({
         chunks: [
           {
+            id: 0,
             initial: true,
-            files: [ 'foo.js' ],
+            names: ['foo'],
+            files: ['foo.js'],
           },
         ],
         assets: [
@@ -606,7 +663,7 @@ describe('bundle-calculator', () => {
             size: 1.25 * KB,
           },
         ],
-      } as unknown as webpack.Stats.ToJsonOutput;
+      } as unknown) as StatsCompilation;
       const processResults: ProcessBundleResult[] = [
         {
           name: '0',

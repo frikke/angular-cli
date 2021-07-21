@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { existsSync } from 'fs';
 import * as glob from 'glob';
 import { basename, dirname, extname, join } from 'path';
@@ -12,20 +13,17 @@ import { isDirectory } from '../utils/is-directory';
 
 // go through all patterns and find unique list of files
 export function findTests(patterns: string[], cwd: string, workspaceRoot: string): string[] {
-  return patterns.reduce(
-    (files, pattern) => {
-      const relativePathToMain = cwd.replace(workspaceRoot, '').substr(1); // remove leading slash
-      const tests = findMatchingTests(pattern, cwd, relativePathToMain);
-      tests.forEach(file => {
-        if (!files.includes(file)) {
-          files.push(file);
-        }
-      });
+  return patterns.reduce((files, pattern) => {
+    const relativePathToMain = cwd.replace(workspaceRoot, '').substr(1); // remove leading slash
+    const tests = findMatchingTests(pattern, cwd, relativePathToMain);
+    tests.forEach((file) => {
+      if (!files.includes(file)) {
+        files.push(file);
+      }
+    });
 
-      return files;
-    },
-    [] as string[],
-  );
+    return files;
+  }, [] as string[]);
 }
 
 function findMatchingTests(pattern: string, cwd: string, relativePathToMain: string): string[] {

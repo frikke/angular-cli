@@ -1,18 +1,14 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-// tslint:disable:no-implicit-dependencies
-// tslint:disable:no-non-null-assertion
+
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { Path, virtualFs } from '@angular-devkit/core';
-import {
-  HostTree,
-  MergeStrategy,
-  partitionApplyMerge,
-} from '@angular-devkit/schematics';
+import { HostTree, MergeStrategy, partitionApplyMerge } from '@angular-devkit/schematics';
 import { of as observableOf } from 'rxjs';
 import { Rule, SchematicContext, Source } from '../engine/interface';
 import { Tree } from '../tree/interface';
@@ -21,16 +17,14 @@ import { apply, applyToSubtree, chain } from './base';
 import { callRule, callSource } from './call';
 import { move } from './move';
 
-
-const context: SchematicContext = {
+const context: SchematicContext = ({
   engine: null,
   debug: false,
   strategy: MergeStrategy.Default,
-} as {} as SchematicContext;
-
+} as {}) as SchematicContext;
 
 describe('chain', () => {
-  it('works with simple rules', done => {
+  it('works with simple rules', (done) => {
     const rulesCalled: Tree[] = [];
 
     const tree0 = empty();
@@ -38,13 +32,13 @@ describe('chain', () => {
     const tree2 = empty();
     const tree3 = empty();
 
-    const rule0: Rule = (tree: Tree) => (rulesCalled[0] = tree, tree1);
-    const rule1: Rule = (tree: Tree) => (rulesCalled[1] = tree, tree2);
-    const rule2: Rule = (tree: Tree) => (rulesCalled[2] = tree, tree3);
+    const rule0: Rule = (tree: Tree) => ((rulesCalled[0] = tree), tree1);
+    const rule1: Rule = (tree: Tree) => ((rulesCalled[1] = tree), tree2);
+    const rule2: Rule = (tree: Tree) => ((rulesCalled[2] = tree), tree3);
 
-    callRule(chain([ rule0, rule1, rule2 ]), observableOf(tree0), context)
+    callRule(chain([rule0, rule1, rule2]), observableOf(tree0), context)
       .toPromise()
-      .then(result => {
+      .then((result) => {
         expect(result).not.toBe(tree0);
         expect(rulesCalled[0]).toBe(tree0);
         expect(rulesCalled[1]).toBe(tree1);
@@ -54,7 +48,7 @@ describe('chain', () => {
       .then(done, done.fail);
   });
 
-  it('works with observable rules', done => {
+  it('works with observable rules', (done) => {
     const rulesCalled: Tree[] = [];
 
     const tree0 = empty();
@@ -62,13 +56,13 @@ describe('chain', () => {
     const tree2 = empty();
     const tree3 = empty();
 
-    const rule0: Rule = (tree: Tree) => (rulesCalled[0] = tree, observableOf(tree1));
-    const rule1: Rule = (tree: Tree) => (rulesCalled[1] = tree, observableOf(tree2));
-    const rule2: Rule = (tree: Tree) => (rulesCalled[2] = tree, tree3);
+    const rule0: Rule = (tree: Tree) => ((rulesCalled[0] = tree), observableOf(tree1));
+    const rule1: Rule = (tree: Tree) => ((rulesCalled[1] = tree), observableOf(tree2));
+    const rule2: Rule = (tree: Tree) => ((rulesCalled[2] = tree), tree3);
 
-    callRule(chain([ rule0, rule1, rule2 ]), observableOf(tree0), context)
+    callRule(chain([rule0, rule1, rule2]), observableOf(tree0), context)
       .toPromise()
-      .then(result => {
+      .then((result) => {
         expect(result).not.toBe(tree0);
         expect(rulesCalled[0]).toBe(tree0);
         expect(rulesCalled[1]).toBe(tree1);
@@ -80,7 +74,7 @@ describe('chain', () => {
 });
 
 describe('apply', () => {
-  it('works with simple rules', done => {
+  it('works with simple rules', (done) => {
     const rulesCalled: Tree[] = [];
     const tree0 = empty();
     const tree1 = empty();
@@ -88,13 +82,13 @@ describe('apply', () => {
     const tree3 = empty();
 
     const source: Source = () => tree0;
-    const rule0: Rule = (tree: Tree) => (rulesCalled[0] = tree, tree1);
-    const rule1: Rule = (tree: Tree) => (rulesCalled[1] = tree, tree2);
-    const rule2: Rule = (tree: Tree) => (rulesCalled[2] = tree, tree3);
+    const rule0: Rule = (tree: Tree) => ((rulesCalled[0] = tree), tree1);
+    const rule1: Rule = (tree: Tree) => ((rulesCalled[1] = tree), tree2);
+    const rule2: Rule = (tree: Tree) => ((rulesCalled[2] = tree), tree3);
 
-    callSource(apply(source, [ rule0, rule1, rule2 ]), context)
+    callSource(apply(source, [rule0, rule1, rule2]), context)
       .toPromise()
-      .then(result => {
+      .then((result) => {
         expect(result).not.toBe(tree0);
         expect(rulesCalled[0]).toBe(tree0);
         expect(rulesCalled[1]).toBe(tree1);
@@ -104,7 +98,7 @@ describe('apply', () => {
       .then(done, done.fail);
   });
 
-  it('works with observable rules', done => {
+  it('works with observable rules', (done) => {
     const rulesCalled: Tree[] = [];
     const tree0 = empty();
     const tree1 = empty();
@@ -112,13 +106,13 @@ describe('apply', () => {
     const tree3 = empty();
 
     const source: Source = () => tree0;
-    const rule0: Rule = (tree: Tree) => (rulesCalled[0] = tree, observableOf(tree1));
-    const rule1: Rule = (tree: Tree) => (rulesCalled[1] = tree, observableOf(tree2));
-    const rule2: Rule = (tree: Tree) => (rulesCalled[2] = tree, tree3);
+    const rule0: Rule = (tree: Tree) => ((rulesCalled[0] = tree), observableOf(tree1));
+    const rule1: Rule = (tree: Tree) => ((rulesCalled[1] = tree), observableOf(tree2));
+    const rule2: Rule = (tree: Tree) => ((rulesCalled[2] = tree), tree3);
 
-    callSource(apply(source, [ rule0, rule1, rule2 ]), context)
+    callSource(apply(source, [rule0, rule1, rule2]), context)
       .toPromise()
-      .then(result => {
+      .then((result) => {
         expect(result).not.toBe(tree0);
         expect(rulesCalled[0]).toBe(tree0);
         expect(rulesCalled[1]).toBe(tree1);
@@ -130,7 +124,7 @@ describe('apply', () => {
 });
 
 describe('partitionApplyMerge', () => {
-  it('works with simple rules', done => {
+  it('works with simple rules', (done) => {
     const host = new virtualFs.test.TestHost({
       '/test1': '',
       '/test2': '',
@@ -153,7 +147,7 @@ describe('partitionApplyMerge', () => {
 
     callRule(partitionApplyMerge(predicate, ruleYes, ruleNo), observableOf(tree), context)
       .toPromise()
-      .then(result => {
+      .then((result) => {
         expect(result.exists('/test1')).toBe(false);
         expect(result.exists('/test2')).toBe(false);
       })
@@ -162,7 +156,7 @@ describe('partitionApplyMerge', () => {
 });
 
 describe('applyToSubtree', () => {
-  it('works', done => {
+  it('works', (done) => {
     const tree = new HostTree();
     tree.create('a/b/file1', 'hello world');
     tree.create('a/b/file2', 'hello world');
@@ -170,7 +164,7 @@ describe('applyToSubtree', () => {
 
     callRule(applyToSubtree('a/b', [move('x')]), observableOf(tree), context)
       .toPromise()
-      .then(result => {
+      .then((result) => {
         expect(result.exists('a/b/x/file1')).toBe(true);
         expect(result.exists('a/b/x/file2')).toBe(true);
         expect(result.exists('a/c/file3')).toBe(true);

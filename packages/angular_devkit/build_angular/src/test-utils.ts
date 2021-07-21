@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { Architect, BuilderOutput, ScheduleOptions, Target } from '@angular-devkit/architect';
 import { WorkspaceNodeModulesArchitectHost } from '@angular-devkit/architect/node';
 import { TestProjectHost, TestingArchitectHost } from '@angular-devkit/architect/testing';
@@ -20,12 +21,9 @@ import {
   workspaces,
 } from '@angular-devkit/core';
 
-
 // Default timeout for large specs is 2.5 minutes.
 jasmine.DEFAULT_TIMEOUT_INTERVAL = 150000;
 
-// This flag controls whether AOT compilation uses Ivy or View Engine (VE).
-export let veEnabled = process.argv.some(arg => arg == 'view_engine');
 export const workspaceRoot = join(normalize(__dirname), `../test/hello-world-app/`);
 export const host = new TestProjectHost(workspaceRoot);
 export const outputPath: Path = normalize('dist');
@@ -53,11 +51,6 @@ export async function createArchitect(workspaceRoot: Path) {
   );
   const architect = new Architect(architectHost, registry);
 
-  // Set AOT compilation to use VE if needed.
-  if (veEnabled) {
-    host.replaceInFile('tsconfig.json', `"enableIvy": true,`, `"enableIvy": false,`);
-  }
-
   return {
     workspace,
     architectHost,
@@ -81,6 +74,15 @@ export async function browserBuild(
   const output = (await run.result) as BrowserBuilderOutput;
   expect(output.success).toBe(true);
 
+  if (!output.success) {
+    await run.stop();
+
+    return {
+      output,
+      files: {},
+    };
+  }
+
   expect(output.outputPaths[0]).not.toBeUndefined();
   const outputPath = normalize(output.outputPaths[0]);
 
@@ -100,7 +102,7 @@ export async function browserBuild(
         cache = host
           .read(join(outputPath, path))
           .toPromise()
-          .then(content => virtualFs.fileBufferToString(content));
+          .then((content) => virtualFs.fileBufferToString(content));
 
         return cache;
       },
@@ -147,7 +149,7 @@ export const lazyModuleFiles: { [path: string]: string } = {
   `,
 };
 
-export const lazyModuleStringImport: { [path: string]: string } = {
+export const lazyModuleFnImport: { [path: string]: string } = {
   'src/app/app.module.ts': `
     import { BrowserModule } from '@angular/platform-browser';
     import { NgModule } from '@angular/core';
@@ -162,19 +164,12 @@ export const lazyModuleStringImport: { [path: string]: string } = {
       imports: [
         BrowserModule,
         RouterModule.forRoot([
-          { path: 'lazy', loadChildren: './lazy/lazy.module#LazyModule' }
+          { path: 'lazy', loadChildren: () => import('./lazy/lazy.module').then(m => m.LazyModule) }
         ])
       ],
       providers: [],
       bootstrap: [AppComponent]
     })
     export class AppModule { }
-  `,
-};
-
-export const lazyModuleFnImport: { [path: string]: string } = {
-  'src/app/app.module.ts': lazyModuleStringImport['src/app/app.module.ts'].replace(
-    `loadChildren: './lazy/lazy.module#LazyModule'`,
-    `loadChildren: () => import('./lazy/lazy.module').then(m => m.LazyModule)`,
-  ),
+`,
 };

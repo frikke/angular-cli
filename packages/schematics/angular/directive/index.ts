@@ -1,10 +1,11 @@
 /**
-* @license
-* Copyright Google Inc. All Rights Reserved.
-*
-* Use of this source code is governed by an MIT-style license that can be
-* found in the LICENSE file at https://angular.io/license
-*/
+ * @license
+ * Copyright Google LLC All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+
 import { strings } from '@angular-devkit/core';
 import {
   Rule,
@@ -29,7 +30,6 @@ import { validateHtmlSelector } from '../utility/validation';
 import { buildDefaultPath, getWorkspace } from '../utility/workspace';
 import { Schema as DirectiveOptions } from './schema';
 
-
 function addDeclarationToNgModule(options: DirectiveOptions): Rule {
   return (host: Tree) => {
     if (options.skipImport || !options.module) {
@@ -44,16 +44,19 @@ function addDeclarationToNgModule(options: DirectiveOptions): Rule {
     const sourceText = text.toString('utf-8');
     const source = ts.createSourceFile(modulePath, sourceText, ts.ScriptTarget.Latest, true);
 
-    const directivePath = `/${options.path}/`
-                          + (options.flat ? '' : strings.dasherize(options.name) + '/')
-                          + strings.dasherize(options.name)
-                          + '.directive';
+    const directivePath =
+      `/${options.path}/` +
+      (options.flat ? '' : strings.dasherize(options.name) + '/') +
+      strings.dasherize(options.name) +
+      '.directive';
     const relativePath = buildRelativePath(modulePath, directivePath);
     const classifiedName = strings.classify(`${options.name}Directive`);
-    const declarationChanges = addDeclarationToModule(source,
-                                                      modulePath,
-                                                      classifiedName,
-                                                      relativePath);
+    const declarationChanges = addDeclarationToModule(
+      source,
+      modulePath,
+      classifiedName,
+      relativePath,
+    );
     const declarationRecorder = host.beginUpdate(modulePath);
     for (const change of declarationChanges) {
       if (change instanceof InsertChange) {
@@ -72,9 +75,12 @@ function addDeclarationToNgModule(options: DirectiveOptions): Rule {
       const source = ts.createSourceFile(modulePath, sourceText, ts.ScriptTarget.Latest, true);
 
       const exportRecorder = host.beginUpdate(modulePath);
-      const exportChanges = addExportToModule(source, modulePath,
-                                              strings.classify(`${options.name}Directive`),
-                                              relativePath);
+      const exportChanges = addExportToModule(
+        source,
+        modulePath,
+        strings.classify(`${options.name}Directive`),
+        relativePath,
+      );
 
       for (const change of exportChanges) {
         if (change instanceof InsertChange) {
@@ -87,7 +93,6 @@ function addDeclarationToNgModule(options: DirectiveOptions): Rule {
     return host;
   };
 }
-
 
 function buildSelector(options: DirectiveOptions, projectPrefix: string) {
   let selector = options.name;
@@ -105,7 +110,7 @@ export default function (options: DirectiveOptions): Rule {
     const workspace = await getWorkspace(host);
     const project = workspace.projects.get(options.project as string);
     if (!project) {
-      throw new SchematicsException(`Invalid project name (${options.project})`);
+      throw new SchematicsException(`Project "${options.project}" does not exist.`);
     }
 
     if (options.path === undefined) {
@@ -122,10 +127,10 @@ export default function (options: DirectiveOptions): Rule {
     validateHtmlSelector(options.selector);
 
     const templateSource = apply(url('./files'), [
-      options.skipTests ? filter(path => !path.endsWith('.spec.ts.template')) : noop(),
+      options.skipTests ? filter((path) => !path.endsWith('.spec.ts.template')) : noop(),
       applyTemplates({
         ...strings,
-        'if-flat': (s: string) => options.flat ? '' : s,
+        'if-flat': (s: string) => (options.flat ? '' : s),
         ...options,
       }),
       move(parsedPath.path),

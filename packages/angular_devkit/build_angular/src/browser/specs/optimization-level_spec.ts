@@ -1,13 +1,13 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { Architect } from '@angular-devkit/architect';
 import { browserBuild, createArchitect, host } from '../../test-utils';
-
 
 describe('Browser Builder optimization level', () => {
   const target = { project: 'app', target: 'build' };
@@ -26,12 +26,12 @@ describe('Browser Builder optimization level', () => {
     expect(await files['main.js']).not.toContain('AppComponent');
   });
 
-  it('tsconfig target changes optimizations to use ES2015', async () => {
-    host.replaceInFile('tsconfig.json', '"target": "es5"', '"target": "es2015"');
+  it('tsconfig target changes optimizations to use es2017', async () => {
+    host.replaceInFile('tsconfig.json', '"target": "es5"', '"target": "es2017"');
 
     const overrides = { optimization: true };
     const { files } = await browserBuild(architect, host, target, overrides);
-    expect(await files['vendor.js']).toMatch(/class \w{constructor\(\){/);
+    expect(await files['vendor.js']).toMatch(/class \w{1,3}{constructor\(\){/);
   });
 
   it('supports styles only optimizations', async () => {

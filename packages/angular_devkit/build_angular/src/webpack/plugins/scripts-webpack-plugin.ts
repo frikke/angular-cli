@@ -1,25 +1,20 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-// tslint:disable
-// TODO: cleanup this file, it's copied as is from Angular CLI.
 
-import { Compiler, loader } from 'webpack';
-import { CachedSource, ConcatSource, OriginalSource, RawSource, Source } from 'webpack-sources';
 import { interpolateName } from 'loader-utils';
 import * as path from 'path';
-import { isWebpackFiveOrHigher } from '../../utils/webpack-version';
+import { Chunk, Compilation, Compiler, sources as webpackSources } from 'webpack';
 
-const Chunk = require('webpack/lib/Chunk');
-const EntryPoint = require('webpack/lib/Entrypoint');
+const Entrypoint = require('webpack/lib/Entrypoint');
 
 export interface ScriptsWebpackPluginOptions {
   name: string;
-  sourceMap: boolean;
+  sourceMap?: boolean;
   scripts: string[];
   filename: string;
   basePath: string;
@@ -27,10 +22,10 @@ export interface ScriptsWebpackPluginOptions {
 
 interface ScriptOutput {
   filename: string;
-  source: CachedSource;
+  source: webpackSources.CachedSource;
 }
 
-function addDependencies(compilation: any, scripts: string[]): void {
+function addDependencies(compilation: Compilation, scripts: string[]): void {
   for (const script of scripts) {
     compilation.fileDependencies.add(script);
   }
@@ -39,31 +34,31 @@ export class ScriptsWebpackPlugin {
   private _lastBuildTime?: number;
   private _cachedOutput?: ScriptOutput;
 
-  constructor(private options: Partial<ScriptsWebpackPluginOptions> = {}) { }
+  constructor(private options: ScriptsWebpackPluginOptions) {}
 
-  async shouldSkip(compilation: any, scripts: string[]): Promise<boolean> {
+  async shouldSkip(compilation: Compilation, scripts: string[]): Promise<boolean> {
     if (this._lastBuildTime == undefined) {
       this._lastBuildTime = Date.now();
+
       return false;
     }
 
     for (const script of scripts) {
-      const scriptTime = isWebpackFiveOrHigher()
-        ? await new Promise<number | undefined>((resolve, reject) => {
-          compilation.fileSystemInfo.getFileTimestamp(script, (error: unknown, entry: any) => {
-            if (error) {
-              reject(error);
+      const scriptTime = await new Promise<number | undefined>((resolve, reject) => {
+        compilation.fileSystemInfo.getFileTimestamp(script, (error, entry) => {
+          if (error) {
+            reject(error);
 
-              return;
-            }
+            return;
+          }
 
-            resolve(typeof entry !== 'string' ? entry.safeTime : undefined)
-          })
-        })
-        : compilation.fileTimestamps.get(script);
+          resolve(entry && typeof entry !== 'string' ? entry.safeTime : undefined);
+        });
+      });
 
       if (!scriptTime || scriptTime > this._lastBuildTime) {
         this._lastBuildTime = Date.now();
+
         return false;
       }
     }
@@ -71,28 +66,25 @@ export class ScriptsWebpackPlugin {
     return true;
   }
 
-  private _insertOutput(compilation: any, { filename, source }: ScriptOutput, cached = false) {
+  private _insertOutput(
+    compilation: Compilation,
+    { filename, source }: ScriptOutput,
+    cached = false,
+  ) {
     const chunk = new Chunk(this.options.name);
     chunk.rendered = !cached;
     chunk.id = this.options.name;
     chunk.ids = [chunk.id];
-    if (isWebpackFiveOrHigher()) {
-      chunk.files.add(filename);
-    } else {
-      chunk.files.push(filename);
-    }
+    chunk.files.add(filename);
 
-    const entrypoint = new EntryPoint(this.options.name);
+    const entrypoint = new Entrypoint(this.options.name);
     entrypoint.pushChunk(chunk);
     chunk.addGroup(entrypoint);
     compilation.entrypoints.set(this.options.name, entrypoint);
-    if (isWebpackFiveOrHigher()) {
-      compilation.chunks.add(chunk);
-    } else {
-      compilation.chunks.push(chunk);
-    }
+    compilation.chunks.add(chunk);
 
-    compilation.assets[filename] = source;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    compilation.assets[filename] = source as any;
     compilation.hooks.chunkAsset.call(chunk, filename);
   }
 
@@ -102,30 +94,33 @@ export class ScriptsWebpackPlugin {
     }
 
     const scripts = this.options.scripts
-      .filter(script => !!script)
-      .map(script => path.resolve(this.options.basePath || '', script));
+      .filter((script) => !!script)
+      .map((script) => path.resolve(this.options.basePath || '', script));
 
-    compiler.hooks.thisCompilation.tap('scripts-webpack-plugin', compilation => {
+    compiler.hooks.thisCompilation.tap('scripts-webpack-plugin', (compilation) => {
       compilation.hooks.additionalAssets.tapPromise('scripts-webpack-plugin', async () => {
-          if (await this.shouldSkip(compilation, scripts)) {
-            if (this._cachedOutput) {
-              this._insertOutput(compilation, this._cachedOutput, true);
-            }
-
-            addDependencies(compilation, scripts);
-
-            return;
+        if (await this.shouldSkip(compilation, scripts)) {
+          if (this._cachedOutput) {
+            this._insertOutput(compilation, this._cachedOutput, true);
           }
 
-          const sourceGetters = scripts.map(fullPath => {
-            return new Promise<Source>((resolve, reject) => {
-              compilation.inputFileSystem.readFile(fullPath, (err: Error, data: Buffer) => {
+          addDependencies(compilation, scripts);
+
+          return;
+        }
+
+        const sourceGetters = scripts.map((fullPath) => {
+          return new Promise<webpackSources.Source>((resolve, reject) => {
+            compilation.inputFileSystem.readFile(
+              fullPath,
+              (err?: Error | null, data?: string | Buffer) => {
                 if (err) {
                   reject(err);
+
                   return;
                 }
 
-                const content = data.toString();
+                const content = data?.toString() ?? '';
 
                 let source;
                 if (this.options.sourceMap) {
@@ -135,35 +130,38 @@ export class ScriptsWebpackPlugin {
                   if (this.options.basePath) {
                     adjustedPath = path.relative(this.options.basePath, fullPath);
                   }
-                  source = new OriginalSource(content, adjustedPath);
+                  source = new webpackSources.OriginalSource(content, adjustedPath);
                 } else {
-                  source = new RawSource(content);
+                  source = new webpackSources.RawSource(content);
                 }
 
                 resolve(source);
-              });
-            });
+              },
+            );
           });
-
-          const sources = await Promise.all(sourceGetters);
-          const concatSource = new ConcatSource();
-          sources.forEach(source => {
-            concatSource.add(source);
-            concatSource.add('\n;');
-          });
-
-          const combinedSource = new CachedSource(concatSource);
-          const filename = interpolateName(
-            { resourcePath: 'scripts.js' } as loader.LoaderContext,
-            this.options.filename as string,
-            { content: combinedSource.source() },
-          );
-
-          const output = { filename, source: combinedSource };
-          this._insertOutput(compilation, output);
-          this._cachedOutput = output;
-          addDependencies(compilation, scripts);
         });
+
+        const sources = await Promise.all(sourceGetters);
+        const concatSource = new webpackSources.ConcatSource();
+        sources.forEach((source) => {
+          concatSource.add(source);
+          concatSource.add('\n;');
+        });
+
+        const combinedSource = new webpackSources.CachedSource(concatSource);
+        const filename = interpolateName(
+          { resourcePath: 'scripts.js' },
+          this.options.filename as string,
+          {
+            content: combinedSource.source(),
+          },
+        );
+
+        const output = { filename, source: combinedSource };
+        this._insertOutput(compilation, output);
+        this._cachedOutput = output;
+        addDependencies(compilation, scripts);
+      });
     });
   }
 }

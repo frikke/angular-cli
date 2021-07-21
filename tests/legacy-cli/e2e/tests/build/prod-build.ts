@@ -1,6 +1,5 @@
 import { statSync } from 'fs';
 import { join } from 'path';
-import { getGlobalVariable } from '../../utils/env';
 import { expectFileToExist, expectFileToMatch, readFile, replaceInFile } from '../../utils/fs';
 import { ng } from '../../utils/process';
 import { expectToFail } from '../../utils/utils';
@@ -30,11 +29,7 @@ export default async function () {
 
   // Can't use the `ng` helper because somewhere the environment gets
   // stuck to the first build done
-  const argv = getGlobalVariable('argv');
-  const veProject = argv['ve'];
-  const bootstrapRegExp = veProject
-    ? /bootstrapModuleFactory\(.?[a-zA-Z]+\)\./
-    : /bootstrapModule\(.?[a-zA-Z]+\)\./;
+  const bootstrapRegExp = /bootstrapModule\(.?[a-zA-Z]+\)\./;
 
   // Enable Differential loading to run both size checks
   await replaceInFile(
@@ -43,21 +38,21 @@ export default async function () {
     'IE 11',
   );
 
-  await ng('build', '--prod');
+  await ng('build');
   await expectFileToExist(join(process.cwd(), 'dist'));
   // Check for cache busting hash script src
   await expectFileToMatch('dist/test-project/index.html', /main-es5\.[0-9a-f]{20}\.js/);
-  await expectFileToMatch('dist/test-project/index.html', /main-es2015\.[0-9a-f]{20}\.js/);
+  await expectFileToMatch('dist/test-project/index.html', /main-es2017\.[0-9a-f]{20}\.js/);
   await expectFileToMatch('dist/test-project/index.html', /styles\.[0-9a-f]{20}\.css/);
   await expectFileToMatch('dist/test-project/3rdpartylicenses.txt', /MIT/);
 
   const indexContent = await readFile('dist/test-project/index.html');
   const mainES5Path = indexContent.match(/src="(main-es5\.[a-z0-9]{0,32}\.js)"/)[1];
-  const mainES2015Path = indexContent.match(/src="(main-es2015\.[a-z0-9]{0,32}\.js)"/)[1];
+  const mainES2017Path = indexContent.match(/src="(main-es2017\.[a-z0-9]{0,32}\.js)"/)[1];
 
   // Content checks
   await expectFileToMatch(`dist/test-project/${mainES5Path}`, bootstrapRegExp);
-  await expectFileToMatch(`dist/test-project/${mainES2015Path}`, bootstrapRegExp);
+  await expectFileToMatch(`dist/test-project/${mainES2017Path}`, bootstrapRegExp);
   await expectToFail(() =>
     expectFileToMatch(`dist/test-project/${mainES5Path}`, 'setNgModuleScope'),
   );
@@ -66,11 +61,6 @@ export default async function () {
   );
 
   // Size checks in bytes
-  if (veProject) {
-    verifySize(mainES5Path, 184470);
-    verifySize(mainES2015Path, 163627);
-  } else {
-    verifySize(mainES5Path, 163321);
-    verifySize(mainES2015Path, 141032);
-  }
+  verifySize(mainES5Path, 163321);
+  verifySize(mainES2017Path, 141032);
 }

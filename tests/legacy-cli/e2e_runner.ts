@@ -3,14 +3,12 @@
 import { logging } from '@angular-devkit/core';
 import { createConsoleLogger } from '@angular-devkit/core/node';
 import * as colors from 'ansi-colors';
-import { spawn } from 'child_process';
-import * as fs from 'fs';
-import * as glob from 'glob';
-import * as minimist from 'minimist';
-import * as os from 'os';
+import glob from 'glob';
+import minimist from 'minimist';
 import * as path from 'path';
 import { setGlobalVariable } from './e2e/utils/env';
 import { gitClean } from './e2e/utils/git';
+import { createNpmRegistry } from './e2e/utils/registry';
 
 Error.stackTraceLimit = Infinity;
 
@@ -41,7 +39,7 @@ Error.stackTraceLimit = Infinity;
  * If unnamed flags are passed in, the list of tests will be filtered to include only those passed.
  */
 const argv = minimist(process.argv.slice(2), {
-  boolean: ['debug', 'ng-snapshots', 'noglobal', 'nosilent', 'noproject', 'verbose', 've'],
+  boolean: ['debug', 'ng-snapshots', 'noglobal', 'nosilent', 'noproject', 'verbose'],
   string: ['devkit', 'glob', 'ignore', 'reuse', 'ng-tag', 'tmpdir', 'ng-version'],
 });
 
@@ -57,11 +55,11 @@ const argv = minimist(process.argv.slice(2), {
 process.exitCode = 255;
 
 const logger = createConsoleLogger(argv.verbose, process.stdout, process.stderr, {
-  info: s => s,
-  debug: s => s,
-  warn: s => colors.bold.yellow(s),
-  error: s => colors.bold.red(s),
-  fatal: s => colors.bold.red(s),
+  info: (s) => s,
+  debug: (s) => s,
+  warn: (s) => colors.bold.yellow(s),
+  error: (s) => colors.bold.red(s),
+  fatal: (s) => colors.bold.red(s),
 });
 
 const logStack = [logger];
@@ -75,45 +73,25 @@ let currentFileName = null;
 const e2eRoot = path.join(__dirname, 'e2e');
 const allSetups = glob
   .sync(path.join(e2eRoot, 'setup/**/*.ts'), { nodir: true })
-  .map(name => path.relative(e2eRoot, name))
+  .map((name) => path.relative(e2eRoot, name))
   .sort();
-let allTests = glob
+const allTests = glob
   .sync(path.join(e2eRoot, testGlob), { nodir: true, ignore: argv.ignore })
-  .map(name => path.relative(e2eRoot, name))
+  .map((name) => path.relative(e2eRoot, name))
   // Replace windows slashes.
-  .map(name => name.replace(/\\/g, '/'))
-  .sort();
-
-// TODO: either update or remove these tests.
-allTests = allTests
-  // IS this test still valid? \/
-  .filter(name => !name.endsWith('/module-id.ts'))
-  // Do we want to support this?
-  .filter(name => !name.endsWith('different-file-format.ts'))
-  // Not sure what this test is meant to test, but with depedency changes it is not valid anymore.
-  .filter(name => !name.endsWith('loaders-resolution.ts'))
-  // NEW COMMAND
-  .filter(name => !name.includes('tests/commands/new/'))
-  // NEEDS devkit change
-  .filter(name => !name.endsWith('/existing-directory.ts'))
-  // Disabled on rc.0 due to needed sync with devkit for changes.
-  .filter(name => !name.endsWith('/service-worker.ts'));
-
-if (argv.ve) {
-  // Remove Ivy specific tests
-  allTests = allTests
-    .filter(name => !name.includes('tests/i18n/ivy-localize-'));
-}
+  .map((name) => name.replace(/\\/g, '/'))
+  .sort()
+  .filter((name) => !name.endsWith('/setup.ts'));
 
 const shardId = 'shard' in argv ? argv['shard'] : null;
 const nbShards = (shardId === null ? 1 : argv['nb-shards']) || 2;
-const tests = allTests.filter(name => {
+const tests = allTests.filter((name) => {
   // Check for naming tests on command line.
   if (argv._.length == 0) {
     return true;
   }
 
-  return argv._.some(argName => {
+  return argv._.some((argName) => {
     return (
       path.join(process.cwd(), argName) == path.join(__dirname, 'e2e', name) ||
       argName == name ||
@@ -143,20 +121,12 @@ if (testsToRun.length == allTests.length) {
 }
 
 setGlobalVariable('argv', argv);
+setGlobalVariable('ci', process.env['CI']?.toLowerCase() === 'true' || process.env['CI'] === '1');
 setGlobalVariable('package-manager', argv.yarn ? 'yarn' : 'npm');
+setGlobalVariable('package-registry', 'http://localhost:4873');
 
-// Setup local package registry
-const registryPath =
-  fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'angular-cli-e2e-registry-'));
-fs.copyFileSync(
-  path.join(__dirname, 'verdaccio.yaml'),
-  path.join(registryPath, 'verdaccio.yaml'),
-);
-const registryProcess = spawn(
-  'node',
-  [require.resolve('verdaccio/bin/verdaccio'), '-c', './verdaccio.yaml'],
-  { cwd: registryPath, stdio: 'inherit' },
-);
+const registryProcess = createNpmRegistry();
+const secureRegistryProcess = createNpmRegistry(true);
 
 testsToRun
   .reduce((previous, relativeName, testIndex) => {
@@ -171,6 +141,10 @@ testsToRun
       const start = +new Date();
 
       const module = require(absoluteName);
+      const originalEnvVariables = {
+        ...process.env,
+      };
+
       const fn: (skipClean?: () => void) => Promise<void> | void =
         typeof module == 'function'
           ? module
@@ -190,7 +164,7 @@ testsToRun
         .then(() => fn(() => (clean = false)))
         .then(
           () => logStack.pop(),
-          err => {
+          (err) => {
             logStack.pop();
             throw err;
           },
@@ -199,19 +173,22 @@ testsToRun
         .then(() => {
           // If we're not in a setup, change the directory back to where it was before the test.
           // This allows tests to chdir without worrying about keeping the original directory.
-          if (allSetups.indexOf(relativeName) == -1 && previousDir) {
+          if (!allSetups.includes(relativeName) && previousDir) {
             process.chdir(previousDir);
+
+            // Restore env variables before each test.
+            console.log('  Restoring original environment variables...');
+            process.env = originalEnvVariables;
           }
         })
         .then(() => {
           // Only clean after a real test, not a setup step. Also skip cleaning if the test
           // requested an exception.
-          if (allSetups.indexOf(relativeName) == -1 && clean) {
+          if (!allSetups.includes(relativeName) && clean) {
             logStack.push(new logging.NullLogger());
-
             return gitClean().then(
               () => logStack.pop(),
-              err => {
+              (err) => {
                 logStack.pop();
                 throw err;
               },
@@ -220,7 +197,7 @@ testsToRun
         })
         .then(
           () => printFooter(currentFileName, start),
-          err => {
+          (err) => {
             printFooter(currentFileName, start);
             console.error(err);
             throw err;
@@ -230,22 +207,20 @@ testsToRun
   }, Promise.resolve())
   .then(
     () => {
-      if (registryProcess) {
-        registryProcess.kill();
-      }
+      registryProcess.kill();
+      secureRegistryProcess.kill();
 
       console.log(colors.green('Done.'));
       process.exit(0);
     },
-    err => {
+    (err) => {
       console.log('\n');
       console.error(colors.red(`Test "${currentFileName}" failed...`));
       console.error(colors.red(err.message));
       console.error(colors.red(err.stack));
 
-      if (registryProcess) {
-        registryProcess.kill();
-      }
+      registryProcess.kill();
+      secureRegistryProcess.kill();
 
       if (argv.debug) {
         console.log(`Current Directory: ${process.cwd()}`);
@@ -269,8 +244,12 @@ function printHeader(testName: string, testIndex: number) {
       : (testIndex - allSetups.length) * nbShards + shardId + allSetups.length) + 1;
   const length = tests.length + allSetups.length;
   const shard =
-    shardId === null ? '' : colors.yellow(` [${shardId}:${nbShards}]` + colors.bold(` (${fullIndex}/${length})`));
-  console.log(colors.green(`Running "${colors.bold.blue(testName)}" (${colors.bold.white(text)}${shard})...`));
+    shardId === null
+      ? ''
+      : colors.yellow(` [${shardId}:${nbShards}]` + colors.bold(` (${fullIndex}/${length})`));
+  console.log(
+    colors.green(`Running "${colors.bold.blue(testName)}" (${colors.bold.white(text)}${shard})...`),
+  );
 }
 
 function printFooter(testName: string, startTime: number) {

@@ -1,20 +1,18 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-// tslint:disable-next-line:no-implicit-dependencies
+
 import { tags } from '@angular-devkit/core';
 import { transformJavascript } from '../helpers/transform-javascript';
 import { getWrapEnumsTransformer } from './wrap-enums';
 
+const transform = (content: string) =>
+  transformJavascript({ content, getTransforms: [getWrapEnumsTransformer] }).content;
 
-const transform = (content: string) => transformJavascript(
-  { content, getTransforms: [getWrapEnumsTransformer] }).content;
-
-// tslint:disable:no-big-function
 describe('wrap enums and classes transformer', () => {
   describe('wraps class declarations', () => {
     it('should wrap default exported classes', () => {
@@ -463,7 +461,6 @@ describe('wrap enums and classes transformer', () => {
 
       expect(tags.oneLine`${transform(input)}`).toEqual(tags.oneLine`${output}`);
     });
-
 
     it('wraps ts >2.3 enums in IIFE', () => {
       const input = tags.stripIndent`

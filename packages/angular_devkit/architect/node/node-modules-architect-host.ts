@@ -1,13 +1,14 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { json, workspaces } from '@angular-devkit/core';
 import * as path from 'path';
-import * as v8 from 'v8';
+import { deserialize, serialize } from 'v8';
 import { BuilderInfo } from '../src';
 import { Schema as BuilderSchema } from '../src/builders-schema';
 import { Target } from '../src/input-schema';
@@ -18,9 +19,6 @@ export type NodeModulesBuilderInfo = BuilderInfo & {
 };
 
 function clone(obj: unknown): unknown {
-  const serialize = ((v8 as unknown) as { serialize(value: unknown): Buffer }).serialize;
-  const deserialize = ((v8 as unknown) as { deserialize(buffer: Buffer): unknown }).deserialize;
-
   try {
     return deserialize(serialize(obj));
   } catch {
@@ -33,6 +31,7 @@ export interface WorkspaceHost {
   getMetadata(project: string): Promise<json.JsonObject>;
   getOptions(project: string, target: string, configuration?: string): Promise<json.JsonObject>;
   hasTarget(project: string, target: string): Promise<boolean>;
+  getDefaultConfigurationName(project: string, target: string): Promise<string | undefined>;
 }
 
 function findProjectTarget(
@@ -92,15 +91,18 @@ export class WorkspaceNodeModulesArchitectHost implements ArchitectHost<NodeModu
             throw new Error(`Project "${project}" does not exist.`);
           }
 
-          return ({
+          return {
             root: projectDefinition.root,
             sourceRoot: projectDefinition.sourceRoot,
             prefix: projectDefinition.prefix,
             ...(clone(projectDefinition.extensions) as {}),
-          } as unknown) as json.JsonObject;
+          } as unknown as json.JsonObject;
         },
         async hasTarget(project, target) {
           return !!workspaceOrHost.projects.get(project)?.targets.has(target);
+        },
+        async getDefaultConfigurationName(project, target) {
+          return workspaceOrHost.projects.get(project)?.targets.get(target)?.defaultConfiguration;
         },
       };
     }
@@ -169,13 +171,16 @@ export class WorkspaceNodeModulesArchitectHost implements ArchitectHost<NodeModu
     }
 
     let options = await this.workspaceHost.getOptions(target.project, target.target);
+    const targetConfiguration =
+      target.configuration ||
+      (await this.workspaceHost.getDefaultConfigurationName(target.project, target.target));
 
-    if (target.configuration) {
-      const configurations = target.configuration.split(',').map((c) => c.trim());
+    if (targetConfiguration) {
+      const configurations = targetConfiguration.split(',').map((c) => c.trim());
       for (const configuration of configurations) {
         options = {
           ...options,
-          ...await this.workspaceHost.getOptions(target.project, target.target, configuration),
+          ...(await this.workspaceHost.getOptions(target.project, target.target, configuration)),
         };
       }
     }
@@ -194,6 +199,11 @@ export class WorkspaceNodeModulesArchitectHost implements ArchitectHost<NodeModu
     const builder = (await import(info.import)).default;
     if (builder[BuilderSymbol]) {
       return builder;
+    }
+
+    // Default handling code is for old builders that incorrectly export `default` with non-ESM module
+    if (builder?.default[BuilderSymbol]) {
+      return builder.default;
     }
 
     throw new Error('Builder is not a builder');

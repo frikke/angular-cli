@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
@@ -11,7 +11,6 @@ import { join, logging, virtualFs } from '@angular-devkit/core';
 import { timer } from 'rxjs';
 import { debounceTime, map, switchMap, takeWhile, tap } from 'rxjs/operators';
 import { browserBuild, createArchitect, host, outputPath } from '../../test-utils';
-
 
 describe('Browser Builder Web Worker support', () => {
   const target = { project: 'app', target: 'build' };
@@ -45,7 +44,7 @@ describe('Browser Builder Web Worker support', () => {
       if (environment.production) { enableProdMode(); }
       platformBrowserDynamic().bootstrapModule(AppModule).catch(err => console.error(err));
 
-      const worker = new Worker('./app/app.worker', { type: 'module' });
+      const worker = new Worker(new URL('./app/app.worker', import.meta.url), { type: 'module' });
       worker.onmessage = ({ data }) => {
         console.log('page got message:', data);
       };
@@ -89,21 +88,23 @@ describe('Browser Builder Web Worker support', () => {
 
     const logger = new logging.Logger('');
     const logs: string[] = [];
-    logger.subscribe(e => logs.push(e.message));
+    logger.subscribe((e) => logs.push(e.message));
 
     const overrides = { webWorkerTsConfig: 'src/tsconfig.worker.json' };
     await browserBuild(architect, host, target, overrides, { logger });
 
     // Worker bundle contains worker code.
     const workerContent = virtualFs.fileBufferToString(
-      host.scopedSync().read(join(outputPath, '0.worker.js')));
+      host.scopedSync().read(join(outputPath, 'src_app_app_worker_ts.js')),
+    );
     expect(workerContent).toContain('hello from worker');
     expect(workerContent).toContain('bar');
 
     // Main bundle references worker.
     const mainContent = virtualFs.fileBufferToString(
-      host.scopedSync().read(join(outputPath, 'main.js')));
-    expect(mainContent).toContain('0.worker.js');
+      host.scopedSync().read(join(outputPath, 'main.js')),
+    );
+    expect(mainContent).toContain('src_app_app_worker_ts');
     expect(logs.join().includes('Warning')).toBe(false, 'Should show no warnings.');
   });
 
@@ -117,10 +118,14 @@ describe('Browser Builder Web Worker support', () => {
     await browserBuild(architect, host, target, overrides);
 
     // Worker bundle should have hash and minified code.
-    const workerBundle = host.fileMatchExists(outputPath, /0\.[0-9a-f]{20}\.worker\.js/) as string;
+    const workerBundle = host.fileMatchExists(
+      outputPath,
+      /src_app_app_worker_ts\.[0-9a-f]{20}\.js/,
+    ) as string;
     expect(workerBundle).toBeTruthy('workerBundle should exist');
     const workerContent = virtualFs.fileBufferToString(
-      host.scopedSync().read(join(outputPath, workerBundle)));
+      host.scopedSync().read(join(outputPath, workerBundle)),
+    );
     expect(workerContent).toContain('hello from worker');
     expect(workerContent).toContain('bar');
     expect(workerContent).toContain('"hello"===e&&postMessage');
@@ -129,8 +134,9 @@ describe('Browser Builder Web Worker support', () => {
     const mainBundle = host.fileMatchExists(outputPath, /main\.[0-9a-f]{20}\.js/) as string;
     expect(mainBundle).toBeTruthy('mainBundle should exist');
     const mainContent = virtualFs.fileBufferToString(
-      host.scopedSync().read(join(outputPath, mainBundle)));
-    expect(mainContent).toContain(workerBundle);
+      host.scopedSync().read(join(outputPath, mainBundle)),
+    );
+    expect(mainContent).toContain('src_app_app_worker_ts');
   });
 
   it('rebuilds TS worker', async () => {
@@ -141,38 +147,40 @@ describe('Browser Builder Web Worker support', () => {
     };
 
     let phase = 1;
-    const workerPath = join(outputPath, '0.worker.js');
+    const workerPath = join(outputPath, 'src_app_app_worker_ts.js');
     let workerContent = '';
 
     // The current linux-based CI environments may not fully settled in regards to filesystem
     // changes from previous tests which reuse the same directory and fileset.
     // The initial delay helps mitigate false positive rebuild triggers in such scenarios.
-    const { run } = await timer(1000).pipe(
-      switchMap(() => architect.scheduleTarget(target, overrides)),
-      switchMap(run => run.output.pipe(map(output => ({ run, output })))),
-      debounceTime(1000),
-      tap(({ output }) => expect(output.success).toBe(true, 'build should succeed')),
-      tap(() => {
-        switch (phase) {
-          case 1:
-            // Original worker content should be there.
-            workerContent = virtualFs.fileBufferToString(host.scopedSync().read(workerPath));
-            expect(workerContent).toContain('bar');
-            // Change content of worker dependency.
-            host.writeMultipleFiles({ 'src/app/dep.ts': `export const foo = 'baz';` });
-            phase = 2;
-            break;
+    const { run } = await timer(1000)
+      .pipe(
+        switchMap(() => architect.scheduleTarget(target, overrides)),
+        switchMap((run) => run.output.pipe(map((output) => ({ run, output })))),
+        debounceTime(1000),
+        tap(({ output }) => expect(output.success).toBe(true, 'build should succeed')),
+        tap(() => {
+          switch (phase) {
+            case 1:
+              // Original worker content should be there.
+              workerContent = virtualFs.fileBufferToString(host.scopedSync().read(workerPath));
+              expect(workerContent).toContain('bar');
+              // Change content of worker dependency.
+              host.writeMultipleFiles({ 'src/app/dep.ts': `export const foo = 'baz';` });
+              phase = 2;
+              break;
 
-          case 2:
-            workerContent = virtualFs.fileBufferToString(host.scopedSync().read(workerPath));
-            // Worker content should have changed.
-            expect(workerContent).toContain('baz');
-            phase = 3;
-            break;
-        }
-      }),
-      takeWhile(() => phase < 3),
-    ).toPromise();
+            case 2:
+              workerContent = virtualFs.fileBufferToString(host.scopedSync().read(workerPath));
+              // Worker content should have changed.
+              expect(workerContent).toContain('baz');
+              phase = 3;
+              break;
+          }
+        }),
+        takeWhile(() => phase < 3),
+      )
+      .toPromise();
     await run.stop();
   });
 });

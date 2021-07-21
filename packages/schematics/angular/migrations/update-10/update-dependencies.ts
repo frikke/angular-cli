@@ -1,16 +1,14 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { Rule } from '@angular-devkit/schematics';
 import { NodePackageInstallTask } from '@angular-devkit/schematics/tasks';
-import {
-  addPackageJsonDependency,
-  getPackageJsonDependency,
-} from '../../utility/dependencies';
+import { addPackageJsonDependency, getPackageJsonDependency } from '../../utility/dependencies';
 import { latestVersions } from '../../utility/latest-versions';
 
 export default function (): Rule {
@@ -24,7 +22,7 @@ export default function (): Rule {
       'karma-jasmine': '~4.0.0',
       'karma-jasmine-html-reporter': '^1.5.0',
       'protractor': '~7.0.0',
-      'ng-packagr': latestVersions.ngPackagr,
+      'ng-packagr': latestVersions['ng-packagr'],
       'tslib': '^2.0.0',
     };
 
@@ -63,9 +61,9 @@ export default function (): Rule {
     if (getPackageJsonDependency(host, 'rxjs-compat')) {
       context.logger.info(
         `Package "rxjs-compat" found in the workspace package.json. ` +
-        'This package typically was used during migration from RxJs version 5 to 6 during the Angular 5 ' +
-        'timeframe and may no longer be needed.\n' +
-        'Read more about this: https://rxjs-dev.firebaseapp.com/guide/v6/migration',
+          'This package typically was used during migration from RxJs version 5 to 6 during the Angular 5 ' +
+          'timeframe and may no longer be needed.\n' +
+          'Read more about this: https://rxjs-dev.firebaseapp.com/guide/v6/migration',
       );
     }
   };

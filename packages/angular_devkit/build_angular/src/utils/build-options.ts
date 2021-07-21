@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
@@ -15,6 +15,7 @@ import {
   ExtraEntryPoint,
   I18NMissingTranslation,
   IndexUnion,
+  InlineStyleLanguage,
   Localize,
   SourceMapClass,
 } from '../browser/schema';
@@ -35,12 +36,6 @@ export interface BuildOptions {
   deployUrl?: string;
   verbose?: boolean;
   progress?: boolean;
-  /** @deprecated since version 9. Use 'locales' object in the project metadata instead.*/
-  i18nFile?: string;
-  /** @deprecated since version 9. No longer needed as the format will be determined automatically.*/
-  i18nFormat?: string;
-  /** @deprecated since version 9. Use 'localize' instead.*/
-  i18nLocale?: string;
   localize?: Localize;
   i18nMissingTranslation?: I18NMissingTranslation;
   /** @deprecated since version 11.0. No longer required to disable CSS extraction for HMR.*/
@@ -62,7 +57,6 @@ export interface BuildOptions {
   serviceWorker?: boolean;
   webWorkerTsConfig?: string;
   statsJson: boolean;
-  forkTypeChecker: boolean;
   hmr?: boolean;
   main: string;
   polyfills?: string;
@@ -71,12 +65,10 @@ export interface BuildOptions {
   scripts: ExtraEntryPoint[];
   styles: ExtraEntryPoint[];
   stylePreprocessorOptions?: { includePaths: string[] };
-  /** @deprecated SystemJsNgModuleLoader is deprecated, and this is part of its usage. */
-  lazyModules: string[];
   platform?: 'browser' | 'server';
   fileReplacements: NormalizedFileReplacement[];
+  inlineStyleLanguage?: InlineStyleLanguage;
 
-  experimentalRollupPass?: boolean;
   allowedCommonJsDependencies?: string[];
 
   differentialLoadingNeeded?: boolean;
@@ -87,7 +79,9 @@ export interface WebpackTestOptions extends BuildOptions {
   codeCoverageExclude?: string[];
 }
 
-export interface WebpackDevServerOptions extends BuildOptions, Omit<DevServerSchema, 'optimization' | 'sourceMap' | 'browserTarget'> { }
+export interface WebpackDevServerOptions
+  extends BuildOptions,
+    Omit<DevServerSchema, 'optimization' | 'sourceMap' | 'browserTarget'> {}
 
 export interface WebpackConfigOptions<T = BuildOptions> {
   root: string;

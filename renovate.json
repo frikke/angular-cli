@@ -2,28 +2,16 @@
   "pinVersions": false,
   "semanticCommits": true,
   "semanticPrefix": "build",
-  "commitMessage": "{{semanticPrefix}} update {{#if groupName}}{{{groupName}}} packages{{else}}{{{depName}}} to version {{{newVersion}}}{{/if}}",
   "separateMajorMinor": false,
   "prHourlyLimit": 2,
-  "labels": [
-    "target: major",
-    "action: merge"
-  ],
+  "labels": ["target: minor", "action: merge"],
   "timezone": "America/Tijuana",
   "lockFileMaintenance": {
     "enabled": true
   },
-  "schedule": [
-    "after 10pm every weekday",
-    "before 4am every weekday",
-    "every weekend"
-  ],
-  "baseBranches": [
-    "master"
-  ],
-  "ignoreDeps": [
-    "@types/node"
-  ],
+  "schedule": ["after 10pm every weekday", "before 4am every weekday", "every weekend"],
+  "baseBranches": ["master"],
+  "ignoreDeps": ["@types/node", "quicktype-core"],
   "packageFiles": [
     "WORKSPACE",
     "package.json",
@@ -32,43 +20,49 @@
   ],
   "packageRules": [
     {
-      "packagePatterns": [
-        "^@angular\/.*"
-      ],
+      "packagePatterns": ["^@angular/.*"],
       "groupName": "angular",
       "pinVersions": false
     },
-   {
-      "packagePatterns": [
-        "^@babel\/.*"
-      ],
-      "groupName": "Babel",
+    {
+      "packagePatterns": ["^@babel/.*"],
+      "groupName": "babel",
       "pinVersions": false
     },
     {
-      "packagePatterns": [
-        "^@bazel\/.*",
-        "^build_bazel.*",
-        "bazel_toolchains"
-      ],
+      "packagePatterns": ["^@bazel/.*", "^build_bazel.*"],
       "groupName": "bazel",
       "pinVersions": false
     },
     {
-      "packageNames": [
-        "typescript"
-      ],
+      "packageNames": ["typescript"],
       "separateMinorPatch": true
     },
     {
-      "packageNames": [
-        "typescript"
-      ],
-      "updateTypes": [
-        "minor",
-        "major"
-      ],
+      "packageNames": ["typescript"],
+      "updateTypes": ["minor", "major"],
       "enabled": false
+    },
+    {
+      "matchPaths": [
+        "packages/angular_devkit/schematics_cli/blank/project-files/package.json",
+        "packages/angular_devkit/schematics_cli/schematic/files/package.json",
+        "packages/schematics/angular/utility/latest-versions/package.json"
+      ],
+      "matchPackagePatterns": ["*"],
+      "groupName": "schematics dependencies",
+      "groupSlug": "all-schematics-dependencies"
+    },
+    {
+      "matchPaths": [
+        "!packages/angular_devkit/schematics_cli/blank/project-files/package.json",
+        "!packages/angular_devkit/schematics_cli/schematic/files/package.json",
+        "!packages/schematics/angular/utility/latest-versions/package.json"
+      ],
+      "matchPackagePatterns": ["*"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "all non-major dependencies",
+      "groupSlug": "all-minor-patch"
     }
   ]
 }

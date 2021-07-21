@@ -1,14 +1,16 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { RuleFactory, SchematicsException, Tree } from '@angular-devkit/schematics';
 import { NodeModulesEngineHost } from '@angular-devkit/schematics/tools';
 import { readFileSync } from 'fs';
 import { parse as parseJson } from 'jsonc-parser';
+import nodeModule from 'module';
 import { dirname, resolve } from 'path';
 import { Script } from 'vm';
 
@@ -32,19 +34,24 @@ function shouldWrapSchematic(schematicFile: string): boolean {
     }
   }
 
-  // Never wrap `@schematics/update` when executed directly
+  const normalizedSchematicFile = schematicFile.replace(/\\/g, '/');
+  // Never wrap the internal update schematic when executed directly
   // It communicates with the update command via `global`
-  if (/[\/\\]node_modules[\/\\]@schematics[\/\\]update[\/\\]/.test(schematicFile)) {
+  // But we still want to redirect schematics located in `@angular/cli/node_modules`.
+  if (
+    normalizedSchematicFile.includes('node_modules/@angular/cli/') &&
+    !normalizedSchematicFile.includes('node_modules/@angular/cli/node_modules/')
+  ) {
     return false;
   }
 
   // Default is only first-party Angular schematic packages
   // Angular schematics are safe to use in the wrapped VM context
-  return /[\/\\]node_modules[\/\\]@(?:angular|schematics|nguniversal)[\/\\]/.test(schematicFile);
+  return /\/node_modules\/@(?:angular|schematics|nguniversal)\//.test(normalizedSchematicFile);
 }
 
 export class SchematicEngineHost extends NodeModulesEngineHost {
-  protected _resolveReferenceString(refString: string, parentPath: string) {
+  protected override _resolveReferenceString(refString: string, parentPath: string) {
     const [path, name] = refString.split('#', 2);
     // Mimic behavior of ExportStringRef class used in default behavior
     const fullPath = path[0] === '.' ? resolve(parentPath ?? process.cwd(), path) : path;
@@ -114,10 +121,7 @@ function wrap(
   moduleCache: Map<string, unknown>,
   exportName?: string,
 ): () => unknown {
-  const { createRequire, createRequireFromPath } = require('module');
-  // Node.js 10.x does not support `createRequire` so fallback to `createRequireFromPath`
-  // `createRequireFromPath` is deprecated in 12+ and can be removed once 10.x support is removed
-  const scopedRequire = createRequire?.(schematicFile) || createRequireFromPath(schematicFile);
+  const scopedRequire = nodeModule.createRequire(schematicFile);
 
   const customRequire = function (id: string) {
     if (legacyModules[id]) {

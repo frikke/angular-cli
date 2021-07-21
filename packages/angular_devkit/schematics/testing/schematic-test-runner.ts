@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { logging, schema } from '@angular-devkit/core';
 import { Observable, of as observableOf } from 'rxjs';
 import { map } from 'rxjs/operators';
@@ -22,16 +23,12 @@ import {
 } from '../src';
 import { callRule } from '../src/rules/call';
 import { BuiltinTaskExecutor } from '../tasks/node';
-import {
-  NodeModulesTestEngineHost,
-  validateOptionsWithSchema,
-} from '../tools';
-
+import { NodeModulesTestEngineHost, validateOptionsWithSchema } from '../tools';
 
 export class UnitTestTree extends DelegateTree {
   get files() {
     const result: string[] = [];
-    this.visit(path => result.push(path));
+    this.visit((path) => result.push(path));
 
     return result;
   }
@@ -68,9 +65,15 @@ export class SchematicTestRunner {
     this._collection = this._engine.createCollection(this._collectionName);
   }
 
-  get engine() { return this._engine; }
-  get logger(): logging.Logger { return this._logger; }
-  get tasks(): TaskConfiguration[] { return [...this._engineHost.tasks]; }
+  get engine() {
+    return this._engine;
+  }
+  get logger(): logging.Logger {
+    return this._logger;
+  }
+  get tasks(): TaskConfiguration[] {
+    return [...this._engineHost.tasks];
+  }
 
   registerCollection(collectionName: string, collectionPath: string) {
     this._engineHost.registerCollection(collectionName, collectionPath);
@@ -82,11 +85,12 @@ export class SchematicTestRunner {
     tree?: Tree,
   ): Observable<UnitTestTree> {
     const schematic = this._collection.createSchematic(schematicName, true);
-    const host = observableOf(tree || new HostTree);
+    const host = observableOf(tree || new HostTree());
     this._engineHost.clearTasks();
 
-    return schematic.call(opts || {}, host, { logger: this._logger })
-      .pipe(map(tree => new UnitTestTree(tree)));
+    return schematic
+      .call(opts || {}, host, { logger: this._logger })
+      .pipe(map((tree) => new UnitTestTree(tree)));
   }
 
   runExternalSchematicAsync<SchematicSchemaT>(
@@ -97,11 +101,12 @@ export class SchematicTestRunner {
   ): Observable<UnitTestTree> {
     const externalCollection = this._engine.createCollection(collectionName);
     const schematic = externalCollection.createSchematic(schematicName, true);
-    const host = observableOf(tree || new HostTree);
+    const host = observableOf(tree || new HostTree());
     this._engineHost.clearTasks();
 
-    return schematic.call(opts || {}, host, { logger: this._logger })
-      .pipe(map(tree => new UnitTestTree(tree)));
+    return schematic
+      .call(opts || {}, host, { logger: this._logger })
+      .pipe(map((tree) => new UnitTestTree(tree)));
   }
 
   callRule(rule: Rule, tree: Tree, parentContext?: Partial<SchematicContext>): Observable<Tree> {

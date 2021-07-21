@@ -1,19 +1,21 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-// tslint:disable
-// TODO: cleanup this file, it's copied as is from Angular CLI.
-import { logging, tags } from '@angular-devkit/core';
+
 import { WebpackLoggingCallback } from '@angular-devkit/build-webpack';
+import { logging, tags } from '@angular-devkit/core';
 import * as path from 'path';
-import * as textTable from 'text-table';
+import textTable from 'text-table';
+import { Configuration, StatsCompilation } from 'webpack';
+import { Schema as BrowserBuilderOptions } from '../../browser/schema';
 import { colors as ansiColors, removeColor } from '../../utils/color';
-import { Configuration, Stats } from 'webpack';
-import { isWebpackFiveOrHigher } from '../../utils/webpack-version';
+import { getWebpackStatsConfig } from '../configs/stats';
+import { markAsyncChunksNonInitial } from './async-chunks';
+import { normalizeExtraEntryPoints } from './helpers';
 
 export function formatSize(size: number): string {
   if (size <= 0) {
@@ -25,6 +27,7 @@ export function formatSize(size: number): string {
   const roundedSize = size / Math.pow(1024, index);
   // bytes don't have a fraction
   const fractionDigits = index === 0 ? 0 : 2;
+
   return `${roundedSize.toFixed(fractionDigits)} ${abbreviations[index]}`;
 }
 
@@ -36,37 +39,42 @@ export interface BundleStats {
   initial: boolean;
   stats: BundleStatsData;
   chunkType: ChunkType;
-};
+}
 
-export function generateBundleStats(
-  info: {
-    size?: number;
-    files: string[];
-    names?: string[];
-    entry: boolean;
-    initial: boolean;
-    rendered?: boolean;
-    chunkType?: ChunkType,
-  },
-): BundleStats {
+export function generateBundleStats(info: {
+  size?: number;
+  files?: string[];
+  names?: string[];
+  initial?: boolean;
+  rendered?: boolean;
+  chunkType?: ChunkType;
+}): BundleStats {
   const size = typeof info.size === 'number' ? info.size : '-';
-  const files = info.files.filter(f => !f.endsWith('.map')).map(f => path.basename(f)).join(', ');
+  const files =
+    info.files
+      ?.filter((f) => !f.endsWith('.map'))
+      .map((f) => path.basename(f))
+      .join(', ') ?? '';
   const names = info.names?.length ? info.names.join(', ') : '-';
-  const initial = !!(info.entry || info.initial);
+  const initial = !!info.initial;
   const chunkType = info.chunkType || 'unknown';
 
   return {
     chunkType,
     initial,
     stats: [files, names, size],
-  }
+  };
 }
 
-function generateBuildStatsTable(data: BundleStats[], colors: boolean, showTotalSize: boolean): string {
-  const g = (x: string) => colors ? ansiColors.greenBright(x) : x;
-  const c = (x: string) => colors ? ansiColors.cyanBright(x) : x;
-  const bold = (x: string) => colors ? ansiColors.bold(x) : x;
-  const dim = (x: string) => colors ? ansiColors.dim(x) : x;
+function generateBuildStatsTable(
+  data: BundleStats[],
+  colors: boolean,
+  showTotalSize: boolean,
+): string {
+  const g = (x: string) => (colors ? ansiColors.greenBright(x) : x);
+  const c = (x: string) => (colors ? ansiColors.cyanBright(x) : x);
+  const bold = (x: string) => (colors ? ansiColors.bold(x) : x);
+  const dim = (x: string) => (colors ? ansiColors.dim(x) : x);
 
   const changedEntryChunksStats: BundleStatsData[] = [];
   const changedLazyChunksStats: BundleStatsData[] = [];
@@ -114,10 +122,7 @@ function generateBuildStatsTable(data: BundleStats[], colors: boolean, showTotal
 
   // Entry chunks
   if (changedEntryChunksStats.length) {
-    bundleInfo.push(
-      ['Initial Chunk Files', 'Names', 'Size'].map(bold),
-      ...changedEntryChunksStats,
-    );
+    bundleInfo.push(['Initial Chunk Files', 'Names', 'Size'].map(bold), ...changedEntryChunksStats);
 
     if (showTotalSize) {
       bundleInfo.push([]);
@@ -139,41 +144,62 @@ function generateBuildStatsTable(data: BundleStats[], colors: boolean, showTotal
 
   // Lazy chunks
   if (changedLazyChunksStats.length) {
-    bundleInfo.push(
-      ['Lazy Chunk Files', 'Names', 'Size'].map(bold),
-      ...changedLazyChunksStats,
-    );
+    bundleInfo.push(['Lazy Chunk Files', 'Names', 'Size'].map(bold), ...changedLazyChunksStats);
   }
 
   return textTable(bundleInfo, {
     hsep: dim(' | '),
-    stringLength: s => removeColor(s).length,
+    stringLength: (s) => removeColor(s).length,
     align: ['l', 'l', 'r'],
   });
 }
 
 function generateBuildStats(hash: string, time: number, colors: boolean): string {
-  const w = (x: string) => colors ? ansiColors.bold.white(x) : x;
+  const w = (x: string) => (colors ? ansiColors.bold.white(x) : x);
+
   return `Build at: ${w(new Date().toISOString())} - Hash: ${w(hash)} - Time: ${w('' + time)}ms`;
 }
 
-function statsToString(json: any, statsConfig: any, bundleState?: BundleStats[]): string {
+// We use this cache because we can have multiple builders running in the same process,
+// where each builder has different output path.
+
+// Ideally, we should create the logging callback as a factory, but that would need a refactoring.
+const runsCache = new Set<string>();
+
+function statsToString(
+  json: StatsCompilation,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  statsConfig: any,
+  bundleState?: BundleStats[],
+): string {
+  if (!json.chunks?.length) {
+    return '';
+  }
+
   const colors = statsConfig.colors;
-  const rs = (x: string) => colors ? ansiColors.reset(x) : x;
+  const rs = (x: string) => (colors ? ansiColors.reset(x) : x);
 
   const changedChunksStats: BundleStats[] = bundleState ?? [];
   let unchangedChunkNumber = 0;
   if (!bundleState?.length) {
+    const isFirstRun = !runsCache.has(json.outputPath || '');
+
     for (const chunk of json.chunks) {
-      if (!chunk.rendered) {
+      // During first build we want to display unchanged chunks
+      // but unchanged cached chunks are always marked as not rendered.
+      if (!isFirstRun && !chunk.rendered) {
         continue;
       }
 
-      const assets = json.assets.filter((asset: any) => chunk.files.includes(asset.name));
-      const summedSize = assets.filter((asset: any) => !asset.name.endsWith(".map")).reduce((total: number, asset: any) => { return total + asset.size }, 0);
+      const assets = json.assets?.filter((asset) => chunk.files?.includes(asset.name));
+      const summedSize = assets
+        ?.filter((asset) => !asset.name.endsWith('.map'))
+        .reduce((total, asset) => total + asset.size, 0);
       changedChunksStats.push(generateBundleStats({ ...chunk, size: summedSize }));
     }
     unchangedChunkNumber = json.chunks.length - changedChunksStats.length;
+
+    runsCache.add(json.outputPath || '');
   }
 
   // Sort chunks by size in descending order
@@ -189,76 +215,60 @@ function statsToString(json: any, statsConfig: any, bundleState?: BundleStats[])
     return 0;
   });
 
-  const statsTable = generateBuildStatsTable(changedChunksStats, colors, unchangedChunkNumber === 0);
+  const statsTable = generateBuildStatsTable(
+    changedChunksStats,
+    colors,
+    unchangedChunkNumber === 0,
+  );
 
-  // In some cases we do things outside of webpack context 
+  // In some cases we do things outside of webpack context
   // Such us index generation, service worker augmentation etc...
   // This will correct the time and include these.
-  const time = (Date.now() - json.builtAt) + json.time;
+  let time = 0;
+  if (json.builtAt !== undefined && json.time !== undefined) {
+    time = Date.now() - json.builtAt + json.time;
+  }
 
   if (unchangedChunkNumber > 0) {
-    return '\n' + rs(tags.stripIndents`
+    return (
+      '\n' +
+      rs(tags.stripIndents`
       ${statsTable}
 
       ${unchangedChunkNumber} unchanged chunks
 
-      ${generateBuildStats(json.hash, time, colors)}
-      `);
+      ${generateBuildStats(json.hash || '', time, colors)}
+      `)
+    );
   } else {
-    return '\n' + rs(tags.stripIndents`
+    return (
+      '\n' +
+      rs(tags.stripIndents`
       ${statsTable}
 
-      ${generateBuildStats(json.hash, time, colors)}
-      `);
+      ${generateBuildStats(json.hash || '', time, colors)}
+      `)
+    );
   }
 }
 
-export const IGNORE_WARNINGS = [
-  // Webpack 5+ has no facility to disable this warning.
-  // System.import is used in @angular/core for deprecated string-form lazy routes
-  /System.import\(\) is deprecated and will be removed soon/i,
-  // https://github.com/webpack-contrib/source-map-loader/blob/b2de4249c7431dd8432da607e08f0f65e9d64219/src/index.js#L83
-  /Failed to parse source map from/,
-];
-
-// TODO: remove when Webpack 4 is no longer supported.
-// See: https://webpack.js.org/configuration/other-options/#ignorewarnings
-const ERRONEOUS_WARNINGS_FILTER = isWebpackFiveOrHigher()
-  ? (warning: string) => warning
-  : (warning: string) => !IGNORE_WARNINGS.some(msg => msg.test(warning));
-
-interface WebpackDiagnostic {
-  message: string;
-  file?: string;
-  moduleName?: string;
-  loc?: string;
-}
-
-export function statsWarningsToString(json: any, statsConfig: any): string {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function statsWarningsToString(json: StatsCompilation, statsConfig: any): string {
   const colors = statsConfig.colors;
-  const c = (x: string) => colors ? ansiColors.reset.cyan(x) : x;
-  const y = (x: string) => colors ? ansiColors.reset.yellow(x) : x;
-  const yb = (x: string) => colors ? ansiColors.reset.yellowBright(x) : x;
+  const c = (x: string) => (colors ? ansiColors.reset.cyan(x) : x);
+  const y = (x: string) => (colors ? ansiColors.reset.yellow(x) : x);
+  const yb = (x: string) => (colors ? ansiColors.reset.yellowBright(x) : x);
 
-  const warnings = [...json.warnings];
+  const warnings = json.warnings ? [...json.warnings] : [];
   if (json.children) {
-    warnings.push(...json.children
-      .map((c: any) => c.warnings)
-      .reduce((a: string[], b: string[]) => [...a, ...b], [])
-    );
+    warnings.push(...json.children.map((c) => c.warnings ?? []).reduce((a, b) => [...a, ...b], []));
   }
 
   let output = '';
-  for (const warning of warnings as (string | WebpackDiagnostic)[]) {
+  for (const warning of warnings) {
     if (typeof warning === 'string') {
-      if (!ERRONEOUS_WARNINGS_FILTER(warning)) {
-        continue;
-      }
       output += yb(`Warning: ${warning}\n\n`);
     } else {
-      if (!ERRONEOUS_WARNINGS_FILTER(warning.message)) {
-        continue;
-      }
       const file = warning.file || warning.moduleName;
       if (file) {
         output += c(file);
@@ -274,29 +284,23 @@ export function statsWarningsToString(json: any, statsConfig: any): string {
     }
   }
 
-  if (output) {
-    return '\n' + output;
-  }
-
-  return '';
+  return output ? '\n' + output : output;
 }
 
-export function statsErrorsToString(json: any, statsConfig: any): string {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function statsErrorsToString(json: StatsCompilation, statsConfig: any): string {
   const colors = statsConfig.colors;
-  const c = (x: string) => colors ? ansiColors.reset.cyan(x) : x;
-  const yb = (x: string) => colors ? ansiColors.reset.yellowBright(x) : x;
-  const r = (x: string) => colors ? ansiColors.reset.redBright(x) : x;
+  const c = (x: string) => (colors ? ansiColors.reset.cyan(x) : x);
+  const yb = (x: string) => (colors ? ansiColors.reset.yellowBright(x) : x);
+  const r = (x: string) => (colors ? ansiColors.reset.redBright(x) : x);
 
-  const errors = [...json.errors];
+  const errors = json.errors ? [...json.errors] : [];
   if (json.children) {
-    errors.push(...json.children
-      .map((c: any) => c.errors)
-      .reduce((a: string[], b: string[]) => [...a, ...b], [])
-    );
+    errors.push(...json.children.map((c) => c?.errors || []).reduce((a, b) => [...a, ...b], []));
   }
 
   let output = '';
-  for (const error of errors as (string | WebpackDiagnostic)[]) {
+  for (const error of errors) {
     if (typeof error === 'string') {
       output += r(`Error: ${error}\n\n`);
     } else {
@@ -315,38 +319,45 @@ export function statsErrorsToString(json: any, statsConfig: any): string {
     }
   }
 
-  if (output) {
-    return '\n' + output;
-  }
-
-  return '';
+  return output ? '\n' + output : output;
 }
 
-export function statsHasErrors(json: any): boolean {
-  return json.errors.length || !!json.children?.some((c: any) => c.errors.length);
+export function statsHasErrors(json: StatsCompilation): boolean {
+  return !!(json.errors?.length || json.children?.some((c) => c.errors?.length));
 }
 
-export function statsHasWarnings(json: any): boolean {
-  return json.warnings.filter(ERRONEOUS_WARNINGS_FILTER).length ||
-    !!json.children?.some((c: any) => c.warnings.filter(ERRONEOUS_WARNINGS_FILTER).length);
+export function statsHasWarnings(json: StatsCompilation): boolean {
+  return !!(json.warnings?.length || json.children?.some((c) => c.warnings?.length));
 }
 
 export function createWebpackLoggingCallback(
-  verbose: boolean,
+  options: BrowserBuilderOptions,
   logger: logging.LoggerApi,
 ): WebpackLoggingCallback {
+  const { verbose = false, scripts = [], styles = [] } = options;
+  const extraEntryPoints = [
+    ...normalizeExtraEntryPoints(styles, 'styles'),
+    ...normalizeExtraEntryPoints(scripts, 'scripts'),
+  ];
+
   return (stats, config) => {
     if (verbose) {
       logger.info(stats.toString(config.stats));
     }
 
-    webpackStatsLogger(logger, stats.toJson(config.stats), config);
-  }
+    const rawStats = stats.toJson(getWebpackStatsConfig(false));
+    const webpackStats = {
+      ...rawStats,
+      chunks: markAsyncChunksNonInitial(rawStats, extraEntryPoints),
+    };
+
+    webpackStatsLogger(logger, webpackStats, config);
+  };
 }
 
 export function webpackStatsLogger(
   logger: logging.LoggerApi,
-  json: Stats.ToJsonOutput,
+  json: StatsCompilation,
   config: Configuration,
   bundleStats?: BundleStats[],
 ): void {
@@ -358,4 +369,4 @@ export function webpackStatsLogger(
   if (statsHasErrors(json)) {
     logger.error(statsErrorsToString(json, config.stats));
   }
-};
+}

@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { Analytics } from './api';
 
 /**
@@ -15,5 +16,7 @@ export class NoopAnalytics implements Analytics {
   screenview() {}
   pageview() {}
   timing() {}
-  flush(): Promise<void> { return Promise.resolve(); }
+  flush(): Promise<void> {
+    return Promise.resolve();
+  }
 }

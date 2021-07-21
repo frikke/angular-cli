@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
@@ -10,10 +10,9 @@ import { EmptyTree } from '@angular-devkit/schematics';
 import { SchematicTestRunner, UnitTestTree } from '@angular-devkit/schematics/testing';
 import { WorkspaceTargets } from '../../utility/workspace-models';
 
-// tslint:disable-next-line: no-any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function getWorkspaceTargets(tree: UnitTestTree): any {
-  return JSON.parse(tree.readContent(workspacePath))
-    .projects['migration-test'].architect;
+  return JSON.parse(tree.readContent(workspacePath)).projects['migration-test'].architect;
 }
 
 function updateWorkspaceTargets(tree: UnitTestTree, workspaceTargets: WorkspaceTargets) {
@@ -24,7 +23,6 @@ function updateWorkspaceTargets(tree: UnitTestTree, workspaceTargets: WorkspaceT
 
 const workspacePath = '/angular.json';
 
-// tslint:disable:no-big-function
 describe('Migration to version 9', () => {
   describe('Migrate ngsw config', () => {
     const schematicRunner = new SchematicTestRunner(
@@ -63,10 +61,7 @@ describe('Migration to version 9', () => {
               name: 'app',
               installMode: 'prefetch',
               resources: {
-                files: [
-                  '/favicon.ico',
-                  '/index.html',
-                ],
+                files: ['/favicon.ico', '/index.html'],
               },
             },
             {
@@ -74,9 +69,7 @@ describe('Migration to version 9', () => {
               installMode: 'lazy',
               updateMode: 'prefetch',
               resources: {
-                files: [
-                  '/assets/**',
-                ],
+                files: ['/assets/**'],
               },
             },
           ],
@@ -87,16 +80,16 @@ describe('Migration to version 9', () => {
 
       tree.create(ngswConfigPath, ngswConfig);
 
-      const tree2 = await schematicRunner.runSchematicAsync('workspace-version-9', {}, tree.branch()).toPromise();
+      const tree2 = await schematicRunner
+        .runSchematicAsync('workspace-version-9', {}, tree.branch())
+        .toPromise();
       const { assetGroups } = JSON.parse(tree2.readContent(ngswConfigPath));
       expect(assetGroups[0].resources.files).toEqual([
         '/favicon.ico',
         '/index.html',
         '/manifest.webmanifest',
       ]);
-      expect(assetGroups[1].resources.files).toEqual([
-        '/assets/**',
-      ]);
+      expect(assetGroups[1].resources.files).toEqual(['/assets/**']);
     });
 
     it(`should not add 'manifest.webmanifest' to files if exists`, async () => {
@@ -112,11 +105,7 @@ describe('Migration to version 9', () => {
               name: 'app',
               installMode: 'prefetch',
               resources: {
-                files: [
-                  '/manifest.webmanifest',
-                  '/favicon.ico',
-                  '/index.html',
-                ],
+                files: ['/manifest.webmanifest', '/favicon.ico', '/index.html'],
               },
             },
           ],
@@ -127,7 +116,9 @@ describe('Migration to version 9', () => {
 
       tree.create(ngswConfigPath, ngswConfig);
 
-      const tree2 = await schematicRunner.runSchematicAsync('workspace-version-9', {}, tree.branch()).toPromise();
+      const tree2 = await schematicRunner
+        .runSchematicAsync('workspace-version-9', {}, tree.branch())
+        .toPromise();
       const { assetGroups } = JSON.parse(tree2.readContent(ngswConfigPath));
       expect(assetGroups[0].resources.files).toEqual([
         '/manifest.webmanifest',

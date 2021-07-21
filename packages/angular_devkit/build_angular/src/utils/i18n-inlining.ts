@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { BuilderContext } from '@angular-devkit/architect';
 import { EmittedFiles } from '@angular-devkit/build-webpack';
 import * as fs from 'fs';
@@ -22,7 +23,7 @@ function emittedFilesToInlineOptions(
   outputPath: string,
   es5: boolean,
   missingTranslation: 'error' | 'warning' | 'ignore' | undefined,
-): { options: InlineOptions[]; originalFiles: string[] }  {
+): { options: InlineOptions[]; originalFiles: string[] } {
   const options: InlineOptions[] = [];
   const originalFiles: string[] = [];
   for (const emittedFile of emittedFiles) {
@@ -107,7 +108,7 @@ export async function i18nInlineEmittedFiles(
           glob: '**/*',
           input: emittedPath,
           output: '',
-          ignore: [...processedFiles].map(f => path.relative(emittedPath, f)),
+          ignore: [...processedFiles].map((f) => path.relative(emittedPath, f)),
         },
       ],
       outputPaths,

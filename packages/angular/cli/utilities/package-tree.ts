@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
@@ -9,10 +9,7 @@
 import * as fs from 'fs';
 import { dirname, join } from 'path';
 import * as resolve from 'resolve';
-import { promisify } from 'util';
 import { NgAddSaveDepedency } from './package-metadata';
-
-const readFile = promisify(fs.readFile);
 
 interface PackageJson {
   name: string;
@@ -47,7 +44,7 @@ export interface PackageTreeNode {
 
 export async function readPackageJson(packageJsonPath: string): Promise<PackageJson | undefined> {
   try {
-    return JSON.parse((await readFile(packageJsonPath)).toString());
+    return JSON.parse((await fs.promises.readFile(packageJsonPath)).toString());
   } catch {
     return undefined;
   }
@@ -70,7 +67,7 @@ export async function getProjectDependencies(dir: string): Promise<Map<string, P
     throw new Error('Could not find package.json');
   }
 
-  const results = new Map<string, PackageTreeNode> ();
+  const results = new Map<string, PackageTreeNode>();
   for (const [name, version] of getAllDependencies(pkg)) {
     const packageJsonPath = findPackageJson(dir, name);
     if (!packageJsonPath) {

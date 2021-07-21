@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
@@ -55,7 +55,7 @@ describe('Browser Builder crossOrigin', () => {
     const fileName = join(normalize(output.outputPath), 'index.html');
     const content = virtualFs.fileBufferToString(await host.read(normalize(fileName)).toPromise());
     expect(content).toBe(
-        `<html><head><base href="/">` +
+      `<html><head><base href="/">` +
         `<link rel="stylesheet" href="styles.css" crossorigin="anonymous"></head>` +
         `<body><app-root></app-root>` +
         `<script src="runtime.js" crossorigin="anonymous" defer></script>` +
@@ -74,7 +74,7 @@ describe('Browser Builder crossOrigin', () => {
     const fileName = join(normalize(output.outputPath), 'index.html');
     const content = virtualFs.fileBufferToString(await host.read(normalize(fileName)).toPromise());
     expect(content).toBe(
-        `<html><head><base href="/">` +
+      `<html><head><base href="/">` +
         `<link rel="stylesheet" href="styles.css"></head>` +
         `<body><app-root></app-root>` +
         `<script src="runtime.js" defer></script>` +

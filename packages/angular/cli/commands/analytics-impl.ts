@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import {
   promptGlobalAnalytics,
   promptProjectAnalytics,
@@ -12,8 +13,7 @@ import {
 } from '../models/analytics';
 import { Command } from '../models/command';
 import { Arguments } from '../models/interface';
-import { ProjectSetting, Schema as AnalyticsCommandSchema, SettingOrProject } from './analytics';
-
+import { Schema as AnalyticsCommandSchema, ProjectSetting, SettingOrProject } from './analytics';
 
 export class AnalyticsCommand extends Command<AnalyticsCommandSchema> {
   public async run(options: AnalyticsCommandSchema & Arguments) {
@@ -33,10 +33,14 @@ export class AnalyticsCommand extends Command<AnalyticsCommandSchema> {
 
         return 2;
       }
-    } else if (options.settingOrProject == SettingOrProject.Project
-               && options.projectSetting === undefined) {
-      this.logger.error(`Argument ${JSON.stringify(options.settingOrProject)} requires a second `
-                      + `argument of one of the following value: on, off.`);
+    } else if (
+      options.settingOrProject == SettingOrProject.Project &&
+      options.projectSetting === undefined
+    ) {
+      this.logger.error(
+        `Argument ${JSON.stringify(options.settingOrProject)} requires a second ` +
+          `argument of one of the following value: on, off.`,
+      );
 
       return 2;
     }

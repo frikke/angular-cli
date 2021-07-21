@@ -1,124 +1,63 @@
 import * as fs from 'fs';
+import * as path from 'path';
 import { prerelease } from 'semver';
 import { packages } from '../../../../lib/packages';
 import { getGlobalVariable } from './env';
 import { prependToFile, readFile, replaceInFile, writeFile } from './fs';
 import { gitCommit } from './git';
 import { installWorkspacePackages } from './packages';
-import { execAndWaitForOutputToMatch, git, ng, npm } from './process';
-
-const tsConfigPath = 'tsconfig.json';
-
+import { execAndWaitForOutputToMatch, git, ng } from './process';
 
 export function updateJsonFile(filePath: string, fn: (json: any) => any | void) {
-  return readFile(filePath)
-    .then(tsConfigJson => {
-      // Remove single and multiline comments
-      const tsConfig = JSON.parse(tsConfigJson.replace(/\/\*\s(.|\n|\r)*\s\*\/|\/\/.*/g, ''));
-      const result = fn(tsConfig) || tsConfig;
+  return readFile(filePath).then((tsConfigJson) => {
+    // Remove single and multiline comments
+    const tsConfig = JSON.parse(tsConfigJson.replace(/\/\*\s(.|\n|\r)*\s\*\/|\/\/.*/g, ''));
+    const result = fn(tsConfig) || tsConfig;
 
-      return writeFile(filePath, JSON.stringify(result, null, 2));
-    });
+    return writeFile(filePath, JSON.stringify(result, null, 2));
+  });
 }
-
 
 export function updateTsConfig(fn: (json: any) => any | void) {
-  return updateJsonFile(tsConfigPath, fn);
+  return updateJsonFile('tsconfig.json', fn);
 }
-
 
 export function ngServe(...args: string[]) {
-  return execAndWaitForOutputToMatch('ng',
-    ['serve', ...args],
-    / Compiled successfully./);
-}
-
-
-export async function createProject(name: string, ...args: string[]) {
-  const extraArgs = [];
-
-  process.chdir(getGlobalVariable('tmp-root'));
-  await ng('new', name, '--skip-install', ...extraArgs, ...args);
-  process.chdir(name);
-
-  if (fs.existsSync('tsconfig.json')) {
-    // Disable the TS version check to make TS updates easier.
-    // Only VE does it, but on Ivy the i18n extraction uses VE.
-    await updateJsonFile('tsconfig.json', config => {
-      if (!config.angularCompilerOptions) {
-        config.angularCompilerOptions = {};
-      }
-      config.angularCompilerOptions.disableTypeScriptVersionCheck = true;
-    });
-  }
-
-  await prepareProjectForE2e(name);
+  return execAndWaitForOutputToMatch('ng', ['serve', ...args], / Compiled successfully./);
 }
 
 export async function prepareProjectForE2e(name) {
   const argv: string[] = getGlobalVariable('argv');
 
-  await git(
-    'config',
-    'user.email',
-    'angular-core+e2e@google.com',
-  );
-  await git(
-    'config',
-    'user.name',
-    'Angular CLI E2e',
-  );
-  await git(
-    'config',
-    'commit.gpgSign',
-    'false',
-  );
+  await git('config', 'user.email', 'angular-core+e2e@google.com');
+  await git('config', 'user.name', 'Angular CLI E2e');
+  await git('config', 'commit.gpgSign', 'false');
 
-  await useCIChrome(
-    'e2e',
-  );
-  await useCIChrome(
-    '',
-  );
+  await ng('generate', '@schematics/angular:e2e', '--related-app-name', name);
+
+  await useCIChrome('e2e');
+  await useCIChrome('');
 
   // legacy projects
-  await useCIChrome(
-    'src',
-  );
+  await useCIChrome('src');
 
   if (argv['ng-snapshots'] || argv['ng-tag']) {
     await useSha();
   }
 
-  await writeFile('.npmrc', 'registry=http://localhost:4873');
-
-  console.log(
-    `Project ${name} created... Installing npm.`,
-  );
-  await installWorkspacePackages(false);
-  await useCIDefaults(
-    name,
-  );
+  console.log(`Project ${name} created... Installing npm.`);
+  await installWorkspacePackages();
+  await useCIDefaults(name);
   // Force sourcemaps to be from the root of the filesystem.
-  await updateJsonFile(
-    'tsconfig.json',
-    json => {
-      json[
-        'compilerOptions'
-      ][
-        'sourceRoot'
-      ] =
-        '/';
-    },
-  );
-  await gitCommit(
-    'prepare-project-for-e2e',
-  );
+  await updateJsonFile('tsconfig.json', (json) => {
+    json['compilerOptions']['sourceRoot'] = '/';
+  });
+  await gitCommit('prepare-project-for-e2e');
 }
 
 export function useBuiltPackages() {
-  return Promise.resolve()
-    .then(() => updateJsonFile('package.json', json => {
+  return Promise.resolve().then(() =>
+    updateJsonFile('package.json', (json) => {
       if (!json['dependencies']) {
         json['dependencies'] = {};
       }
@@ -127,14 +66,14 @@ export function useBuiltPackages() {
       }
 
       for (const packageName of Object.keys(packages)) {
-        if (json['dependencies'].hasOwnProperty(packageName)
-        ) {
+        if (json['dependencies'].hasOwnProperty(packageName)) {
           json['dependencies'][packageName] = packages[packageName].tar;
         } else if (json['devDependencies'].hasOwnProperty(packageName)) {
           json['devDependencies'][packageName] = packages[packageName].tar;
         }
       }
-    }));
+    }),
+  );
 }
 
 export function useSha() {
@@ -145,20 +84,19 @@ export function useSha() {
     // 6.1.6+4a8d56a
     const label = argv['ng-tag'] ? argv['ng-tag'] : '';
     const ngSnapshotVersions = require('../ng-snapshot/package.json');
-    return updateJsonFile('package.json', json => {
+    return updateJsonFile('package.json', (json) => {
       // Install over the project with snapshot builds.
       function replaceDependencies(key: string) {
         const missingSnapshots = [];
         Object.keys(json[key] || {})
-          .filter(name => name.match(/^@angular\//))
-          .forEach(name => {
+          .filter((name) => name.match(/^@angular\//))
+          .forEach((name) => {
             const pkgName = name.split(/\//)[1];
             if (pkgName == 'cli') {
               return;
             }
             if (label) {
-              json[key][`@angular/${pkgName}`]
-                = `github:angular/${pkgName}-builds${label}`;
+              json[key][`@angular/${pkgName}`] = `github:angular/${pkgName}-builds${label}`;
             } else {
               const replacement = ngSnapshotVersions.dependencies[`@angular/${pkgName}`];
               if (!replacement) {
@@ -168,8 +106,11 @@ export function useSha() {
             }
           });
         if (missingSnapshots.length > 0) {
-          throw new Error('e2e test with --ng-snapshots requires all angular packages be ' +
-            'listed in tests/legacy-cli/e2e/ng-snapshot/package.json.\nErrors:\n' + missingSnapshots.join('\n  '));
+          throw new Error(
+            'e2e test with --ng-snapshots requires all angular packages be ' +
+              'listed in tests/legacy-cli/e2e/ng-snapshot/package.json.\nErrors:\n' +
+              missingSnapshots.join('\n  '),
+          );
         }
       }
       try {
@@ -185,11 +126,11 @@ export function useSha() {
 }
 
 export function useNgVersion(version: string) {
-  return updateJsonFile('package.json', json => {
+  return updateJsonFile('package.json', (json) => {
     // Install over the project with specific versions.
     Object.keys(json['dependencies'] || {})
-      .filter(name => name.match(/^@angular\//))
-      .forEach(name => {
+      .filter((name) => name.match(/^@angular\//))
+      .forEach((name) => {
         const pkgName = name.split(/\//)[1];
         if (pkgName == 'cli') {
           return;
@@ -198,8 +139,8 @@ export function useNgVersion(version: string) {
       });
 
     Object.keys(json['devDependencies'] || {})
-      .filter(name => name.match(/^@angular\//))
-      .forEach(name => {
+      .filter((name) => name.match(/^@angular\//))
+      .forEach((name) => {
         const pkgName = name.split(/\//)[1];
         if (pkgName == 'cli') {
           return;
@@ -225,14 +166,12 @@ export function useNgVersion(version: string) {
 }
 
 export function useCIDefaults(projectName = 'test-project') {
-  return updateJsonFile('angular.json', workspaceJson => {
+  return updateJsonFile('angular.json', (workspaceJson) => {
     // Disable progress reporting on CI to reduce spam.
     const project = workspaceJson.projects[projectName];
     const appTargets = project.targets || project.architect;
     appTargets.build.options.progress = false;
     appTargets.test.options.progress = false;
-    // Use the CI chrome setup in karma.
-    appTargets.test.options.browsers = 'ChromeHeadlessCI';
     // Disable auto-updating webdriver in e2e.
     if (appTargets.e2e) {
       appTargets.e2e.options.webdriverUpdate = false;
@@ -244,65 +183,50 @@ export function useCIDefaults(projectName = 'test-project') {
       const e2eTargets = e2eProject.targets || e2eProject.architect;
       e2eTargets.e2e.options.webdriverUpdate = false;
     }
-  })
-    .then(() => updateJsonFile('package.json', json => {
-      // Use matching versions of Chromium and ChromeDriver.
-      // https://github.com/GoogleChrome/puppeteer/releases
-      // http://chromedriver.chromium.org/downloads
-      json['scripts']['webdriver-update'] = 'webdriver-manager update' +
-        ` --standalone false --gecko false --versions.chrome 89.0.4389.0`; // Supports Chrome 89
-
-    }))
-    .then(() => npm('run', 'webdriver-update'));
+  });
 }
 
-export function useCIChrome(projectDir: string) {
-  const dir = projectDir ? projectDir + '/' : '';
-  const protractorConf = `${dir}protractor.conf.js`;
-  const karmaConf = `${dir}karma.conf.js`;
+export async function useCIChrome(projectDir: string = ''): Promise<void> {
+  const protractorConf = path.join(projectDir, 'protractor.conf.js');
+  const karmaConf = path.join(projectDir, 'karma.conf.js');
 
-  return Promise.resolve()
-    .then(() => updateJsonFile('package.json', json => {
-      // Use matching versions of Chromium (via puppeteer) and ChromeDriver.
-      // https://github.com/GoogleChrome/puppeteer/releases
-      // http://chromedriver.chromium.org/downloads
-      json['devDependencies']['puppeteer'] = '7.0.0'; // Chromium 89.0.4389.0 (r843427)
-      json['devDependencies']['karma-chrome-launcher'] = '~3.1.0';
-    }))
-    // Use Pupeteer in protractor if a config is found on the project.
-    .then(() => {
-      if (fs.existsSync(protractorConf)) {
-        return replaceInFile(protractorConf,
-          `browserName: 'chrome'`,
-          `browserName: 'chrome',
-          chromeOptions: {
-            args: ['--headless'],
-            binary: require('puppeteer').executablePath()
-          }
-        `);
-      }
-    })
-    // Use Pupeteer in karma if a config is found on the project.
-    .then(() => {
-      if (fs.existsSync(karmaConf)) {
-        return prependToFile(karmaConf,
-          `process.env.CHROME_BIN = require('puppeteer').executablePath();`)
-          .then(() => replaceInFile(karmaConf,
-            `browsers: ['Chrome']`,
-            `browsers: ['Chrome'],
-            customLaunchers: {
-              ChromeHeadlessCI: {
-                base: 'ChromeHeadless',
-              }
-            }
-        `));
-      }
-    });
+  const chromePath = require('puppeteer').executablePath();
+  const protractorPath = require.resolve('protractor');
+  const webdriverUpdatePath = require.resolve('webdriver-manager/selenium/update-config.json', {
+    paths: [protractorPath],
+  });
+  const webdriverUpdate = JSON.parse(await readFile(webdriverUpdatePath)) as {
+    chrome: { last: string };
+  };
+  const chromeDriverPath = webdriverUpdate.chrome.last;
+
+  // Use Puppeteer in protractor if a config is found on the project.
+  if (fs.existsSync(protractorConf)) {
+    await replaceInFile(
+      protractorConf,
+      `browserName: 'chrome'`,
+      `browserName: 'chrome',
+      chromeOptions: {
+        args: ['--headless'],
+        binary: String.raw\`${chromePath}\`,
+      }`,
+    );
+    await replaceInFile(
+      protractorConf,
+      'directConnect: true,',
+      `directConnect: true, chromeDriver: String.raw\`${chromeDriverPath}\`,`,
+    );
+  }
+
+  // Use Puppeteer in karma if a config is found on the project.
+  if (fs.existsSync(karmaConf)) {
+    await prependToFile(karmaConf, `process.env.CHROME_BIN = String.raw\`${chromePath}\`;`);
+    await replaceInFile(karmaConf, `browsers: ['Chrome']`, `browsers: ['ChromeHeadless']`);
+  }
 }
 
-export async function isPrereleaseCli() {
-  const angularCliPkgJson = JSON.parse(await readFile('node_modules/@angular/cli/package.json'));
-  const pre = prerelease(angularCliPkgJson.version);
+export function isPrereleaseCli(): boolean {
+  const pre = prerelease(packages['@angular/cli'].version);
 
   return pre && pre.length > 0;
 }

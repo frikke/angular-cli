@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { TaskConfiguration, TaskConfigurationGenerator } from '../../src';
 import { RepositoryInitializerName, RepositoryInitializerTaskOptions } from './options';
 
@@ -16,7 +17,6 @@ export interface CommitOptions {
 
 export class RepositoryInitializerTask
   implements TaskConfigurationGenerator<RepositoryInitializerTaskOptions> {
-
   constructor(public workingDirectory?: string, public commitOptions?: CommitOptions) {}
 
   toConfiguration(): TaskConfiguration<RepositoryInitializerTaskOptions> {

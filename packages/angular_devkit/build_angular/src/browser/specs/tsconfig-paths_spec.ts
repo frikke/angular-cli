@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
@@ -8,7 +8,6 @@
 
 import { Architect } from '@angular-devkit/architect';
 import { browserBuild, createArchitect, host } from '../../test-utils';
-
 
 describe('Browser Builder tsconfig paths', () => {
   const target = { project: 'app', target: 'build' };
@@ -22,14 +21,18 @@ describe('Browser Builder tsconfig paths', () => {
 
   it('works', async () => {
     host.replaceInFile('src/app/app.module.ts', './app.component', '@root/app/app.component');
-    host.replaceInFile('tsconfig.json', /"baseUrl": ".\/",/, `
+    host.replaceInFile(
+      'tsconfig.json',
+      /"baseUrl": ".\/",/,
+      `
       "baseUrl": "./",
       "paths": {
         "@root/*": [
           "./src/*"
         ]
       },
-    `);
+    `,
+    );
 
     await browserBuild(architect, host, target);
   });
@@ -40,7 +43,10 @@ describe('Browser Builder tsconfig paths', () => {
       'src/app/shared/meaning.ts': 'export var meaning = 42;',
       'src/app/shared/index.ts': `export * from './meaning'`,
     });
-    host.replaceInFile('tsconfig.json', /"baseUrl": ".\/",/, `
+    host.replaceInFile(
+      'tsconfig.json',
+      /"baseUrl": ".\/",/,
+      `
       "baseUrl": "./",
       "paths": {
         "@shared": [
@@ -54,8 +60,11 @@ describe('Browser Builder tsconfig paths', () => {
           "src/app/shared/*"
         ]
       },
-    `);
-    host.appendToFile('src/app/app.component.ts', `
+    `,
+    );
+    host.appendToFile(
+      'src/app/app.component.ts',
+      `
       import { meaning } from 'src/app/shared/meaning';
       import { meaning as meaning2 } from '@shared';
       import { meaning as meaning3 } from '@shared/meaning';
@@ -69,7 +78,8 @@ describe('Browser Builder tsconfig paths', () => {
       console.log(meaning3)
       console.log(meaning4)
       console.log(meaning5)
-    `);
+    `,
+    );
 
     await browserBuild(architect, host, target);
   });

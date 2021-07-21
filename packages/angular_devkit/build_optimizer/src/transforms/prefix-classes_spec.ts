@@ -1,19 +1,17 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-// tslint:disable:no-big-function
-// tslint:disable-next-line:no-implicit-dependencies
+
 import { tags } from '@angular-devkit/core';
 import { transformJavascript } from '../helpers/transform-javascript';
 import { getPrefixClassesTransformer, testPrefixClasses } from './prefix-classes';
 
-
-const transform = (content: string) => transformJavascript(
-  { content, getTransforms: [getPrefixClassesTransformer] }).content;
+const transform = (content: string) =>
+  transformJavascript({ content, getTransforms: [getPrefixClassesTransformer] }).content;
 
 describe('prefix-classes', () => {
   it('prefix TS 2.0 - 2.4 downlevel class', () => {

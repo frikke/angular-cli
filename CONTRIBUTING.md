@@ -198,9 +198,9 @@ Must be one of the following:
 * **feat**: Creates a new feature [1]
 * **fix**: Fixes a previously discovered failure/bug [1]
 * **perf**: Improves performance without any change in functionality or API [1]
-* **refactor**: Refactor without any change in functionality or API (includes style changes) [1]
+* **refactor**: Refactor without any change in functionality or API (includes style changes) 
 * **release**: A release point in the repository [2]
-* **test**: Improvements or corrections made to the project's test suite [1]
+* **test**: Improvements or corrections made to the project's test suite 
 
 
 <sup>[1] This type MUST have a scope. See the next section for more information.</sup><br/>
@@ -224,8 +224,6 @@ The following is the list of supported scopes:
 * **@angular-devkit/schematics-cli**
 * **@ngtools/webpack**
 * **@schematics/angular**
-* **@schematics/schematics**
-* **@schematics/update**
 
 
 ### Subject
@@ -290,18 +288,18 @@ To test if your change effect the public API you need to run the API guardian on
 For example in case `@angular-devkit/core` package was modified you need to run:
 
 ```bash
-yarn bazel test //etc/api:angular_devkit_core_api
+yarn bazel test //goldens/public-api:angular_devkit_core_api
 ```
 
 You can also test all packages by running:
 ```bash
-yarn bazel test //etc/api ...
+yarn bazel test //goldens/public-api ...
 ```
 
 If you modified the public API, the test will fail. To update the golden files you need to run:
 
 ```bash
-yarn bazel run //etc/api:angular_devkit_core_api.accept
+yarn bazel run //goldens/public-api:angular_devkit_core_api.accept
 ```
 
 **Note**: In some cases we use aliased symbols to create namespaces.

@@ -1,13 +1,14 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { DevServerBuilderOutput } from '@angular-devkit/build-angular';
 import { workspaces } from '@angular-devkit/core';
-import fetch from 'node-fetch'; // tslint:disable-line:no-implicit-dependencies
+import fetch from 'node-fetch'; // eslint-disable-line import/no-extraneous-dependencies
 import { createArchitect, host } from '../test-utils';
 
 describe('Dev Server Builder index', () => {
@@ -25,10 +26,10 @@ describe('Dev Server Builder index', () => {
     });
 
     const architect = (await createArchitect(host.root())).architect;
-    const run = await architect.scheduleTarget(targetSpec);
+    const run = await architect.scheduleTarget(targetSpec, { port: 0 });
     const output = (await run.result) as DevServerBuilderOutput;
     expect(output.success).toBe(true);
-    const response = await fetch('http://localhost:4200/index.html');
+    const response = await fetch(output.baseUrl);
     expect(await response.text()).toContain(
       '<script src="runtime.js" type="module"></script>' +
         '<script src="polyfills.js" type="module"></script>' +
@@ -47,7 +48,10 @@ describe('Dev Server Builder index', () => {
       'test.js': 'console.log("test");',
     });
 
-    const { workspace } = await workspaces.readWorkspace(host.root(), workspaces.createWorkspaceHost(host));
+    const { workspace } = await workspaces.readWorkspace(
+      host.root(),
+      workspaces.createWorkspaceHost(host),
+    );
     const app = workspace.projects.get('app');
     if (!app) {
       fail('Test application "app" not found.');
@@ -67,10 +71,10 @@ describe('Dev Server Builder index', () => {
     await workspaces.writeWorkspace(workspace, workspaces.createWorkspaceHost(host));
 
     const architect = (await createArchitect(host.root())).architect;
-    const run = await architect.scheduleTarget(targetSpec);
+    const run = await architect.scheduleTarget(targetSpec, { port: 0 });
     const output = (await run.result) as DevServerBuilderOutput;
     expect(output.success).toBe(true);
-    const response = await fetch('http://localhost:4200/index.html');
+    const response = await fetch(output.baseUrl);
     expect(await response.text()).toContain(
       '<script src="runtime.js" type="module"></script>' +
         '<script src="polyfills.js" type="module"></script>' +
@@ -89,10 +93,10 @@ describe('Dev Server Builder index', () => {
     });
 
     const architect = (await createArchitect(host.root())).architect;
-    const run = await architect.scheduleTarget(targetSpec);
+    const run = await architect.scheduleTarget(targetSpec, { port: 0 });
     const output = (await run.result) as DevServerBuilderOutput;
     expect(output.success).toBe(true);
-    const response = await fetch('http://localhost:4200/index.html');
+    const response = await fetch(output.baseUrl);
     expect(await response.text()).toContain(
       '<script src="runtime.js" defer></script>' +
         '<script src="polyfills.js" defer></script>' +
@@ -104,7 +108,10 @@ describe('Dev Server Builder index', () => {
 
   it('sets HTML lang attribute with the active locale', async () => {
     const locale = 'fr';
-    const { workspace } = await workspaces.readWorkspace(host.root(), workspaces.createWorkspaceHost(host));
+    const { workspace } = await workspaces.readWorkspace(
+      host.root(),
+      workspaces.createWorkspaceHost(host),
+    );
     const app = workspace.projects.get('app');
     if (!app) {
       fail('Test application "app" not found.');
@@ -132,10 +139,10 @@ describe('Dev Server Builder index', () => {
     await workspaces.writeWorkspace(workspace, workspaces.createWorkspaceHost(host));
 
     const architect = (await createArchitect(host.root())).architect;
-    const run = await architect.scheduleTarget(targetSpec);
+    const run = await architect.scheduleTarget(targetSpec, { port: 0 });
     const output = (await run.result) as DevServerBuilderOutput;
     expect(output.success).toBe(true);
-    const response = await fetch('http://localhost:4200/index.html');
+    const response = await fetch(output.baseUrl);
     expect(await response.text()).toContain(`lang="${locale}"`);
     await run.stop();
   });

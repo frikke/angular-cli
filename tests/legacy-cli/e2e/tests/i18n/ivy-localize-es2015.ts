@@ -2,16 +2,16 @@ import { expectFileNotToExist, expectFileToMatch, readFile, writeFile } from '..
 import { ng } from '../../utils/process';
 import { updateJsonFile } from '../../utils/project';
 import { expectToFail } from '../../utils/utils';
-import { externalServer, langTranslations, setupI18nConfig } from './legacy';
+import { externalServer, langTranslations, setupI18nConfig } from './setup';
 
 export default async function() {
   // Setup i18n tests and config.
   await setupI18nConfig();
 
-  // Ensure a ES2015 build is used.
+  // Ensure a es2017 build is used.
   await writeFile('.browserslistrc', 'Chrome 65');
   await updateJsonFile('tsconfig.json', config => {
-    config.compilerOptions.target = 'es2015';
+    config.compilerOptions.target = 'es2017';
     if (!config.angularCompilerOptions) {
       config.angularCompilerOptions = {};
     }

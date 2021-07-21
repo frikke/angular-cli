@@ -1,16 +1,16 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { analytics, logging } from '@angular-devkit/core';
 import { Observable } from 'rxjs';
 import { Url } from 'url';
 import { FileEntry, MergeStrategy, Tree } from '../tree/interface';
 import { Workflow } from '../workflow/interface';
-
 
 export interface TaskConfiguration<T = {}> {
   name: string;
@@ -22,8 +22,10 @@ export interface TaskConfigurationGenerator<T = {}> {
   toConfiguration(): TaskConfiguration<T>;
 }
 
-export type TaskExecutor<T = {}>
-  = (options: T | undefined, context: SchematicContext) => Promise<void> | Observable<void>;
+export type TaskExecutor<T = {}> = (
+  options: T | undefined,
+  context: SchematicContext,
+) => Promise<void> | Observable<void>;
 
 export interface TaskExecutorFactory<T> {
   readonly name: string;
@@ -36,7 +38,7 @@ export interface TaskId {
 
 export interface TaskInfo {
   readonly id: number;
-  readonly priority:  number;
+  readonly priority: number;
   readonly configuration: TaskConfiguration;
   readonly context: SchematicContext;
 }
@@ -61,14 +63,15 @@ export type CollectionDescription<CollectionMetadataT extends object> = Collecti
  * needs to run. The SchematicMetadataT and CollectionMetadataT type parameters contain additional
  * metadata that you want to store while remaining type-safe.
  */
-export type SchematicDescription<CollectionMetadataT extends object,
-                                 SchematicMetadataT extends object> = SchematicMetadataT & {
+export type SchematicDescription<
+  CollectionMetadataT extends object,
+  SchematicMetadataT extends object
+> = SchematicMetadataT & {
   readonly collection: CollectionDescription<CollectionMetadataT>;
   readonly name: string;
   readonly private?: boolean;
   readonly hidden?: boolean;
 };
-
 
 /**
  * The Host for the Engine. Specifically, the piece of the tooling responsible for resolving
@@ -83,12 +86,13 @@ export interface EngineHost<CollectionMetadataT extends object, SchematicMetadat
   listSchematicNames(collection: CollectionDescription<CollectionMetadataT>): string[];
 
   createSchematicDescription(
-      name: string,
-      collection: CollectionDescription<CollectionMetadataT>):
-        SchematicDescription<CollectionMetadataT, SchematicMetadataT> | null;
+    name: string,
+    collection: CollectionDescription<CollectionMetadataT>,
+  ): SchematicDescription<CollectionMetadataT, SchematicMetadataT> | null;
   getSchematicRuleFactory<OptionT extends object>(
-      schematic: SchematicDescription<CollectionMetadataT, SchematicMetadataT>,
-      collection: CollectionDescription<CollectionMetadataT>): RuleFactory<OptionT>;
+    schematic: SchematicDescription<CollectionMetadataT, SchematicMetadataT>,
+    collection: CollectionDescription<CollectionMetadataT>,
+  ): RuleFactory<OptionT>;
   createSourceFromUrl(
     url: Url,
     context: TypedSchematicContext<CollectionMetadataT, SchematicMetadataT>,
@@ -106,7 +110,6 @@ export interface EngineHost<CollectionMetadataT extends object, SchematicMetadat
 
   readonly defaultMergeStrategy?: MergeStrategy;
 }
-
 
 /**
  * The root Engine for creating and running schematics and collections. Everything related to
@@ -147,7 +150,6 @@ export interface Engine<CollectionMetadataT extends object, SchematicMetadataT e
   readonly workflow: Workflow | null;
 }
 
-
 /**
  * A Collection as created by the Engine. This should be used by the tool to create schematics,
  * or by rules to create other schematics as well.
@@ -162,7 +164,6 @@ export interface Collection<CollectionMetadataT extends object, SchematicMetadat
   ): Schematic<CollectionMetadataT, SchematicMetadataT>;
   listSchematicNames(): string[];
 }
-
 
 /**
  * A Schematic as created by the Engine. This should be used by the tool to execute the main
@@ -180,13 +181,14 @@ export interface Schematic<CollectionMetadataT extends object, SchematicMetadata
   ): Observable<Tree>;
 }
 
-
 /**
  * A SchematicContext. Contains information necessary for Schematics to execute some rules, for
  * example when using another schematics, as we need the engine and collection.
  */
-export interface TypedSchematicContext<CollectionMetadataT extends object,
-                                       SchematicMetadataT extends object> {
+export interface TypedSchematicContext<
+  CollectionMetadataT extends object,
+  SchematicMetadataT extends object
+> {
   readonly debug: boolean;
   readonly engine: Engine<CollectionMetadataT, SchematicMetadataT>;
   readonly logger: logging.LoggerApi;
@@ -200,13 +202,11 @@ export interface TypedSchematicContext<CollectionMetadataT extends object,
   readonly analytics?: analytics.Analytics;
 }
 
-
 /**
  * This is used by the Schematics implementations in order to avoid needing to have typing from
  * the tooling. Schematics are not specific to a tool.
  */
 export type SchematicContext = TypedSchematicContext<{}, {}>;
-
 
 /**
  * A rule factory, which is normally the way schematics are implemented. Returned by the tooling
@@ -214,14 +214,12 @@ export type SchematicContext = TypedSchematicContext<{}, {}>;
  */
 export type RuleFactory<T extends object> = (options: T) => Rule;
 
-
 /**
  * A FileOperator applies changes synchronously to a FileEntry. An async operator returns
  * asynchronously. We separate them so that the type system can catch early errors.
  */
 export type FileOperator = (entry: FileEntry) => FileEntry | null;
 export type AsyncFileOperator = (tree: FileEntry) => Observable<FileEntry | null>;
-
 
 /**
  * A source is a function that generates a Tree from a specific context. A rule transforms a tree
@@ -233,5 +231,7 @@ export type AsyncFileOperator = (tree: FileEntry) => Observable<FileEntry | null
  * know which types is the schematic or collection metadata, as they are both tooling specific.
  */
 export type Source = (context: SchematicContext) => Tree | Observable<Tree>;
-export type Rule = (tree: Tree, context: SchematicContext) =>
-  Tree | Observable<Tree> | Rule | Promise<void | Rule> | void;
+export type Rule = (
+  tree: Tree,
+  context: SchematicContext,
+) => Tree | Observable<Tree> | Rule | Promise<void | Rule> | void;

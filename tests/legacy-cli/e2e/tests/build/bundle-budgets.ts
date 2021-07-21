@@ -1,11 +1,10 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-
 import { ng } from '../../utils/process';
 import { updateJsonFile } from '../../utils/project';
 import { expectToFail } from '../../utils/utils';
@@ -13,7 +12,7 @@ import { expectToFail } from '../../utils/utils';
 export default async function () {
   // Error
   await updateJsonFile('angular.json', json => {
-    json.projects['test-project'].architect.build.options.budgets = [
+    json.projects['test-project'].architect.build.configurations.production.budgets = [
       { type: 'all', maximumError: '100b' },
     ];
   });
@@ -25,7 +24,7 @@ export default async function () {
 
   // Warning
   await updateJsonFile('angular.json', json => {
-    json.projects['test-project'].architect.build.options.budgets = [
+    json.projects['test-project'].architect.build.configurations.production.budgets = [
       { type: 'all', minimumWarning: '100mb' },
     ];
   });
@@ -37,7 +36,7 @@ export default async function () {
 
   // Pass
   await updateJsonFile('angular.json', json => {
-    json.projects['test-project'].architect.build.options.budgets = [
+    json.projects['test-project'].architect.build.configurations.production.budgets = [
       { type: 'allScript', maximumError: '100mb' },
     ];
   });

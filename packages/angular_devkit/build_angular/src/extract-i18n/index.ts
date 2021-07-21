@@ -1,27 +1,31 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-import {
-  BuilderContext,
-  createBuilder,
-  targetFromTargetString,
-} from '@angular-devkit/architect';
+
+import { BuilderContext, createBuilder, targetFromTargetString } from '@angular-devkit/architect';
 import { BuildResult, runWebpack } from '@angular-devkit/build-webpack';
 import { JsonObject } from '@angular-devkit/core';
 import type { ɵParsedMessage as LocalizeMessage } from '@angular/localize';
+import type { Diagnostics } from '@angular/localize/src/tools/src/diagnostics';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as webpack from 'webpack';
-import { Schema as BrowserBuilderOptions } from '../browser/schema';
+import webpack from 'webpack';
+import { Schema as BrowserBuilderOptions, OutputHashing } from '../browser/schema';
 import { ExecutionTransformer } from '../transforms';
 import { createI18nOptions } from '../utils/i18n-options';
 import { assertCompatibleAngularVersion } from '../utils/version';
 import { generateBrowserWebpackConfigFromContext } from '../utils/webpack-browser-config';
-import { getAotConfig, getCommonConfig, getStatsConfig } from '../webpack/configs';
+import {
+  getBrowserConfig,
+  getCommonConfig,
+  getStatsConfig,
+  getTypeScriptConfig,
+  getWorkerConfig,
+} from '../webpack/configs';
 import { createWebpackLoggingCallback } from '../webpack/utils/stats';
 import { Format, Schema } from './schema';
 
@@ -38,6 +42,7 @@ function getI18nOutfile(format: string | undefined) {
     case 'xliff2':
       return 'messages.xlf';
     case 'json':
+    case 'legacy-migrate':
       return 'messages.json';
     case 'arb':
       return 'messages.arb';
@@ -46,38 +51,54 @@ function getI18nOutfile(format: string | undefined) {
   }
 }
 
-async function getSerializer(format: Format, sourceLocale: string, basePath: string, useLegacyIds: boolean) {
+async function getSerializer(
+  format: Format,
+  sourceLocale: string,
+  basePath: string,
+  useLegacyIds: boolean,
+  diagnostics: Diagnostics,
+) {
   switch (format) {
     case Format.Xmb:
-      const { XmbTranslationSerializer } =
-      await import('@angular/localize/src/tools/src/extract/translation_files/xmb_translation_serializer');
+      const { XmbTranslationSerializer } = await import(
+        '@angular/localize/src/tools/src/extract/translation_files/xmb_translation_serializer'
+      );
 
-      // tslint:disable-next-line: no-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return new XmbTranslationSerializer(basePath as any, useLegacyIds);
     case Format.Xlf:
     case Format.Xlif:
     case Format.Xliff:
-      const { Xliff1TranslationSerializer } =
-        await import('@angular/localize/src/tools/src/extract/translation_files/xliff1_translation_serializer');
+      const { Xliff1TranslationSerializer } = await import(
+        '@angular/localize/src/tools/src/extract/translation_files/xliff1_translation_serializer'
+      );
 
-      // tslint:disable-next-line: no-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return new Xliff1TranslationSerializer(sourceLocale, basePath as any, useLegacyIds, {});
     case Format.Xlf2:
     case Format.Xliff2:
-      const { Xliff2TranslationSerializer } =
-        await import('@angular/localize/src/tools/src/extract/translation_files/xliff2_translation_serializer');
+      const { Xliff2TranslationSerializer } = await import(
+        '@angular/localize/src/tools/src/extract/translation_files/xliff2_translation_serializer'
+      );
 
-      // tslint:disable-next-line: no-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return new Xliff2TranslationSerializer(sourceLocale, basePath as any, useLegacyIds, {});
     case Format.Json:
-      const { SimpleJsonTranslationSerializer } =
-        await import('@angular/localize/src/tools/src/extract/translation_files/json_translation_serializer');
+      const { SimpleJsonTranslationSerializer } = await import(
+        '@angular/localize/src/tools/src/extract/translation_files/json_translation_serializer'
+      );
 
-      // tslint:disable-next-line: no-any
       return new SimpleJsonTranslationSerializer(sourceLocale);
+    case Format.LegacyMigrate:
+      const { LegacyMessageIdMigrationSerializer } = await import(
+        '@angular/localize/src/tools/src/extract/translation_files/legacy_message_id_migration_serializer'
+      );
+
+      return new LegacyMessageIdMigrationSerializer(diagnostics);
     case Format.Arb:
-      const { ArbTranslationSerializer } =
-        await import('@angular/localize/src/tools/src/extract/translation_files/arb_translation_serializer');
+      const { ArbTranslationSerializer } = await import(
+        '@angular/localize/src/tools/src/extract/translation_files/arb_translation_serializer'
+      );
 
       const fileSystem = {
         relative(from: string, to: string): string {
@@ -85,18 +106,13 @@ async function getSerializer(format: Format, sourceLocale: string, basePath: str
         },
       };
 
-      // tslint:disable-next-line: no-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return new ArbTranslationSerializer(sourceLocale, basePath as any, fileSystem as any);
   }
 }
 
-function normalizeFormatOption(options: ExtractI18nBuilderOptions) {
-  let format;
-  if (options.i18nFormat !== Format.Xlf) {
-    format = options.i18nFormat;
-  } else {
-    format = options.format;
-  }
+function normalizeFormatOption(options: ExtractI18nBuilderOptions): Format {
+  let format = options.format;
 
   switch (format) {
     case Format.Xlf:
@@ -108,18 +124,10 @@ function normalizeFormatOption(options: ExtractI18nBuilderOptions) {
     case Format.Xliff2:
       format = Format.Xlf2;
       break;
-    case Format.Json:
-      format = Format.Json;
-      break;
-    case Format.Arb:
-      format = Format.Arb;
-      break;
-    case undefined:
-      format = Format.Xlf;
-      break;
   }
 
-  return format;
+  // Default format is xliff1
+  return format ?? Format.Xlf;
 }
 
 class NoEmitPlugin {
@@ -128,6 +136,9 @@ class NoEmitPlugin {
   }
 }
 
+/**
+ * @experimental Direct usage of this function is considered experimental.
+ */
 export async function execute(
   options: ExtractI18nBuilderOptions,
   context: BuilderContext,
@@ -136,7 +147,7 @@ export async function execute(
   },
 ): Promise<BuildResult> {
   // Check Angular version.
-  assertCompatibleAngularVersion(context.workspaceRoot, context.logger);
+  assertCompatibleAngularVersion(context.workspaceRoot);
 
   const browserTarget = targetFromTargetString(options.browserTarget);
   const browserOptions = await context.validateOptions<JsonObject & BrowserBuilderOptions>(
@@ -161,118 +172,106 @@ export async function execute(
   const metadata = await context.getProjectMetadata(context.target);
   const i18n = createI18nOptions(metadata);
 
-  let usingIvy = false;
   let useLegacyIds = true;
 
   const ivyMessages: LocalizeMessage[] = [];
-  const { config, projectRoot } = await generateBrowserWebpackConfigFromContext(
-    {
-      ...browserOptions,
-      optimization: false,
-      sourceMap: {
-        scripts: true,
-        styles: false,
-        vendor: true,
-      },
-      buildOptimizer: false,
-      i18nLocale: options.i18nLocale || i18n.sourceLocale,
-      i18nFormat: format,
-      i18nFile: outFile,
-      aot: true,
-      progress: options.progress,
-      assets: [],
-      scripts: [],
-      styles: [],
-      deleteOutputPath: false,
+  const builderOptions = {
+    ...browserOptions,
+    optimization: false,
+    sourceMap: {
+      scripts: true,
+      styles: false,
+      vendor: true,
     },
+    buildOptimizer: false,
+    aot: true,
+    progress: options.progress,
+    budgets: [],
+    assets: [],
+    scripts: [],
+    styles: [],
+    deleteOutputPath: false,
+    extractLicenses: false,
+    subresourceIntegrity: false,
+    outputHashing: OutputHashing.None,
+    namedChunks: true,
+  };
+  const { config, projectRoot } = await generateBrowserWebpackConfigFromContext(
+    builderOptions,
     context,
     (wco) => {
-      const isIvyApplication = wco.tsConfig.options.enableIvy !== false;
+      if (wco.tsConfig.options.enableIvy === false) {
+        context.logger.warn(
+          'Ivy extraction enabled but application is not Ivy enabled. Extraction may fail.',
+        );
+      }
 
       // Default value for legacy message ids is currently true
       useLegacyIds = wco.tsConfig.options.enableI18nLegacyMessageIdFormat ?? true;
 
-      // Ivy extraction is the default for Ivy applications.
-      usingIvy = (isIvyApplication && options.ivy === undefined) || !!options.ivy;
-
-      if (usingIvy) {
-        if (!isIvyApplication) {
-          context.logger.warn(
-            'Ivy extraction enabled but application is not Ivy enabled. Extraction may fail.',
-          );
-        }
-      } else if (isIvyApplication) {
-        context.logger.warn(
-          'Ivy extraction not enabled but application is Ivy enabled. ' +
-          'If the extraction fails, the `--ivy` flag will enable Ivy extraction.',
-        );
-      }
-
       const partials = [
         { plugins: [new NoEmitPlugin()] },
         getCommonConfig(wco),
-        // Only use VE extraction if not using Ivy
-        getAotConfig(wco, !usingIvy),
+        getBrowserConfig(wco),
+        getTypeScriptConfig(wco),
+        getWorkerConfig(wco),
         getStatsConfig(wco),
       ];
 
       // Add Ivy application file extractor support
-      if (usingIvy) {
-        partials.unshift({
-          module: {
-            rules: [
-              {
-                test: /\.[t|j]s$/,
-                loader: require.resolve('./ivy-extract-loader'),
-                options: {
-                  messageHandler: (messages: LocalizeMessage[]) => ivyMessages.push(...messages),
-                },
+      partials.unshift({
+        module: {
+          rules: [
+            {
+              test: /\.[t|j]s$/,
+              loader: require.resolve('./ivy-extract-loader'),
+              options: {
+                messageHandler: (messages: LocalizeMessage[]) => ivyMessages.push(...messages),
               },
-            ],
-          },
-        });
-      }
+            },
+          ],
+        },
+      });
 
-      // Replace all stylesheets with an empty default export
+      // Replace all stylesheets with empty content
       partials.push({
-        plugins: [
-          new webpack.NormalModuleReplacementPlugin(
-            /\.(css|scss|sass|styl|less)$/,
-            path.join(__dirname, 'empty-export-default.js'),
-          ),
-        ],
+        module: {
+          rules: [
+            {
+              test: /\.(css|scss|sass|styl|less)$/,
+              loader: require.resolve('./empty-loader'),
+            },
+          ],
+        },
       });
 
       return partials;
     },
   );
 
-  if (usingIvy) {
-    try {
-      require.resolve('@angular/localize');
-    } catch {
-      return {
-        success: false,
-        error: `Ivy extraction requires the '@angular/localize' package.`,
-       };
-    }
+  try {
+    require.resolve('@angular/localize');
+  } catch {
+    return {
+      success: false,
+      error: `Ivy extraction requires the '@angular/localize' package.`,
+      outputPath: outFile,
+    };
   }
 
   const webpackResult = await runWebpack(
     (await transforms?.webpackConfiguration?.(config)) || config,
     context,
     {
-      logging: createWebpackLoggingCallback(false, context.logger),
+      logging: createWebpackLoggingCallback(builderOptions, context.logger),
       webpackFactory: webpack,
     },
   ).toPromise();
 
-  // Complete if using VE
-  if (!usingIvy) {
-    return webpackResult;
-  }
+  // Set the outputPath to the extraction output location for downstream consumers
+  webpackResult.outputPath = outFile;
 
-  // Nothing to process if the Webpack build failed
+  // Complete if Webpack build failed
   if (!webpackResult.success) {
     return webpackResult;
   }
@@ -280,7 +279,6 @@ export async function execute(
   const basePath = config.context || projectRoot;
 
   const { checkDuplicateMessages } = await import(
-    // tslint:disable-next-line: trailing-comma
     '@angular/localize/src/tools/src/extract/duplicates'
   );
 
@@ -292,11 +290,11 @@ export async function execute(
     },
   };
   const diagnostics = checkDuplicateMessages(
-    // tslint:disable-next-line: no-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     checkFileSystem as any,
     ivyMessages,
     'warning',
-    // tslint:disable-next-line: no-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     basePath as any,
   );
   if (diagnostics.messages.length > 0) {
@@ -309,6 +307,7 @@ export async function execute(
     i18n.sourceLocale,
     basePath,
     useLegacyIds,
+    diagnostics,
   );
   const content = serializer.serialize(ivyMessages);
 

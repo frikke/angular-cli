@@ -1,11 +1,12 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-// tslint:disable:no-big-function
+
+/* eslint-disable @typescript-eslint/no-empty-function */
 import { getSystemPath, join, normalize } from '../virtual-fs';
 import {
   WorkspaceFormat,
@@ -17,9 +18,8 @@ import {
 import { WorkspaceDefinition } from './definitions';
 import { WorkspaceHost } from './host';
 
-
 describe('readWorkspace', () => {
-  it('attempts to read from specified file path [angular.json]', async (done) => {
+  it('attempts to read from specified file path [angular.json]', async () => {
     const requestedPath = '/path/to/workspace/angular.json';
 
     const host: WorkspaceHost = {
@@ -42,11 +42,9 @@ describe('readWorkspace', () => {
     };
 
     await readWorkspace(requestedPath, host);
-
-    done();
   });
 
-  it('attempts to read from specified file path [.angular.json]', async (done) => {
+  it('attempts to read from specified file path [.angular.json]', async () => {
     const requestedPath = '/path/to/workspace/.angular.json';
 
     const host: WorkspaceHost = {
@@ -69,11 +67,9 @@ describe('readWorkspace', () => {
     };
 
     await readWorkspace(requestedPath, host);
-
-    done();
   });
 
-  it('attempts to read from specified non-standard file path with format', async (done) => {
+  it('attempts to read from specified non-standard file path with format', async () => {
     const requestedPath = '/path/to/workspace/abc.json';
 
     const host: WorkspaceHost = {
@@ -96,11 +92,9 @@ describe('readWorkspace', () => {
     };
 
     await readWorkspace(requestedPath, host, WorkspaceFormat.JSON);
-
-    done();
   });
 
-  it('errors when reading from specified non-standard file path without format', async (done) => {
+  it('errors when reading from specified non-standard file path without format', async () => {
     const requestedPath = '/path/to/workspace/abc.json';
 
     const host: WorkspaceHost = {
@@ -128,11 +122,9 @@ describe('readWorkspace', () => {
     } catch (e) {
       expect(e.message).toContain('Unable to determine format for workspace path');
     }
-
-    done();
   });
 
-  it('errors when reading from specified file path with invalid specified format', async (done) => {
+  it('errors when reading from specified file path with invalid specified format', async () => {
     const requestedPath = '/path/to/workspace/angular.json';
 
     const host: WorkspaceHost = {
@@ -160,11 +152,9 @@ describe('readWorkspace', () => {
     } catch (e) {
       expect(e.message).toContain('Unsupported workspace format');
     }
-
-    done();
   });
 
-  it('attempts to find/read from directory path', async (done) => {
+  it('attempts to find/read from directory path', async () => {
     const requestedPath = getSystemPath(normalize('/path/to/workspace'));
     const expectedFile = getSystemPath(join(normalize(requestedPath), '.angular.json'));
 
@@ -195,15 +185,15 @@ describe('readWorkspace', () => {
 
     await readWorkspace(requestedPath, host);
     isFileChecks.sort();
-    expect(isFileChecks).toEqual([
-      getSystemPath(join(normalize(requestedPath), 'angular.json')),
-      getSystemPath(join(normalize(requestedPath), '.angular.json')),
-    ].sort());
-
-    done();
+    expect(isFileChecks).toEqual(
+      [
+        getSystemPath(join(normalize(requestedPath), 'angular.json')),
+        getSystemPath(join(normalize(requestedPath), '.angular.json')),
+      ].sort(),
+    );
   });
 
-  it('attempts to find/read only files for specified format from directory path', async (done) => {
+  it('attempts to find/read only files for specified format from directory path', async () => {
     const requestedPath = '/path/to/workspace';
 
     const isFileChecks: string[] = [];
@@ -240,19 +230,13 @@ describe('readWorkspace', () => {
     }
 
     isFileChecks.sort();
-    expect(isFileChecks).toEqual([
-      getSystemPath(join(normalize(requestedPath), 'angular.json')),
-    ]);
+    expect(isFileChecks).toEqual([getSystemPath(join(normalize(requestedPath), 'angular.json'))]);
 
     readFileChecks.sort();
-    expect(readFileChecks).toEqual([
-      getSystemPath(join(normalize(requestedPath), 'angular.json')),
-    ]);
-
-    done();
+    expect(readFileChecks).toEqual([getSystemPath(join(normalize(requestedPath), 'angular.json'))]);
   });
 
-  it('errors when no file found from specified directory path', async (done) => {
+  it('errors when no file found from specified directory path', async () => {
     const requestedPath = '/path/to/workspace';
 
     const host: WorkspaceHost = {
@@ -282,14 +266,11 @@ describe('readWorkspace', () => {
     } catch (e) {
       expect(e.message).toContain('Unable to locate a workspace file');
     }
-
-    done();
   });
-
 });
 
 describe('writeWorkspace', () => {
-  it('attempts to write to specified file path', async (done) => {
+  it('attempts to write to specified file path', async () => {
     const requestedPath = '/path/to/workspace/angular.json';
 
     let writtenPath: string | undefined;
@@ -317,11 +298,9 @@ describe('writeWorkspace', () => {
 
     await writeWorkspace({} as WorkspaceDefinition, host, requestedPath, WorkspaceFormat.JSON);
     expect(writtenPath).toBe(requestedPath);
-
-    done();
   });
 
-  it('errors when writing to specified file path with invalid specified format', async (done) => {
+  it('errors when writing to specified file path with invalid specified format', async () => {
     const requestedPath = '/path/to/workspace/angular.json';
 
     const host: WorkspaceHost = {
@@ -330,16 +309,18 @@ describe('writeWorkspace', () => {
 
         return '';
       },
-      async writeFile() { fail(); },
+      async writeFile() {
+        fail();
+      },
       async isFile() {
         fail();
 
         return false;
       },
       async isDirectory() {
-          fail();
+        fail();
 
-          return false;
+        return false;
       },
     };
 
@@ -349,11 +330,9 @@ describe('writeWorkspace', () => {
     } catch (e) {
       expect(e.message).toContain('Unsupported workspace format');
     }
-
-    done();
   });
 
-  it('errors when writing custom workspace without specified format', async (done) => {
+  it('errors when writing custom workspace without specified format', async () => {
     const requestedPath = '/path/to/workspace/angular.json';
 
     const host: WorkspaceHost = {
@@ -362,16 +341,18 @@ describe('writeWorkspace', () => {
 
         return '';
       },
-      async writeFile() { fail(); },
+      async writeFile() {
+        fail();
+      },
       async isFile() {
         fail();
 
         return false;
       },
       async isDirectory() {
-          fail();
+        fail();
 
-          return false;
+        return false;
       },
     };
 
@@ -381,8 +362,5 @@ describe('writeWorkspace', () => {
     } catch (e) {
       expect(e.message).toContain('A format is required');
     }
-
-    done();
   });
-
 });

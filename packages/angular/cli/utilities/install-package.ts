@@ -1,37 +1,79 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
 
-import { logging } from '@angular-devkit/core';
-import { spawnSync } from 'child_process';
-import { existsSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from 'fs';
+import { spawn, spawnSync } from 'child_process';
+import { existsSync, mkdtempSync, readFileSync, realpathSync, rmdirSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join, resolve } from 'path';
-import * as rimraf from 'rimraf';
-import { PackageManager } from '../lib/config/schema';
-import { colors } from '../utilities/color';
+import { PackageManager } from '../lib/config/workspace-schema';
 import { NgAddSaveDepedency } from '../utilities/package-metadata';
+import { Spinner } from './spinner';
 
 interface PackageManagerOptions {
   silent: string;
   saveDev: string;
   install: string;
+  installAll?: string;
   prefix: string;
   noLockfile: string;
 }
 
-export function installPackage(
+export async function installAllPackages(
+  packageManager: PackageManager = PackageManager.Npm,
+  extraArgs: string[] = [],
+  cwd = process.cwd(),
+): Promise<1 | 0> {
+  const packageManagerArgs = getPackageManagerArguments(packageManager);
+
+  const installArgs: string[] = [];
+  if (packageManagerArgs.installAll) {
+    installArgs.push(packageManagerArgs.installAll);
+  }
+  installArgs.push(packageManagerArgs.silent);
+
+  const spinner = new Spinner();
+  spinner.start('Installing packages...');
+
+  const bufferedOutput: { stream: NodeJS.WriteStream; data: Buffer }[] = [];
+
+  return new Promise((resolve, reject) => {
+    const childProcess = spawn(packageManager, [...installArgs, ...extraArgs], {
+      stdio: 'pipe',
+      shell: true,
+      cwd,
+    }).on('close', (code: number) => {
+      if (code === 0) {
+        spinner.succeed('Packages successfully installed.');
+        resolve(0);
+      } else {
+        spinner.stop();
+        bufferedOutput.forEach(({ stream, data }) => stream.write(data));
+        spinner.fail('Package install failed, see above.');
+        reject(1);
+      }
+    });
+
+    childProcess.stdout?.on('data', (data: Buffer) =>
+      bufferedOutput.push({ stream: process.stdout, data: data }),
+    );
+    childProcess.stderr?.on('data', (data: Buffer) =>
+      bufferedOutput.push({ stream: process.stderr, data: data }),
+    );
+  });
+}
+
+export async function installPackage(
   packageName: string,
-  logger: logging.Logger | undefined,
   packageManager: PackageManager = PackageManager.Npm,
   save: Exclude<NgAddSaveDepedency, false> = true,
   extraArgs: string[] = [],
   cwd = process.cwd(),
-) {
+): Promise<1 | 0> {
   const packageManagerArgs = getPackageManagerArguments(packageManager);
 
   const installArgs: string[] = [
@@ -40,43 +82,55 @@ export function installPackage(
     packageManagerArgs.silent,
   ];
 
-  logger?.info(colors.green(`Installing packages for tooling via ${packageManager}.`));
+  const spinner = new Spinner();
+  spinner.start('Installing package...');
 
   if (save === 'devDependencies') {
     installArgs.push(packageManagerArgs.saveDev);
   }
+  const bufferedOutput: { stream: NodeJS.WriteStream; data: Buffer }[] = [];
 
-  const { status, stderr, stdout, error } = spawnSync(packageManager, [...installArgs, ...extraArgs], {
-    stdio: 'pipe',
-    shell: true,
-    encoding: 'utf8',
-    cwd,
+  return new Promise((resolve, reject) => {
+    const childProcess = spawn(packageManager, [...installArgs, ...extraArgs], {
+      stdio: 'pipe',
+      shell: true,
+      cwd,
+    }).on('close', (code: number) => {
+      if (code === 0) {
+        spinner.succeed('Package successfully installed.');
+        resolve(0);
+      } else {
+        spinner.stop();
+        bufferedOutput.forEach(({ stream, data }) => stream.write(data));
+        spinner.fail('Package install failed, see above.');
+        reject(1);
+      }
+    });
+
+    childProcess.stdout?.on('data', (data: Buffer) =>
+      bufferedOutput.push({ stream: process.stdout, data: data }),
+    );
+    childProcess.stderr?.on('data', (data: Buffer) =>
+      bufferedOutput.push({ stream: process.stderr, data: data }),
+    );
   });
-
-  if (status !== 0) {
-    let errorMessage = ((error && error.message) || stderr || stdout || '').trim();
-    if (errorMessage) {
-      errorMessage += '\n';
-    }
-    throw new Error(errorMessage + `Package install failed${errorMessage ? ', see above' : ''}.`);
-  }
-
-  logger?.info(colors.green(`Installed packages for tooling via ${packageManager}.`));
 }
 
-export function installTempPackage(
+export async function installTempPackage(
   packageName: string,
-  logger: logging.Logger | undefined,
   packageManager: PackageManager = PackageManager.Npm,
   extraArgs?: string[],
-): string {
+): Promise<{
+  status: 1 | 0;
+  tempNodeModules: string;
+}> {
   const tempPath = mkdtempSync(join(realpathSync(tmpdir()), 'angular-cli-packages-'));
 
   // clean up temp directory on process exit
   process.on('exit', () => {
     try {
-      rimraf.sync(tempPath);
-    } catch { }
+      rmdirSync(tempPath, { recursive: true, maxRetries: 3 });
+    } catch {}
   });
 
   // NPM will warn when a `package.json` is not found in the install directory
@@ -88,12 +142,15 @@ export function installTempPackage(
 
   // While we can use `npm init -y` we will end up needing to update the 'package.json' anyways
   // because of missing fields.
-  writeFileSync(join(tempPath, 'package.json'), JSON.stringify({
-    name: 'temp-cli-install',
-    description: 'temp-cli-install',
-    repository: 'temp-cli-install',
-    license: 'MIT',
-  }));
+  writeFileSync(
+    join(tempPath, 'package.json'),
+    JSON.stringify({
+      name: 'temp-cli-install',
+      description: 'temp-cli-install',
+      repository: 'temp-cli-install',
+      license: 'MIT',
+    }),
+  );
 
   // setup prefix/global modules path
   const packageManagerArgs = getPackageManagerArguments(packageManager);
@@ -106,23 +163,26 @@ export function installTempPackage(
     packageManagerArgs.noLockfile,
   ];
 
-  installPackage(packageName, logger, packageManager, true, installArgs, tempPath);
-
-  return tempNodeModules;
+  return {
+    status: await installPackage(packageName, packageManager, true, installArgs, tempPath),
+    tempNodeModules,
+  };
 }
 
-export function runTempPackageBin(
+export async function runTempPackageBin(
   packageName: string,
-  logger: logging.Logger,
   packageManager: PackageManager = PackageManager.Npm,
   args: string[] = [],
-): number {
-  const tempNodeModulesPath = installTempPackage(packageName, logger, packageManager);
+): Promise<number> {
+  const { status: code, tempNodeModules } = await installTempPackage(packageName, packageManager);
+  if (code !== 0) {
+    return code;
+  }
 
   // Remove version/tag etc... from package name
   // Ex: @angular/cli@latest -> @angular/cli
   const packageNameNoVersion = packageName.substring(0, packageName.lastIndexOf('@'));
-  const pkgLocation = join(tempNodeModulesPath, packageNameNoVersion);
+  const pkgLocation = join(tempNodeModules, packageNameNoVersion);
   const packageJsonPath = join(pkgLocation, 'package.json');
 
   // Get a binary location for this package
@@ -143,11 +203,8 @@ export function runTempPackageBin(
     throw new Error(`Cannot locate bin for temporary package: ${packageNameNoVersion}.`);
   }
 
-  const argv = [binPath, ...args];
-
-  const { status, error } = spawnSync('node', argv, {
+  const { status, error } = spawnSync(process.execPath, [binPath, ...args], {
     stdio: 'inherit',
-    shell: true,
     env: {
       ...process.env,
       NG_DISABLE_VERSION_CHECK: 'true',
@@ -177,6 +234,7 @@ function getPackageManagerArguments(packageManager: PackageManager): PackageMana
         silent: '--silent',
         saveDev: '--save-dev',
         install: 'add',
+        installAll: 'install',
         prefix: '--prefix',
         noLockfile: '--no-lockfile',
       };
@@ -185,6 +243,7 @@ function getPackageManagerArguments(packageManager: PackageManager): PackageMana
         silent: '--quiet',
         saveDev: '--save-dev',
         install: 'install',
+        installAll: 'install',
         prefix: '--prefix',
         noLockfile: '--no-package-lock',
       };

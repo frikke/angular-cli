@@ -1,31 +1,22 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { isAbsolute } from 'path';
 import { Configuration, ContextReplacementPlugin } from 'webpack';
 import { WebpackConfigOptions } from '../../utils/build-options';
-import { isWebpackFiveOrHigher } from '../../utils/webpack-version';
 import { getSourceMapDevTool } from '../utils/helpers';
-
-type ExternalHookWebpack5 = (
-  data: { context: string; request: string },
-  callback: (err?: Error, result?: string) => void,
-) => void;
 
 /**
  * Returns a partial Webpack configuration specific to creating a bundle for node
  * @param wco Options which include the build options and app config
  */
 export function getServerConfig(wco: WebpackConfigOptions): Configuration {
-  const {
-    sourceMap,
-    bundleDependencies,
-    externalDependencies = [],
-  } = wco.buildOptions;
+  const { sourceMap, bundleDependencies, externalDependencies = [] } = wco.buildOptions;
 
   const extraPlugins = [];
   const { scripts, styles, hidden } = sourceMap;
@@ -35,22 +26,25 @@ export function getServerConfig(wco: WebpackConfigOptions): Configuration {
 
   const externals: Configuration['externals'] = [...externalDependencies];
   if (!bundleDependencies) {
-    if (isWebpackFiveOrHigher()) {
-      const hook: ExternalHookWebpack5 = ({ context, request }, callback) =>
-        externalizePackages(request, context, callback);
-      externals.push(hook);
-    } else {
-      externals.push(externalizePackages as unknown as ExternalHookWebpack5);
-    }
+    externals.push(({ context, request }, callback) =>
+      externalizePackages(context ?? wco.projectRoot, request, callback),
+    );
   }
 
   const config: Configuration = {
     resolve: {
       mainFields: ['es2015', 'main', 'module'],
     },
-    target: 'node',
     output: {
       libraryTarget: 'commonjs',
+    },
+    module: {
+      parser: {
+        javascript: {
+          worker: false,
+          url: false,
+        },
+      },
     },
     plugins: [
       // Fixes Critical dependency: the request of a dependency is an expression
@@ -67,9 +61,13 @@ export function getServerConfig(wco: WebpackConfigOptions): Configuration {
 
 function externalizePackages(
   context: string,
-  request: string,
+  request: string | undefined,
   callback: (error?: Error, result?: string) => void,
 ): void {
+  if (!request) {
+    return;
+  }
+
   // Absolute & Relative paths are not externals
   if (request.startsWith('.') || isAbsolute(request)) {
     callback();

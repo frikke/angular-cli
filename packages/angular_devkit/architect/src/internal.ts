@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { experimental, json } from '@angular-devkit/core';
 import { BuilderInfo, BuilderInput, BuilderOutput, Target } from './api';
 
@@ -34,7 +35,7 @@ export const BuilderVersionSymbol = Symbol.for('@angular-devkit/architect:versio
 export type BuilderJobHandler<
   A extends json.JsonObject = json.JsonObject,
   I extends BuilderInput = BuilderInput,
-  O extends BuilderOutput = BuilderOutput,
+  O extends BuilderOutput = BuilderOutput
 > = experimental.jobs.JobHandler<A, I, O> & { jobDescription: BuilderDescription };
 
 /**

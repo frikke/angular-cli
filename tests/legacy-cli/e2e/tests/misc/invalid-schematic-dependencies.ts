@@ -11,25 +11,25 @@ export default async function () {
     '@schematics/angular@7',
     '--registry=https://registry.npmjs.org',
   );
-  await silentNpm('publish', stdoutPack1.trim(), '--registry=http://localhost:4873', '--tag=outdated');
+  await silentNpm('publish', stdoutPack1.trim(), '--tag=outdated');
   const { stdout: stdoutPack2 } = await silentNpm(
     'pack',
     '@angular-devkit/core@7',
     '--registry=https://registry.npmjs.org',
   );
-  await silentNpm('publish', stdoutPack2.trim(), '--registry=http://localhost:4873', '--tag=outdated');
+  await silentNpm('publish', stdoutPack2.trim(), '--tag=outdated');
   const { stdout: stdoutPack3 } = await silentNpm(
     'pack',
     '@angular-devkit/schematics@7',
     '--registry=https://registry.npmjs.org',
   );
-  await silentNpm('publish', stdoutPack3.trim(), '--registry=http://localhost:4873', '--tag=outdated');
+  await silentNpm('publish', stdoutPack3.trim(), '--tag=outdated');
 
   // Install outdated and incompatible version
   await installPackage('@schematics/angular@7');
 
   const tag = (await isPrereleaseCli()) ? '@next' : '';
-  await ng('add', `@angular/material${tag}`);
+  await ng('add', `@angular/material${tag}`, '--skip-confirmation');
   await expectFileToMatch('package.json', /@angular\/material/);
 
   // Clean up existing cdk package

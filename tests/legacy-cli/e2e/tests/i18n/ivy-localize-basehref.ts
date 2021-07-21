@@ -1,14 +1,15 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { expectFileToMatch } from '../../utils/fs';
 import { ng } from '../../utils/process';
 import { updateJsonFile } from '../../utils/project';
-import { externalServer, langTranslations, setupI18nConfig } from './legacy';
+import { externalServer, langTranslations, setupI18nConfig } from './setup';
 
 const baseHrefs = {
   'en-US': '/en/',
@@ -18,7 +19,7 @@ const baseHrefs = {
 
 export default async function() {
   // Setup i18n tests and config.
-  await setupI18nConfig(true);
+  await setupI18nConfig();
 
   // Update angular.json
   await updateJsonFile('angular.json', workspaceJson => {
@@ -79,7 +80,7 @@ export default async function() {
   });
 
   // Build each locale and verify the output.
-  await ng('build');
+  await ng('build', '--configuration=development');
   for (const { lang, outputPath } of langTranslations) {
     // Verify the HTML base HREF attribute is present
     await expectFileToMatch(`${outputPath}/index.html`, `href="/test${baseHrefs[lang] || '/'}"`);
@@ -102,7 +103,7 @@ export default async function() {
   }
 
   // Test absolute base href.
-  await ng('build', '--base-href', 'http://www.domain.com/');
+  await ng('build', '--base-href', 'http://www.domain.com/', '--configuration=development');
   for (const { lang, outputPath } of langTranslations) {
     // Verify the HTML base HREF attribute is present
     await expectFileToMatch(`${outputPath}/index.html`, `href="http://www.domain.com${baseHrefs[lang] || '/'}"`);

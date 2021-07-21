@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
@@ -43,7 +43,9 @@ export function getDevServerConfig(
   } = wco;
 
   const servePath = buildServePath(wco.buildOptions, logger);
-  const { styles: stylesOptimization, scripts: scriptsOptimization } = normalizeOptimization(optimization);
+  const { styles: stylesOptimization, scripts: scriptsOptimization } = normalizeOptimization(
+    optimization,
+  );
 
   const extraPlugins = [];
 
@@ -55,7 +57,7 @@ export function getDevServerConfig(
     }
 
     const parsedHost = url.parse(publicHost);
-    publicHost = parsedHost.host;
+    publicHost = parsedHost.host ?? undefined;
   } else {
     publicHost = '0.0.0.0:0';
   }
@@ -64,10 +66,11 @@ export function getDevServerConfig(
     // There's no option to turn off file watching in webpack-dev-server, but
     // we can override the file watcher instead.
     extraPlugins.push({
-      // tslint:disable-next-line:no-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       apply: (compiler: any) => {
         compiler.hooks.afterEnvironment.tap('angular-cli', () => {
-          compiler.watchFileSystem = { watch: () => { } };
+          // eslint-disable-next-line @typescript-eslint/no-empty-function
+          compiler.watchFileSystem = { watch: () => {} };
         });
       },
     });
@@ -77,7 +80,7 @@ export function getDevServerConfig(
   if (hmr) {
     extraRules.push({
       loader: HmrLoader,
-      include: [main].map(p => resolve(wco.root, p)),
+      include: [main].map((p) => resolve(wco.root, p)),
     });
   }
 
@@ -100,7 +103,7 @@ export function getDevServerConfig(
         rewrites: [
           {
             from: new RegExp(`^(?!${servePath})/.*`),
-            to: context => url.format(context.parsedUrl),
+            to: (context) => url.format(context.parsedUrl),
           },
         ],
       },
@@ -121,15 +124,15 @@ export function getDevServerConfig(
       inline: hmr,
       publicPath: servePath,
       liveReload,
+      injectClient: liveReload,
       hotOnly: hmr && !liveReload,
       hot: hmr,
       proxy: addProxyConfig(root, proxyConfig),
       contentBase: false,
-      logLevel: 'silent',
+      logLevel: 'error',
     } as Configuration & { logLevel: Configuration['clientLogLevel'] },
   };
 }
-
 
 /**
  * Resolve and build a URL _path_ that will be the root of the server. This resolved base href and
@@ -166,10 +169,7 @@ export function buildServePath(
  * Private method to enhance a webpack config with SSL configuration.
  * @private
  */
-function getSslConfig(
-  root: string,
-  options: WebpackDevServerOptions,
-) {
+function getSslConfig(root: string, options: WebpackDevServerOptions) {
   const { ssl, sslCert, sslKey } = options;
   if (ssl && sslCert && sslKey) {
     return {
@@ -185,10 +185,7 @@ function getSslConfig(
  * Private method to enhance a webpack config with Proxy configuration.
  * @private
  */
-function addProxyConfig(
-  root: string,
-  proxyConfig: string | undefined,
-) {
+function addProxyConfig(root: string, proxyConfig: string | undefined) {
   if (!proxyConfig) {
     return undefined;
   }
@@ -220,7 +217,7 @@ function findDefaultServePath(baseHref?: string, deployUrl?: string): string | n
   // normalize baseHref
   // for ng serve the starting base is always `/` so a relative
   // and root relative value are identical
-  const baseHrefParts = (baseHref || '').split('/').filter(part => part !== '');
+  const baseHrefParts = (baseHref || '').split('/').filter((part) => part !== '');
   if (baseHref && !baseHref.endsWith('/')) {
     baseHrefParts.pop();
   }

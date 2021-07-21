@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import {
   InvalidPathException,
   Path,
@@ -17,7 +18,6 @@ import {
   relative,
   split,
 } from './path';
-
 
 describe('path', () => {
   it('normalize', () => {
@@ -58,12 +58,13 @@ describe('path', () => {
     expect(normalize('./a/../../a/b/c')).toBe('../a/b/c');
 
     // Invalid use cases.
-    expect(() => normalize('/./././../././/'))
-      .toThrow(new InvalidPathException('/./././../././/'));
-    expect(() => normalize('/./././../././/../'))
-      .toThrow(new InvalidPathException('/./././../././/../'));
-    expect(() => normalize('/./././../././a/.'))
-      .toThrow(new InvalidPathException('/./././../././a/.'));
+    expect(() => normalize('/./././../././/')).toThrow(new InvalidPathException('/./././../././/'));
+    expect(() => normalize('/./././../././/../')).toThrow(
+      new InvalidPathException('/./././../././/../'),
+    );
+    expect(() => normalize('/./././../././a/.')).toThrow(
+      new InvalidPathException('/./././../././a/.'),
+    );
 
     expect(() => normalize('/c/../../')).toThrow(new InvalidPathException('/c/../../'));
 
@@ -74,8 +75,7 @@ describe('path', () => {
     expect(normalize('C:\\a\\b\\c')).toBe('/C/a/b/c');
     expect(normalize('c:\\a\\b\\c')).toBe('/c/a/b/c');
     expect(normalize('A:\\a\\b\\c')).toBe('/A/a/b/c');
-    expect(() => normalize('A:\\..\\..'))
-      .toThrow(new InvalidPathException('A:\\..\\..'));
+    expect(() => normalize('A:\\..\\..')).toThrow(new InvalidPathException('A:\\..\\..'));
     expect(normalize('\\.\\a\\b\\c')).toBe('/a/b/c');
     expect(normalize('\\.\\a\\b\\.\\c')).toBe('/a/b/c');
     expect(normalize('\\.\\a\\b\\d\\..\\c')).toBe('/a/b/c');
@@ -112,7 +112,7 @@ describe('path', () => {
     ];
 
     for (const [input, result] of tests) {
-      const args = input.map(x => normalize(x)) as [Path, ...Path[]];
+      const args = input.map((x) => normalize(x)) as [Path, ...Path[]];
 
       it(`(${JSON.stringify(args)}) == "${result}"`, () => {
         expect(join(...args)).toBe(result);
@@ -128,10 +128,7 @@ describe('path', () => {
       ['/a/b/c', '/a/b', '..'],
       ['/a/b/c', '/a/b/d', '../d'],
       ['/a/b/c/d/e', '/a/f/g', '../../../../f/g'],
-      [
-        '/src/app/sub1/test1', '/src/app/sub2/test2',
-        '../../sub2/test2',
-      ],
+      ['/src/app/sub1/test1', '/src/app/sub2/test2', '../../sub2/test2'],
       ['/', '/a/b/c', 'a/b/c'],
       ['/a/b/c', '/d', '../../../d'],
     ];
@@ -168,5 +165,4 @@ describe('path', () => {
     expect(asWindowsPath(normalize('c:/b/'))).toBe('c:\\b');
     expect(asWindowsPath(normalize('c:/b/c'))).toBe('c:\\b\\c');
   });
-
 });

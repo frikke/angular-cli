@@ -1,13 +1,13 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { NormalizedRoot, Path, PathFragment, join, split } from '../path';
 import { ResolverHost } from './resolver';
-
 
 /**
  * A Virtual Host that allow to alias some paths to other paths.
@@ -74,11 +74,13 @@ export class AliasHost<StatsT extends object = {}> extends ResolverHost<StatsT> 
         maybeAlias = join(maybeAlias, ...remaining);
       }
       // Allow non-null-operator because we know sp.length > 0 (condition on while).
-      remaining.unshift(sp.pop() !);  // tslint:disable-line:no-non-null-assertion
+      remaining.unshift(sp.pop()!); // eslint-disable-line @typescript-eslint/no-non-null-assertion
     }
 
     return maybeAlias || path;
   }
 
-  get aliases(): Map<Path, Path> { return this._aliases; }
+  get aliases(): Map<Path, Path> {
+    return this._aliases;
+  }
 }

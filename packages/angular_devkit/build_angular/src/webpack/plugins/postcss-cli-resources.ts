@@ -1,19 +1,19 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { interpolateName } from 'loader-utils';
 import * as path from 'path';
 import { Declaration, Plugin } from 'postcss';
 import * as url from 'url';
-import * as webpack from 'webpack';
 
 function wrapUrl(url: string): string {
   let wrappedUrl;
-  const hasSingleQuotes = url.indexOf('\'') >= 0;
+  const hasSingleQuotes = url.indexOf("'") >= 0;
 
   if (hasSingleQuotes) {
     wrappedUrl = `"${url}"`;
@@ -32,7 +32,7 @@ export interface PostcssCliResourcesOptions {
   /** CSS is extracted to a `.css` or is embedded in a `.js` file. */
   extracted?: boolean;
   filename: (resourcePath: string) => string;
-  loader: webpack.loader.LoaderContext;
+  loader: import('webpack').LoaderContext<unknown>;
   emitFile: boolean;
 }
 
@@ -50,7 +50,7 @@ async function resolve(
 
 export const postcss = true;
 
-export default function(options?: PostcssCliResourcesOptions): Plugin {
+export default function (options?: PostcssCliResourcesOptions): Plugin {
   if (!options) {
     throw new Error('No options were specified to "postcss-cli-resources".');
   }
@@ -91,33 +91,32 @@ export default function(options?: PostcssCliResourcesOptions): Plugin {
     }
 
     const { pathname, hash, search } = url.parse(inputUrl.replace(/\\/g, '/'));
-    const resolver = (file: string, base: string) => new Promise<string>((resolve, reject) => {
-      loader.resolve(base, decodeURI(file), (err, result) => {
-        if (err) {
-          reject(err);
+    const resolver = (file: string, base: string) =>
+      new Promise<string>((resolve, reject) => {
+        loader.resolve(base, decodeURI(file), (err, result) => {
+          if (err) {
+            reject(err);
 
-          return;
-        }
-        resolve(result);
+            return;
+          }
+          resolve(result as string);
+        });
       });
-    });
 
     const result = await resolve(pathname as string, context, resolver);
 
     return new Promise<string>((resolve, reject) => {
-      loader.fs.readFile(result, (err: Error, content: Buffer) => {
+      loader.fs.readFile(result, (err, content) => {
         if (err) {
           reject(err);
 
           return;
         }
 
-        let outputPath = interpolateName(
-          {  resourcePath: result } as webpack.loader.LoaderContext,
-          filename(result),
-          { content, context: loader.context || loader.rootContext },
-        )
-        .replace(/\\|\//g, '-');
+        let outputPath = interpolateName({ resourcePath: result }, filename(result), {
+          content,
+          context: loader.context || loader.rootContext,
+        }).replace(/\\|\//g, '-');
 
         if (resourcesOutputPath) {
           outputPath = path.posix.join(resourcesOutputPath, outputPath);
@@ -125,7 +124,8 @@ export default function(options?: PostcssCliResourcesOptions): Plugin {
 
         loader.addDependency(result);
         if (emitFile) {
-          loader.emitFile(outputPath, content, undefined);
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+          loader.emitFile(outputPath, content!, undefined, { sourceFilename: result });
         }
 
         let outputUrl = outputPath.replace(/\\/g, '/');
@@ -163,16 +163,16 @@ export default function(options?: PostcssCliResourcesOptions): Plugin {
 
       // We want to load it relative to the file that imports
       const inputFile = decl.source && decl.source.input.file;
-      const context = inputFile && path.dirname(inputFile) || loader.context;
+      const context = (inputFile && path.dirname(inputFile)) || loader.context;
 
-      // tslint:disable-next-line:no-conditional-assignment
-      while (match = urlRegex.exec(value)) {
+      // eslint-disable-next-line no-cond-assign
+      while ((match = urlRegex.exec(value))) {
         const originalUrl = match[1] || match[2] || match[3];
         let processedUrl;
         try {
           processedUrl = await process(originalUrl, context, resourceCache);
         } catch (err) {
-          loader.emitError(decl.error(err.message, { word: originalUrl }).toString());
+          loader.emitError(decl.error(err.message, { word: originalUrl }));
           continue;
         }
 

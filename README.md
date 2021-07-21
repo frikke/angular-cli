@@ -49,7 +49,7 @@ To get started locally, follow these instructions:
 
 1. If you haven't done it already, [make a fork of this repo](https://github.com/angular/angular-cli/fork).
 1. Clone to your local computer using `git`.
-1. Make sure that you have Node 10.13 or later installed. See instructions [here](https://nodejs.org/en/download/).
+1. Make sure that you have Node 12.14 or 14.0 installed. See instructions [here](https://nodejs.org/en/download/).
 1. Make sure that you have `yarn` installed; see instructions [here](https://yarnpkg.com/lang/en/docs/install/).
 1. Run `yarn` (no arguments) from the root of your clone of this project to install dependencies.
 
@@ -196,8 +196,6 @@ This is a monorepo which contains many tools and packages:
 |---|---|---|---|
 **Angular PWA Schematics** | [`@angular/pwa`](https://npmjs.com/package/@angular/pwa) | [![latest](https://img.shields.io/npm/v/%40angular%2Fpwa/latest.svg)](https://npmjs.com/package/@angular/pwa) |  [![snapshot](https://img.shields.io/badge/snapshot--blue.svg)](https://github.com/angular/angular-pwa-builds)
 **Angular Schematics** | [`@schematics/angular`](https://npmjs.com/package/@schematics/angular) | [![latest](https://img.shields.io/npm/v/%40schematics%2Fangular/latest.svg)](https://npmjs.com/package/@schematics/angular) |  [![snapshot](https://img.shields.io/badge/snapshot--blue.svg)](https://github.com/angular/schematics-angular-builds)
-**Schematics Schematics** | [`@schematics/schematics`](https://npmjs.com/package/@schematics/schematics) | [![latest](https://img.shields.io/npm/v/%40schematics%2Fschematics/latest.svg)](https://npmjs.com/package/@schematics/schematics) |  [![snapshot](https://img.shields.io/badge/snapshot--blue.svg)](https://github.com/angular/schematics-schematics-builds)
-**Package Update Schematics** | [`@schematics/update`](https://npmjs.com/package/@schematics/update) | [![latest](https://img.shields.io/npm/v/%40schematics%2Fupdate/latest.svg)](https://npmjs.com/package/@schematics/update) |  [![snapshot](https://img.shields.io/badge/snapshot--blue.svg)](https://github.com/angular/schematics-update-builds)
 
 #### Misc
 

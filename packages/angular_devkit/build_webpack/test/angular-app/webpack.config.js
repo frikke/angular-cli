@@ -1,7 +1,6 @@
 const ngToolsWebpack = require('@ngtools/webpack');
 const path = require('path');
 
-
 const workspaceRoot = path.resolve(__dirname, './');
 const projectRoot = path.resolve(__dirname, './');
 
@@ -12,25 +11,25 @@ module.exports = {
   },
   entry: {
     main: path.resolve(projectRoot, './src/main.ts'),
-    polyfills: path.resolve(projectRoot, './src/polyfills.ts')
+    polyfills: path.resolve(projectRoot, './src/polyfills.ts'),
   },
   output: {
     path: path.resolve(workspaceRoot, './dist'),
     filename: `[name].js`,
   },
   plugins: [
-    new ngToolsWebpack.AngularCompilerPlugin({
-      tsConfigPath: path.resolve(projectRoot, './src/tsconfig.app.json')
-    })
+    new ngToolsWebpack.AngularWebpackPlugin({
+      tsconfig: path.resolve(projectRoot, './src/tsconfig.app.json'),
+    }),
   ],
   module: {
     rules: [
-      { test: /\.css$/, loader: 'raw-loader' },
-      { test: /\.html$/, loader: 'raw-loader' },
+      { test: /\.css$/, type: 'asset/source' },
+      { test: /\.html$/, type: 'asset/source' },
       { test: /\.ts$/, loader: '@ngtools/webpack' },
-    ]
+    ],
   },
   devServer: {
-    historyApiFallback: true
-  }
+    historyApiFallback: true,
+  },
 };

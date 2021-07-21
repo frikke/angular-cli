@@ -1,16 +1,16 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { Architect, BuilderRun } from '@angular-devkit/architect';
 import { DevServerBuilderOutput } from '@angular-devkit/build-angular';
-import { logging, normalize, virtualFs } from '@angular-devkit/core';
-import fetch from 'node-fetch'; // tslint:disable-line:no-implicit-dependencies
+import { normalize, virtualFs } from '@angular-devkit/core';
+import fetch from 'node-fetch'; // eslint-disable-line import/no-extraneous-dependencies
 import { createArchitect, host } from '../test-utils';
-
 
 describe('Dev Server Builder', () => {
   const target = { project: 'app', target: 'serve' };
@@ -24,36 +24,13 @@ describe('Dev Server Builder', () => {
   });
   afterEach(async () => {
     await host.restore().toPromise();
-    await Promise.all(runs.map(r => r.stop()));
+    await Promise.all(runs.map((r) => r.stop()));
   });
-
-  it('works', async () => {
-    const run = await architect.scheduleTarget(target);
-    runs.push(run);
-    const output = await run.result as DevServerBuilderOutput;
-    expect(output.success).toBe(true);
-    expect(output.baseUrl).toBe('http://localhost:4200/');
-
-    const response = await fetch('http://localhost:4200/index.html');
-    expect(await response.text()).toContain('<title>HelloWorldApp</title>');
-  }, 30000);
-
-  it('works with verbose', async () => {
-    const logger = new logging.Logger('verbose-serve');
-    let logs = '';
-    logger.subscribe(event => logs += event.message);
-
-    const run = await architect.scheduleTarget(target, { verbose: true }, { logger });
-    runs.push(run);
-    const output = await run.result as DevServerBuilderOutput;
-    expect(output.success).toBe(true);
-    expect(logs).toContain('Built at');
-  }, 30000);
 
   it(`doesn't serve files on the cwd directly`, async () => {
     const run = await architect.scheduleTarget(target);
     runs.push(run);
-    const output = await run.result as DevServerBuilderOutput;
+    const output = (await run.result) as DevServerBuilderOutput;
     expect(output.success).toBe(true);
 
     // When webpack-dev-server doesn't have `contentBase: false`, this will serve the repo README.
@@ -68,49 +45,31 @@ describe('Dev Server Builder', () => {
     expect(res).toContain('<title>HelloWorldApp</title>');
   });
 
-  it('works with port 0', async () => {
-    const logger = new logging.Logger('');
-    const logs: string[] = [];
-    logger.subscribe(e => logs.push(e.message));
-
-    const run = await architect.scheduleTarget(target, { port: 0 }, { logger });
-    runs.push(run);
-    const output = await run.result as DevServerBuilderOutput;
-    expect(output.success).toBe(true);
-
-    const groups = logs.join().match(/\:(\d+){4,6}/g);
-    if (!groups) {
-      throw new Error('Expected log to contain port number.');
-    }
-
-    // tests that both the ports in the logs are the same.
-    const [firstPort, secondPort] = groups;
-    expect(firstPort).toBe(secondPort);
-
-    expect(output.baseUrl).toBe(`http://localhost${firstPort}/`);
-    const response = await fetch(`http://localhost${firstPort}/index.html`);
-    expect(await response.text()).toContain('<title>HelloWorldApp</title>');
-  });
-
   it('should not generate sourcemaps when running prod build', async () => {
     // Production builds have sourcemaps turned off.
-    const run = await architect.scheduleTarget({ ...target, configuration: 'production' });
+    const run = await architect.scheduleTarget(
+      { ...target, configuration: 'production' },
+      { port: 0 },
+    );
     runs.push(run);
-    const output = await run.result as DevServerBuilderOutput;
+    const output = (await run.result) as DevServerBuilderOutput;
     expect(output.success).toBe(true);
-    const hasSourceMaps = output.emittedFiles && output.emittedFiles.some(f => f.extension === '.map');
+    const hasSourceMaps =
+      output.emittedFiles && output.emittedFiles.some((f) => f.extension === '.map');
     expect(hasSourceMaps).toBe(false, `Expected emitted files not to contain '.map' files.`);
   });
 
   it('serves custom headers', async () => {
-    const run = await architect.scheduleTarget(
-        target, {headers: {'X-Header': 'Hello World'}});
+    const run = await architect.scheduleTarget(target, {
+      headers: { 'X-Header': 'Hello World' },
+      port: 0,
+    });
     runs.push(run);
-    const output = await run.result as DevServerBuilderOutput;
+    const output = (await run.result) as DevServerBuilderOutput;
     expect(output.success).toBe(true);
-    const response = await fetch('http://localhost:4200/index.html');
+    const response = await fetch(output.baseUrl);
     expect(response.headers.get('X-Header')).toBe('Hello World');
-  }, 30000);
+  });
 
   it('uses source locale when not localizing', async () => {
     const config = host.scopedSync().read(normalize('angular.json'));
@@ -124,18 +83,17 @@ describe('Dev Server Builder', () => {
     });
 
     const architect = (await createArchitect(host.root())).architect;
-    const run = await architect.scheduleTarget(target);
-    const output = await run.result;
+    const run = await architect.scheduleTarget(target, { port: 0 });
+    const output = (await run.result) as DevServerBuilderOutput;
     expect(output.success).toBe(true);
 
-    const indexResponse = await fetch('http://localhost:4200/index.html');
+    const indexResponse = await fetch(output.baseUrl);
     expect(await indexResponse.text()).toContain('lang="fr"');
-    const vendorResponse = await fetch('http://localhost:4200/vendor.js');
+    const vendorResponse = await fetch(output.baseUrl + 'vendor.js');
     const vendorText = await vendorResponse.text();
     expect(vendorText).toContain('fr');
     expect(vendorText).toContain('octobre');
 
     await run.stop();
   });
-
 });

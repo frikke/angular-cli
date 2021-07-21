@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { Architect } from '@angular-devkit/architect';
 import { WorkspaceNodeModulesArchitectHost } from '@angular-devkit/architect/node';
 import { TestProjectHost, TestingArchitectHost } from '@angular-devkit/architect/testing';
@@ -16,12 +17,10 @@ import {
   virtualFs,
   workspaces,
 } from '@angular-devkit/core';
-import { map, take, tap } from 'rxjs/operators';
-import { veEnabled } from '../test-utils';
+import { debounceTime, map, take, tap } from 'rxjs/operators';
 
 // Default timeout for large specs is 2.5 minutes.
 jasmine.DEFAULT_TIMEOUT_INTERVAL = 150000;
-
 
 describe('NgPackagr Builder', () => {
   const workspaceRoot = join(normalize(__dirname), `../../test/hello-world-lib/`);
@@ -46,11 +45,6 @@ describe('NgPackagr Builder', () => {
     );
 
     architect = new Architect(architectHost, registry);
-
-    // Set AOT compilation to use VE if needed.
-    if (veEnabled) {
-      host.replaceInFile('tsconfig.json', `"enableIvy": true,`, `"enableIvy": false,`);
-    }
   });
 
   afterEach(() => host.restore().toPromise());
@@ -68,11 +62,7 @@ describe('NgPackagr Builder', () => {
     );
     expect(content).toContain('lib works');
 
-    if (veEnabled) {
-      expect(content).not.toContain('ɵcmp');
-    } else {
-      expect(content).toContain('ɵcmp');
-    }
+    expect(content).toContain('ɵcmp');
   });
 
   it('rebuilds on TS file changes', async () => {
@@ -95,33 +85,34 @@ describe('NgPackagr Builder', () => {
 
     let buildNumber = 0;
 
-    await run.output.pipe(
-      tap((buildEvent) => expect(buildEvent.success).toBe(true)),
-      map(() => {
-        const fileName = './dist/lib/fesm2015/lib.js';
-        const content = virtualFs.fileBufferToString(
-          host.scopedSync().read(normalize(fileName)),
-        );
+    await run.output
+      .pipe(
+        tap((buildEvent) => expect(buildEvent.success).toBe(true)),
+        debounceTime(1000),
+        map(() => {
+          const fileName = './dist/lib/fesm2015/lib.js';
+          const content = virtualFs.fileBufferToString(host.scopedSync().read(normalize(fileName)));
 
-        return content;
-      }),
-      tap(content => {
-        buildNumber += 1;
-        switch (buildNumber) {
-          case 1:
-            expect(content).toMatch(/lib works/);
-            host.writeMultipleFiles(goldenValueFiles);
-            break;
+          return content;
+        }),
+        tap((content) => {
+          buildNumber += 1;
+          switch (buildNumber) {
+            case 1:
+              expect(content).toMatch(/lib works/);
+              host.writeMultipleFiles(goldenValueFiles);
+              break;
 
-          case 2:
-            expect(content).toMatch(/lib update works/);
-            break;
-          default:
-            break;
-        }
-      }),
-      take(2),
-    ).toPromise();
+            case 2:
+              expect(content).toMatch(/lib update works/);
+              break;
+            default:
+              break;
+          }
+        }),
+        take(2),
+      )
+      .toPromise();
 
     await run.stop();
   });

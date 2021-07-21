@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { TestProjectHost } from '@angular-devkit/architect/testing';
 import { BuilderHarness } from './builder-harness';
 
@@ -116,7 +117,7 @@ describe('BuilderHarness', () => {
     const mockHandler = jasmine.createSpy().and.returnValue({ success: true });
 
     const harness = new BuilderHarness(async (_, context) => {
-      const run = await context.scheduleTarget({project: 'test', target: 'another' });
+      const run = await context.scheduleTarget({ project: 'test', target: 'another' });
       expect(await run.result).toEqual(jasmine.objectContaining({ success: true }));
       await run.stop();
 

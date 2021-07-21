@@ -1,14 +1,14 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { TaskConfiguration, TaskConfigurationGenerator, TaskId } from '../src/engine';
 import { FileSystemSchematicContext } from './description';
 import { NodeModulesEngineHost } from './node-module-engine-host';
-
 
 /**
  * An EngineHost that uses a registry to super seed locations of collection.json files, but
@@ -18,15 +18,19 @@ export class NodeModulesTestEngineHost extends NodeModulesEngineHost {
   private _collections = new Map<string, string>();
   private _tasks = [] as TaskConfiguration[];
 
-  get tasks() { return this._tasks; }
+  get tasks() {
+    return this._tasks;
+  }
 
-  clearTasks() { this._tasks = []; }
+  clearTasks() {
+    this._tasks = [];
+  }
 
   registerCollection(name: string, path: string) {
     this._collections.set(name, path);
   }
 
-  transformContext(context: FileSystemSchematicContext): FileSystemSchematicContext {
+  override transformContext(context: FileSystemSchematicContext): FileSystemSchematicContext {
     const oldAddTask = context.addTask;
     context.addTask = (task: TaskConfigurationGenerator<{}>, dependencies?: Array<TaskId>) => {
       this._tasks.push(task.toConfiguration());
@@ -37,7 +41,7 @@ export class NodeModulesTestEngineHost extends NodeModulesEngineHost {
     return context;
   }
 
-  protected _resolveCollectionPath(name: string, requester?: string): string {
+  protected override _resolveCollectionPath(name: string, requester?: string): string {
     const maybePath = this._collections.get(name);
     if (maybePath) {
       return maybePath;

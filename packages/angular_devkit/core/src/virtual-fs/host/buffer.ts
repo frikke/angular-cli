@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { TemplateTag } from '../../utils/literals';
 import { FileBuffer } from './interface';
 
@@ -15,7 +16,7 @@ declare const TextEncoder: {
 };
 
 declare const TextDecoder: {
-  new(encoding: string): {
+  new (encoding: string): {
     decode(bytes: Uint8Array): string;
   };
 };
@@ -33,7 +34,7 @@ export function stringToFileBuffer(str: string): FileBuffer {
     return ab;
   } else if (typeof TextEncoder !== 'undefined') {
     // Modern browsers implement TextEncode.
-    return new TextEncoder('utf-8').encode(str).buffer as ArrayBuffer;
+    return new TextEncoder('utf-8').encode(str).buffer;
   } else {
     // Slowest method but sure to be compatible with every platform.
     const buf = new ArrayBuffer(str.length * 2); // 2 bytes for each char
@@ -46,11 +47,9 @@ export function stringToFileBuffer(str: string): FileBuffer {
   }
 }
 
-
 export const fileBuffer: TemplateTag<FileBuffer> = (strings, ...values) => {
   return stringToFileBuffer(String.raw(strings, ...values));
 };
-
 
 export function fileBufferToString(fileBuffer: FileBuffer): string {
   if (fileBuffer.toString.length == 1) {

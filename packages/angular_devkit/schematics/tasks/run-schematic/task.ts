@@ -1,13 +1,13 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { TaskConfiguration, TaskConfigurationGenerator } from '../../src';
 import { RunSchematicName, RunSchematicTaskOptions } from './options';
-
 
 export class RunSchematicTask<T> implements TaskConfigurationGenerator<RunSchematicTaskOptions<T>> {
   protected _collection: string | null;
@@ -25,7 +25,7 @@ export class RunSchematicTask<T> implements TaskConfigurationGenerator<RunSchema
     }
 
     this._collection = c;
-    this._schematic = s as string;
+    this._schematic = s;
     this._options = o as T;
   }
 

@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { Observable } from 'rxjs';
 import { Path, PathFragment, join, normalize } from '../path';
 import { fileBufferToString, stringToFileBuffer } from './buffer';
@@ -12,22 +13,31 @@ import { FileBuffer, HostWatchEvent, HostWatchOptions, Stats } from './interface
 import { SimpleMemoryHost, SimpleMemoryHostStats } from './memory';
 import { SyncDelegateHost } from './sync';
 
+// eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace test {
-
-  export type TestLogRecord = {
-    kind: 'write' | 'read' | 'delete' | 'list' | 'exists' | 'isDirectory' | 'isFile' | 'stat'
-    | 'watch';
-    path: Path;
-  } | {
-    kind: 'rename';
-    from: Path;
-    to: Path;
-  };
-
+  export type TestLogRecord =
+    | {
+        kind:
+          | 'write'
+          | 'read'
+          | 'delete'
+          | 'list'
+          | 'exists'
+          | 'isDirectory'
+          | 'isFile'
+          | 'stat'
+          | 'watch';
+        path: Path;
+      }
+    | {
+        kind: 'rename';
+        from: Path;
+        to: Path;
+      };
 
   export class TestHost extends SimpleMemoryHost {
     protected _records: TestLogRecord[] = [];
-    protected _sync: SyncDelegateHost<{}>|null = null;
+    protected _sync: SyncDelegateHost<{}> | null = null;
 
     constructor(map: { [path: string]: string } = {}) {
       super();
@@ -47,8 +57,9 @@ export namespace test {
     get files(): Path[] {
       const sync = this.sync;
       function _visit(p: Path): Path[] {
-        return sync.list(p)
-          .map(fragment => join(p, fragment))
+        return sync
+          .list(p)
+          .map((fragment) => join(p, fragment))
           .reduce((files, path) => {
             if (sync.isDirectory(path)) {
               return files.concat(_visit(path));
@@ -77,52 +88,52 @@ export namespace test {
     }
 
     // Override parents functions to keep a record of all operators that were done.
-    protected _write(path: Path, content: FileBuffer) {
+    protected override _write(path: Path, content: FileBuffer) {
       this._records.push({ kind: 'write', path });
 
       return super._write(path, content);
     }
-    protected _read(path: Path) {
+    protected override _read(path: Path) {
       this._records.push({ kind: 'read', path });
 
       return super._read(path);
     }
-    protected _delete(path: Path) {
+    protected override _delete(path: Path) {
       this._records.push({ kind: 'delete', path });
 
       return super._delete(path);
     }
-    protected _rename(from: Path, to: Path) {
+    protected override _rename(from: Path, to: Path) {
       this._records.push({ kind: 'rename', from, to });
 
       return super._rename(from, to);
     }
-    protected _list(path: Path): PathFragment[] {
+    protected override _list(path: Path): PathFragment[] {
       this._records.push({ kind: 'list', path });
 
       return super._list(path);
     }
-    protected _exists(path: Path) {
+    protected override _exists(path: Path) {
       this._records.push({ kind: 'exists', path });
 
       return super._exists(path);
     }
-    protected _isDirectory(path: Path) {
+    protected override _isDirectory(path: Path) {
       this._records.push({ kind: 'isDirectory', path });
 
       return super._isDirectory(path);
     }
-    protected _isFile(path: Path) {
+    protected override _isFile(path: Path) {
       this._records.push({ kind: 'isFile', path });
 
       return super._isFile(path);
     }
-    protected _stat(path: Path): Stats<SimpleMemoryHostStats> | null {
+    protected override _stat(path: Path): Stats<SimpleMemoryHostStats> | null {
       this._records.push({ kind: 'stat', path });
 
       return super._stat(path);
     }
-    protected _watch(path: Path, options?: HostWatchOptions): Observable<HostWatchEvent> {
+    protected override _watch(path: Path, options?: HostWatchOptions): Observable<HostWatchEvent> {
       this._records.push({ kind: 'watch', path });
 
       return super._watch(path, options);
@@ -152,5 +163,4 @@ export namespace test {
       return super._isFile(normalize(path));
     }
   }
-
 }

@@ -1,11 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-import { join, normalize } from '@angular-devkit/core';
+
 import {
   Rule,
   SchematicsException,
@@ -19,6 +19,7 @@ import {
   url,
 } from '@angular-devkit/schematics';
 import { getWorkspace, updateWorkspace } from '@schematics/angular/utility/workspace';
+import { posix } from 'path';
 import { Readable, Writable } from 'stream';
 import { Schema as PwaOptions } from './schema';
 
@@ -29,9 +30,9 @@ function updateIndexFile(path: string): Rule {
       throw new SchematicsException(`Could not read index file: ${path}`);
     }
 
-    const rewriter = new (await import('parse5-html-rewriting-stream'))();
+    const rewriter = new (await import('parse5-html-rewriting-stream')).default();
     let needsNoScript = true;
-    rewriter.on('startTag', startTag => {
+    rewriter.on('startTag', (startTag) => {
       if (startTag.tagName === 'noscript') {
         needsNoScript = false;
       }
@@ -39,7 +40,7 @@ function updateIndexFile(path: string): Rule {
       rewriter.emitStartTag(startTag);
     });
 
-    rewriter.on('endTag', endTag => {
+    rewriter.on('endTag', (endTag) => {
       if (endTag.tagName === 'head') {
         rewriter.emitRaw('  <link rel="manifest" href="manifest.webmanifest">\n');
         rewriter.emitRaw('  <meta name="theme-color" content="#1976d2">\n');
@@ -52,7 +53,7 @@ function updateIndexFile(path: string): Rule {
       rewriter.emitEndTag(endTag);
     });
 
-    return new Promise<void>(resolve => {
+    return new Promise<void>((resolve) => {
       const input = new Readable({
         encoding: 'utf8',
         read(): void {
@@ -63,7 +64,7 @@ function updateIndexFile(path: string): Rule {
 
       const chunks: Array<Buffer> = [];
       const output = new Writable({
-        write(chunk: string | Buffer, encoding: string, callback: Function): void {
+        write(chunk: string | Buffer, encoding: BufferEncoding, callback: Function): void {
           chunks.push(typeof chunk === 'string' ? Buffer.from(chunk, encoding) : chunk);
           callback();
         },
@@ -80,8 +81,8 @@ function updateIndexFile(path: string): Rule {
   };
 }
 
-export default function(options: PwaOptions): Rule {
-  return async host => {
+export default function (options: PwaOptions): Rule {
+  return async (host) => {
     if (!options.title) {
       options.title = options.project;
     }
@@ -117,7 +118,10 @@ export default function(options: PwaOptions): Rule {
     }
 
     // Add manifest to asset configuration
-    const assetEntry = join(normalize(project.root), 'src', 'manifest.webmanifest');
+    const assetEntry = posix.join(
+      project.sourceRoot ?? posix.join(project.root, 'src'),
+      'manifest.webmanifest',
+    );
     for (const target of [...buildTargets, ...testTargets]) {
       if (target.options) {
         if (Array.isArray(target.options.assets)) {
@@ -149,7 +153,7 @@ export default function(options: PwaOptions): Rule {
     }
 
     // Setup sources for the assets files to add to the project
-    const sourcePath = normalize(project.sourceRoot ?? 'src');
+    const sourcePath = project.sourceRoot ?? posix.join(project.root, 'src');
 
     // Setup service worker schematic options
     const { title, ...swOptions } = options;
@@ -157,15 +161,14 @@ export default function(options: PwaOptions): Rule {
     return chain([
       updateWorkspace(workspace),
       externalSchematic('@schematics/angular', 'service-worker', swOptions),
-      mergeWith(apply(url('./files/root'), [
-        template({ ...options }),
-        move(sourcePath),
-      ])),
-      mergeWith(apply(url('./files/assets'), [
-        template({ ...options }),
-        move(join(sourcePath, 'assets')),
-      ])),
-      ...[...indexFiles].map(path => updateIndexFile(path)),
+      mergeWith(apply(url('./files/root'), [template({ ...options }), move(sourcePath)])),
+      mergeWith(
+        apply(url('./files/assets'), [
+          template({ ...options }),
+          move(posix.join(sourcePath, 'assets')),
+        ]),
+      ),
+      ...[...indexFiles].map((path) => updateIndexFile(path)),
     ]);
   };
 }

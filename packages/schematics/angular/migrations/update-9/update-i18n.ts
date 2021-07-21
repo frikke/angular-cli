@@ -1,14 +1,19 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { logging, workspaces } from '@angular-devkit/core';
 import { Rule, Tree } from '@angular-devkit/schematics';
 import { posix } from 'path';
-import { NodeDependencyType, addPackageJsonDependency, getPackageJsonDependency } from '../../utility/dependencies';
+import {
+  NodeDependencyType,
+  addPackageJsonDependency,
+  getPackageJsonDependency,
+} from '../../utility/dependencies';
 import { latestVersions } from '../../utility/latest-versions';
 import { allTargetOptions, allWorkspaceTargets, updateWorkspace } from '../../utility/workspace';
 import { Builders } from '../../utility/workspace-models';
@@ -29,7 +34,7 @@ export function updateI18nConfig(): Rule {
       for (const [, target] of allWorkspaceTargets(workspace)) {
         switch (target.builder) {
           case Builders.Browser:
-          case Builders.Karma:
+          case Builders.Server:
             updateBaseHrefs(target);
             removeFormatOption(target);
             addBuilderI18NOptions(target, logger);
@@ -99,7 +104,7 @@ function addProjectI18NOptions(
     const i18nOptions = [...allTargetOptions(builderConfig)];
     const sourceLocale = i18nOptions
       .map(([, o]) => o.i18nLocale)
-      .find(x => !!x && typeof x === 'string');
+      .find((x) => !!x && typeof x === 'string');
 
     projectConfig.extensions['i18n'] = {
       locales,
@@ -126,16 +131,9 @@ function addBuilderI18NOptions(
     const i18nFile = options.i18nFile;
 
     const outputPath = options.outputPath;
-    if (
-      typeof localeId === 'string' &&
-      i18nFile &&
-      typeof outputPath === 'string'
-    ) {
+    if (typeof localeId === 'string' && i18nFile && typeof outputPath === 'string') {
       if (outputPath.match(new RegExp(`[/\\\\]${localeId}[/\\\\]?$`))) {
-        const newOutputPath = outputPath.replace(
-          new RegExp(`[/\\\\]${localeId}[/\\\\]?$`),
-          '',
-        );
+        const newOutputPath = outputPath.replace(new RegExp(`[/\\\\]${localeId}[/\\\\]?$`), '');
         options.outputPath = newOutputPath;
       } else {
         logger.warn(
@@ -170,9 +168,7 @@ function removeFormatOption(builderConfig: workspaces.TargetDefinition) {
   }
 }
 
-function updateBaseHrefs(
-  builderConfig: workspaces.TargetDefinition,
-) {
+function updateBaseHrefs(builderConfig: workspaces.TargetDefinition) {
   const mainBaseHref = builderConfig.options?.baseHref;
   const hasMainBaseHref =
     !!mainBaseHref && typeof mainBaseHref === 'string' && mainBaseHref !== '/';

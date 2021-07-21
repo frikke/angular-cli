@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
@@ -12,10 +12,11 @@ export const HmrLoader = __filename;
 const hmrAcceptPath = join(__dirname, './hmr-accept.js').replace(/\\/g, '/');
 
 export default function (
-  this: import('webpack').loader.LoaderContext,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  this: any,
   content: string,
   // Source map types are broken in the webpack type definitions
-  // tslint:disable-next-line: no-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   map: any,
 ): void {
   const source = `${content}

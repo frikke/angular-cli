@@ -1,13 +1,14 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { Architect } from '@angular-devkit/architect';
 import { join, normalize, virtualFs } from '@angular-devkit/core';
-import { createArchitect, host, outputPath, veEnabled } from '../../test-utils';
+import { createArchitect, host, outputPath } from '../../test-utils';
 
 describe('Browser Builder allow svg', () => {
   const target = { project: 'app', target: 'build' };
@@ -55,11 +56,7 @@ describe('Browser Builder allow svg', () => {
         host.scopedSync().read(join(outputPath, 'main.js')),
       );
 
-      if (!veEnabled) {
-        expect(content).toContain('ɵɵnamespaceSVG');
-      } else {
-        expect(content).toContain('":svg:svg"');
-      }
+      expect(content).toContain('ɵɵnamespaceSVG');
       expect(host.scopedSync().exists(normalize('dist/app.component.svg'))).toBe(
         false,
         'should not copy app.component.svg to dist',

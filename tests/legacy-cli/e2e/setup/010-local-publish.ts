@@ -1,24 +1,18 @@
-import { prerelease } from 'semver';
-import { packages } from '../../../../lib/packages';
+import { getGlobalVariable } from '../utils/env';
 import { npm } from '../utils/process';
+import { isPrereleaseCli } from '../utils/project';
 
-export default async function() {
-  const publishArgs = [
+export default async function () {
+  const testRegistry = getGlobalVariable('package-registry');
+  await npm(
     'run',
     'admin',
     '--',
     'publish',
     '--no-versionCheck',
     '--no-branchCheck',
-    '--registry=http://localhost:4873',
-  ];
-
-  const pre = prerelease(packages['@angular/cli'].version);
-  if (pre && pre.length > 0) {
-    publishArgs.push('--tag', 'next');
-  } else {
-    publishArgs.push('--tag', 'latest');
-  }
-
-  await npm(...publishArgs);
+    `--registry=${testRegistry}`,
+    '--tag',
+    isPrereleaseCli() ? 'next' : 'latest',
+  );
 }

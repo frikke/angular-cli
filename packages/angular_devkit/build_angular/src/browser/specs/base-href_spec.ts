@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
@@ -10,7 +10,6 @@ import { Architect } from '@angular-devkit/architect';
 import { BrowserBuilderOutput } from '@angular-devkit/build-angular';
 import { join, normalize, tags, virtualFs } from '@angular-devkit/core';
 import { createArchitect, host } from '../../test-utils';
-
 
 describe('Browser Builder base href', () => {
   const targetSpec = { project: 'app', target: 'build' };
@@ -30,7 +29,7 @@ describe('Browser Builder base href', () => {
 
     const overrides = { baseHref: '/myUrl' };
     const run = await architect.scheduleTarget(targetSpec, overrides);
-    const output = await run.result as BrowserBuilderOutput;
+    const output = (await run.result) as BrowserBuilderOutput;
 
     expect(output.success).toBe(true);
     const fileName = join(normalize(output.outputPath), 'index.html');
@@ -50,7 +49,7 @@ describe('Browser Builder base href', () => {
 
     const overrides = { baseHref: '/myUrl' };
     const run = await architect.scheduleTarget(targetSpec, overrides);
-    const output = await run.result as BrowserBuilderOutput;
+    const output = (await run.result) as BrowserBuilderOutput;
     expect(output.success).toBe(true);
     const fileName = join(normalize(output.outputPath), 'index.html');
     const content = virtualFs.fileBufferToString(await host.read(normalize(fileName)).toPromise());

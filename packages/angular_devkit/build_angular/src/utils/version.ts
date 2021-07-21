@@ -1,14 +1,17 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-import { logging, tags } from '@angular-devkit/core';
-import { SemVer, gte, satisfies } from 'semver';
 
-export function assertCompatibleAngularVersion(projectRoot: string, logger: logging.LoggerApi) {
+/* eslint-disable no-console */
+
+import { tags } from '@angular-devkit/core';
+import { SemVer, satisfies } from 'semver';
+
+export function assertCompatibleAngularVersion(projectRoot: string): void | never {
   let angularCliPkgJson;
   let angularPkgJson;
   let rxjsPkgJson;
@@ -21,7 +24,7 @@ export function assertCompatibleAngularVersion(projectRoot: string, logger: logg
     angularPkgJson = require(angularPackagePath);
     rxjsPkgJson = require(rxjsPackagePath);
   } catch {
-    logger.error(tags.stripIndents`
+    console.error(tags.stripIndents`
       You seem to not be depending on "@angular/core" and/or "rxjs". This is an error.
     `);
 
@@ -29,7 +32,7 @@ export function assertCompatibleAngularVersion(projectRoot: string, logger: logg
   }
 
   if (!(angularPkgJson && angularPkgJson['version'] && rxjsPkgJson && rxjsPkgJson['version'])) {
-    logger.error(tags.stripIndents`
+    console.error(tags.stripIndents`
       Cannot determine versions of "@angular/core" and/or "rxjs".
       This likely means your local installation is broken. Please reinstall your packages.
     `);
@@ -49,9 +52,9 @@ export function assertCompatibleAngularVersion(projectRoot: string, logger: logg
     return;
   }
 
-  if (angularCliPkgJson['version'] === '0.0.0' || angularPkgJson['version'] === '0.0.0-PLACEHOLDER') {
+  if (angularCliPkgJson['version'] === '0.0.0' || angularPkgJson['version'] === '0.0.0') {
     // Internal CLI testing version or integration testing in the angular/angular
-    // repository with the generated development @angular/core npm package which is versioned "0.0.0-PLACEHOLDER".
+    // repository with the generated development @angular/core npm package which is versioned "0.0.0".
     return;
   }
 
@@ -62,7 +65,7 @@ export function assertCompatibleAngularVersion(projectRoot: string, logger: logg
   const supportedAngularSemver = `^${cliMajor}.0.0-next || >=${cliMajor}.0.0 <${cliMajor + 1}.0.0`;
 
   if (!satisfies(angularVersion, supportedAngularSemver, { includePrerelease: true })) {
-    logger.error(
+    console.error(
       tags.stripIndents`
         This version of CLI is only compatible with Angular versions ${supportedAngularSemver},
         but Angular version ${angularVersion} was found instead.

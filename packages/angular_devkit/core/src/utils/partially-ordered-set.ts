@@ -1,17 +1,22 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { BaseException } from '../exception';
 
 export class DependencyNotFoundException extends BaseException {
-  constructor() { super('One of the dependencies is not part of the set.'); }
+  constructor() {
+    super('One of the dependencies is not part of the set.');
+  }
 }
 export class CircularDependencyFoundException extends BaseException {
-  constructor() { super('Circular dependencies found.'); }
+  constructor() {
+    super('Circular dependencies found.');
+  }
 }
 
 export class PartiallyOrderedSet<T> implements Set<T> {
@@ -22,7 +27,7 @@ export class PartiallyOrderedSet<T> implements Set<T> {
       throw new CircularDependencyFoundException();
     }
 
-    deps.forEach(dep => this._checkCircularDependencies(item, this._items.get(dep) || new Set()));
+    deps.forEach((dep) => this._checkCircularDependencies(item, this._items.get(dep) || new Set()));
   }
 
   clear() {
@@ -36,7 +41,7 @@ export class PartiallyOrderedSet<T> implements Set<T> {
   }
   forEach(
     callbackfn: (value: T, value2: T, set: PartiallyOrderedSet<T>) => void,
-    thisArg?: any,  // tslint:disable-line:no-any
+    thisArg?: any, // eslint-disable-line @typescript-eslint/no-explicit-any
   ): void {
     for (const x of this) {
       callbackfn.call(thisArg, x, x, this);
@@ -66,8 +71,7 @@ export class PartiallyOrderedSet<T> implements Set<T> {
     return this[Symbol.iterator]();
   }
 
-
-  add(item: T, deps: (Set<T> | T[]) = new Set()) {
+  add(item: T, deps: Set<T> | T[] = new Set()) {
     if (Array.isArray(deps)) {
       deps = new Set(deps);
     }
@@ -121,7 +125,7 @@ export class PartiallyOrderedSet<T> implements Set<T> {
     }
 
     // Remove it from all dependencies if force == true.
-    this._items.forEach(value => value.delete(item));
+    this._items.forEach((value) => value.delete(item));
 
     return this._items.delete(item);
   }
@@ -143,7 +147,7 @@ export class PartiallyOrderedSet<T> implements Set<T> {
       }
 
       for (const item of run) {
-        copy.forEach(s => s.delete(item));
+        copy.forEach((s) => s.delete(item));
         copy.delete(item);
         yield item;
       }

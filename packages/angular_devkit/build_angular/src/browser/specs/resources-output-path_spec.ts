@@ -1,15 +1,14 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-// tslint:disable:no-big-function
+
 import { Architect } from '@angular-devkit/architect';
 import { normalize } from '@angular-devkit/core';
 import { browserBuild, createArchitect, host } from '../../test-utils';
-
 
 describe('Browser Builder styles resources output path', () => {
   const imgSvg = `
@@ -63,14 +62,16 @@ describe('Browser Builder styles resources output path', () => {
     expect(main).toContain(`url('/assets/component-img-absolute.svg')`);
     expect(main).toContain(`url('out-assets/component-img-relative.png')`);
 
-    expect(host.scopedSync()
-      .exists(normalize('dist/assets/global-img-absolute.svg'))).toBe(true);
-    expect(host.scopedSync()
-      .exists(normalize('dist/out-assets/global-img-relative.png'))).toBe(true);
-    expect(host.scopedSync()
-      .exists(normalize('dist/assets/component-img-absolute.svg'))).toBe(true);
-    expect(host.scopedSync()
-      .exists(normalize('dist/out-assets/component-img-relative.png'))).toBe(true);
+    expect(host.scopedSync().exists(normalize('dist/assets/global-img-absolute.svg'))).toBe(true);
+    expect(host.scopedSync().exists(normalize('dist/out-assets/global-img-relative.png'))).toBe(
+      true,
+    );
+    expect(host.scopedSync().exists(normalize('dist/assets/component-img-absolute.svg'))).toBe(
+      true,
+    );
+    expect(host.scopedSync().exists(normalize('dist/out-assets/component-img-relative.png'))).toBe(
+      true,
+    );
   });
 
   it(`supports blank resourcesOutputPath`, async () => {
@@ -86,13 +87,11 @@ describe('Browser Builder styles resources output path', () => {
     expect(styles).toContain(`url('global-img-relative.png')`);
     expect(main).toContain(`url('/assets/component-img-absolute.svg')`);
     expect(main).toContain(`url('component-img-relative.png')`);
-    expect(host.scopedSync().exists(normalize('dist/assets/global-img-absolute.svg')))
-      .toBe(true);
-    expect(host.scopedSync().exists(normalize('dist/global-img-relative.png')))
-      .toBe(true);
-    expect(host.scopedSync().exists(normalize('dist/assets/component-img-absolute.svg')))
-      .toBe(true);
-    expect(host.scopedSync().exists(normalize('dist/component-img-relative.png')))
-      .toBe(true);
+    expect(host.scopedSync().exists(normalize('dist/assets/global-img-absolute.svg'))).toBe(true);
+    expect(host.scopedSync().exists(normalize('dist/global-img-relative.png'))).toBe(true);
+    expect(host.scopedSync().exists(normalize('dist/assets/component-img-absolute.svg'))).toBe(
+      true,
+    );
+    expect(host.scopedSync().exists(normalize('dist/component-img-relative.png'))).toBe(true);
   });
 });

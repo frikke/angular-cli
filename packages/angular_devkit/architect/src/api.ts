@@ -1,38 +1,38 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { analytics, experimental, json, logging } from '@angular-devkit/core';
 import { Observable, SubscribableOrPromise, Subscriber, from } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 import { Schema as RealBuilderInput, Target as RealTarget } from './input-schema';
 import { Schema as RealBuilderOutput } from './output-schema';
-import { Schema as RealBuilderProgress, State as BuilderProgressState } from './progress-schema';
+import { State as BuilderProgressState, Schema as RealBuilderProgress } from './progress-schema';
 
 export type Target = json.JsonObject & RealTarget;
-export {
-  BuilderProgressState,
-};
+export { BuilderProgressState };
 
 // Type short hands.
-export type BuilderRegistry =
-  experimental.jobs.Registry<json.JsonObject, BuilderInput, BuilderOutput>;
-
+export type BuilderRegistry = experimental.jobs.Registry<
+  json.JsonObject,
+  BuilderInput,
+  BuilderOutput
+>;
 
 /**
  * An API typed BuilderProgress. The interface generated from the schema is too permissive,
  * so this API is the one we show in our API. Please note that not all fields are in there; this
  * is in addition to fields in the schema.
  */
-export type TypedBuilderProgress = (
-    { state: BuilderProgressState.Stopped; }
-  | { state: BuilderProgressState.Error; error: json.JsonValue; }
-  | { state: BuilderProgressState.Waiting; status?: string; }
-  | { state: BuilderProgressState.Running; status?: string; current: number; total?: number; }
-);
+export type TypedBuilderProgress =
+  | { state: BuilderProgressState.Stopped }
+  | { state: BuilderProgressState.Error; error: json.JsonValue }
+  | { state: BuilderProgressState.Waiting; status?: string }
+  | { state: BuilderProgressState.Running; status?: string; current: number; total?: number };
 
 /**
  * Declaration of those types as JsonObject compatible. JsonObject is not compatible with
@@ -51,10 +51,10 @@ export type BuilderProgress = json.JsonObject & RealBuilderProgress & TypedBuild
  * builder interface. The watch dog sends BuilderProgress and the Builder has a set of functions
  * to manage the state.
  */
-export type BuilderProgressReport = BuilderProgress & ({
+export type BuilderProgressReport = BuilderProgress & {
   target?: Target;
   builder: BuilderInfo;
-});
+};
 
 /**
  * A Run, which is what is returned by scheduleBuilder or scheduleTarget functions. This should
@@ -251,16 +251,18 @@ export interface BuilderContext {
   /**
    * Add teardown logic to this Context, so that when it's being stopped it will execute teardown.
    */
-  addTeardown(teardown: () => (Promise<void> | void)): void;
+  addTeardown(teardown: () => Promise<void> | void): void;
 }
-
 
 /**
  * An accepted return value from a builder. Can be either an Observable, a Promise or a vector.
  */
-export type BuilderOutputLike = AsyncIterable<BuilderOutput> | SubscribableOrPromise<BuilderOutput> | BuilderOutput;
+export type BuilderOutputLike =
+  | AsyncIterable<BuilderOutput>
+  | SubscribableOrPromise<BuilderOutput>
+  | BuilderOutput;
 
-// tslint:disable-next-line:no-any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function isBuilderOutput(obj: any): obj is BuilderOutput {
   if (!obj || typeof obj.then === 'function' || typeof obj.subscribe === 'function') {
     return false;
@@ -305,7 +307,7 @@ async function handleAsyncIterator<T>(
 /**
  * A builder handler function. The function signature passed to `createBuilder()`.
  */
-export interface BuilderHandlerFn<A extends json.JsonObject> {
+export interface BuilderHandlerFn<A> {
   /**
    * Builders are defined by users to perform any kind of task, like building, testing or linting,
    * and should use this interface.
@@ -327,11 +329,10 @@ export type BuilderInfo = json.JsonObject & {
   optionSchema: json.schema.JsonSchema;
 };
 
-
 /**
  * Returns a string of "project:target[:configuration]" for the target object.
  */
-export function targetStringFromTarget({project, target, configuration}: Target) {
+export function targetStringFromTarget({ project, target, configuration }: Target) {
   return `${project}:${target}${configuration !== undefined ? ':' + configuration : ''}`;
 }
 
@@ -347,7 +348,7 @@ export function targetFromTargetString(str: string): Target {
   return {
     project: tuple[0],
     target: tuple[1],
-    ...(tuple[2] !== undefined) && { configuration: tuple[2] },
+    ...(tuple[2] !== undefined && { configuration: tuple[2] }),
   };
 }
 
@@ -371,20 +372,23 @@ export function scheduleTargetAndForget(
   scheduleOptions?: ScheduleOptions,
 ): Observable<BuilderOutput> {
   let resolve: (() => void) | null = null;
-  const promise = new Promise<void>(r => resolve = r);
+  const promise = new Promise<void>((r) => (resolve = r));
   context.addTeardown(() => promise);
 
   return from(context.scheduleTarget(target, overrides, scheduleOptions)).pipe(
-    switchMap(run => new Observable<BuilderOutput>(observer => {
-      const subscription = run.output.subscribe(observer);
+    switchMap(
+      (run) =>
+        new Observable<BuilderOutput>((observer) => {
+          const subscription = run.output.subscribe(observer);
 
-      return () => {
-        subscription.unsubscribe();
-        // We can properly ignore the floating promise as it's a "reverse" promise; the teardown
-        // is waiting for the resolve.
-        // tslint:disable-next-line:no-floating-promises
-        run.stop().then(resolve);
-      };
-    })),
+          return () => {
+            subscription.unsubscribe();
+            // We can properly ignore the floating promise as it's a "reverse" promise; the teardown
+            // is waiting for the resolve.
+            // eslint-disable-next-line @typescript-eslint/no-floating-promises
+            run.stop().then(resolve);
+          };
+        }),
+    ),
   );
 }

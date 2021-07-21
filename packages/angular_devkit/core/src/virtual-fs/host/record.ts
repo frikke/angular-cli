@@ -1,18 +1,12 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-import {
-  EMPTY,
-  Observable,
-  concat,
-  from as observableFrom,
-  of,
-  throwError,
-} from 'rxjs';
+
+import { EMPTY, Observable, concat, from as observableFrom, of, throwError } from 'rxjs';
 import { concatMap, map, reduce, switchMap, toArray } from 'rxjs/operators';
 import {
   FileAlreadyExistException,
@@ -30,7 +24,6 @@ import {
   Stats,
 } from './interface';
 import { SimpleMemoryHost } from './memory';
-
 
 export interface CordHostCreate {
   kind: 'create';
@@ -51,11 +44,7 @@ export interface CordHostDelete {
   kind: 'delete';
   path: Path;
 }
-export type CordHostRecord = CordHostCreate
-                           | CordHostOverwrite
-                           | CordHostRename
-                           | CordHostDelete;
-
+export type CordHostRecord = CordHostCreate | CordHostOverwrite | CordHostRename | CordHostDelete;
 
 /**
  * A Host that records changes to the underlying Host, while keeping a record of Create, Overwrite,
@@ -74,10 +63,14 @@ export class CordHost extends SimpleMemoryHost {
   protected _filesToDelete = new Set<Path>();
   protected _filesToOverwrite = new Set<Path>();
 
-  constructor(protected _back: ReadonlyHost) { super(); }
+  constructor(protected _back: ReadonlyHost) {
+    super();
+  }
 
-  get backend(): ReadonlyHost { return this._back; }
-  get capabilities(): HostCapabilities {
+  get backend(): ReadonlyHost {
+    return this._back;
+  }
+  override get capabilities(): HostCapabilities {
     // Our own host is always Synchronous, but the backend might not be.
     return {
       synchronous: this._back.capabilities.synchronous,
@@ -113,13 +106,15 @@ export class CordHost extends SimpleMemoryHost {
   commit(host: Host, force = false): Observable<void> {
     // Really commit everything to the actual host.
     return observableFrom(this.records()).pipe(
-      concatMap(record => {
+      concatMap((record) => {
         switch (record.kind) {
-          case 'delete': return host.delete(record.path);
-          case 'rename': return host.rename(record.from, record.to);
+          case 'delete':
+            return host.delete(record.path);
+          case 'rename':
+            return host.rename(record.from, record.to);
           case 'create':
             return host.exists(record.path).pipe(
-              switchMap(exists => {
+              switchMap((exists) => {
                 if (exists && !force) {
                   return throwError(new FileAlreadyExistException(record.path));
                 } else {
@@ -129,7 +124,7 @@ export class CordHost extends SimpleMemoryHost {
             );
           case 'overwrite':
             return host.exists(record.path).pipe(
-              switchMap(exists => {
+              switchMap((exists) => {
                 if (!exists && !force) {
                   return throwError(new FileDoesNotExistException(record.path));
                 } else {
@@ -145,18 +140,37 @@ export class CordHost extends SimpleMemoryHost {
 
   records(): CordHostRecord[] {
     return [
-      ...[...this._filesToDelete.values()].map(path => ({
-        kind: 'delete', path,
-      }) as CordHostRecord),
-      ...[...this._filesToRename.entries()].map(([from, to]) => ({
-        kind: 'rename', from, to,
-      }) as CordHostRecord),
-      ...[...this._filesToCreate.values()].map(path => ({
-        kind: 'create', path, content: this._read(path),
-      }) as CordHostRecord),
-      ...[...this._filesToOverwrite.values()].map(path => ({
-        kind: 'overwrite', path, content: this._read(path),
-      }) as CordHostRecord),
+      ...[...this._filesToDelete.values()].map(
+        (path) =>
+          ({
+            kind: 'delete',
+            path,
+          } as CordHostRecord),
+      ),
+      ...[...this._filesToRename.entries()].map(
+        ([from, to]) =>
+          ({
+            kind: 'rename',
+            from,
+            to,
+          } as CordHostRecord),
+      ),
+      ...[...this._filesToCreate.values()].map(
+        (path) =>
+          ({
+            kind: 'create',
+            path,
+            content: this._read(path),
+          } as CordHostRecord),
+      ),
+      ...[...this._filesToOverwrite.values()].map(
+        (path) =>
+          ({
+            kind: 'overwrite',
+            path,
+            content: this._read(path),
+          } as CordHostRecord),
+      ),
     ];
   }
 
@@ -184,14 +198,14 @@ export class CordHost extends SimpleMemoryHost {
 
   overwrite(path: Path, content: FileBuffer): Observable<void> {
     return this.isDirectory(path).pipe(
-      switchMap(isDir => {
+      switchMap((isDir) => {
         if (isDir) {
           return throwError(new PathIsDirectoryException(path));
         }
 
         return this.exists(path);
       }),
-      switchMap(exists => {
+      switchMap((exists) => {
         if (!exists) {
           return throwError(new FileDoesNotExistException(path));
         }
@@ -205,9 +219,9 @@ export class CordHost extends SimpleMemoryHost {
     );
   }
 
-  write(path: Path, content: FileBuffer): Observable<void> {
+  override write(path: Path, content: FileBuffer): Observable<void> {
     return this.exists(path).pipe(
-      switchMap(exists => {
+      switchMap((exists) => {
         if (exists) {
           // It exists, but might be being renamed or deleted. In that case we want to create it.
           if (this.willRename(path) || this.willDelete(path)) {
@@ -222,7 +236,7 @@ export class CordHost extends SimpleMemoryHost {
     );
   }
 
-  read(path: Path): Observable<FileBuffer> {
+  override read(path: Path): Observable<FileBuffer> {
     if (this._exists(path)) {
       return super.read(path);
     }
@@ -230,7 +244,7 @@ export class CordHost extends SimpleMemoryHost {
     return this._back.read(path);
   }
 
-  delete(path: Path): Observable<void> {
+  override delete(path: Path): Observable<void> {
     if (this._exists(path)) {
       if (this._filesToCreate.has(path)) {
         this._filesToCreate.delete(path);
@@ -253,7 +267,7 @@ export class CordHost extends SimpleMemoryHost {
       return super.delete(path);
     } else {
       return this._back.exists(path).pipe(
-        switchMap(exists => {
+        switchMap((exists) => {
           if (exists) {
             this._filesToDelete.add(path);
 
@@ -266,11 +280,8 @@ export class CordHost extends SimpleMemoryHost {
     }
   }
 
-  rename(from: Path, to: Path): Observable<void> {
-    return concat(
-      this.exists(to),
-      this.exists(from),
-    ).pipe(
+  override rename(from: Path, to: Path): Observable<void> {
+    return concat(this.exists(to), this.exists(from)).pipe(
       toArray(),
       switchMap(([existTo, existFrom]) => {
         if (!existFrom) {
@@ -298,7 +309,7 @@ export class CordHost extends SimpleMemoryHost {
           // if will be by-passed because we just deleted the `from` path from files to overwrite.
           return concat(
             this.rename(from, to),
-            new Observable<never>(x => {
+            new Observable<never>((x) => {
               this._filesToOverwrite.add(to);
               x.complete();
             }),
@@ -310,9 +321,7 @@ export class CordHost extends SimpleMemoryHost {
           this._filesToOverwrite.add(to);
 
           // We need to delete the original and write the new one.
-          return this.read(from).pipe(
-            map(content => this._write(to, content)),
-          );
+          return this.read(from).pipe(map((content) => this._write(to, content)));
         }
 
         const maybeTo1 = this._filesToRenameRevert.get(from);
@@ -332,49 +341,50 @@ export class CordHost extends SimpleMemoryHost {
           return super.rename(from, to);
         } else {
           // Create a file with the same content.
-          return this._back.read(from).pipe(
-            switchMap(content => super.write(to, content)),
-          );
+          return this._back.read(from).pipe(switchMap((content) => super.write(to, content)));
         }
       }),
     );
   }
 
-  list(path: Path): Observable<PathFragment[]> {
-    return concat(
-      super.list(path),
-      this._back.list(path),
-    ).pipe(
+  override list(path: Path): Observable<PathFragment[]> {
+    return concat(super.list(path), this._back.list(path)).pipe(
       reduce((list: Set<PathFragment>, curr: PathFragment[]) => {
-        curr.forEach(elem => list.add(elem));
+        curr.forEach((elem) => list.add(elem));
 
         return list;
       }, new Set<PathFragment>()),
-      map(set => [...set]),
+      map((set) => [...set]),
     );
   }
 
-  exists(path: Path): Observable<boolean> {
+  override exists(path: Path): Observable<boolean> {
     return this._exists(path)
       ? of(true)
-      : ((this.willDelete(path) || this.willRename(path)) ? of(false) : this._back.exists(path));
+      : this.willDelete(path) || this.willRename(path)
+      ? of(false)
+      : this._back.exists(path);
   }
-  isDirectory(path: Path): Observable<boolean> {
+  override isDirectory(path: Path): Observable<boolean> {
     return this._exists(path) ? super.isDirectory(path) : this._back.isDirectory(path);
   }
-  isFile(path: Path): Observable<boolean> {
+  override isFile(path: Path): Observable<boolean> {
     return this._exists(path)
       ? super.isFile(path)
-      : ((this.willDelete(path) || this.willRename(path)) ? of(false) : this._back.isFile(path));
+      : this.willDelete(path) || this.willRename(path)
+      ? of(false)
+      : this._back.isFile(path);
   }
 
-  stat(path: Path): Observable<Stats | null> | null {
+  override stat(path: Path): Observable<Stats | null> | null {
     return this._exists(path)
       ? super.stat(path)
-      : ((this.willDelete(path) || this.willRename(path)) ? of(null) : this._back.stat(path));
+      : this.willDelete(path) || this.willRename(path)
+      ? of(null)
+      : this._back.stat(path);
   }
 
-  watch(path: Path, options?: HostWatchOptions) {
+  override watch(path: Path, options?: HostWatchOptions) {
     // Watching not supported.
     return null;
   }

@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { analytics, json, logging } from '@angular-devkit/core';
 import { AngularWorkspace } from '../utilities/config';
 
@@ -38,7 +39,7 @@ export interface CommandInterface<T extends Arguments = Arguments> {
  * Command constructor.
  */
 export interface CommandConstructor {
-  new(
+  new (
     context: CommandContext,
     description: CommandDescription,
     logger: logging.Logger,
@@ -157,7 +158,7 @@ export interface Option {
   /**
    * Deprecation. If this flag is not false a warning will be shown on the console. Either `true`
    * or a string to show the user as a notice.
-  */
+   */
   deprecated?: boolean | string;
 }
 

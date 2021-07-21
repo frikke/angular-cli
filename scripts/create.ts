@@ -1,11 +1,12 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-// tslint:disable:no-implicit-dependencies
+
+/* eslint-disable import/no-extraneous-dependencies, no-prototype-builtins */
 import { logging } from '@angular-devkit/core';
 import cli from '@angular/cli/lib/cli';
 import * as child_process from 'child_process';
@@ -37,7 +38,7 @@ async function _exec(
   const { status, error, stderr, stdout } = child_process.spawnSync(command, args, { ...opts });
 
   if (status != 0) {
-    logger.error(`Command failed: ${command} ${args.map(x => JSON.stringify(x)).join(', ')}`);
+    logger.error(`Command failed: ${command} ${args.map((x) => JSON.stringify(x)).join(', ')}`);
     if (error) {
       logger.error('Error: ' + (error ? error.message : 'undefined'));
     } else {
@@ -49,8 +50,7 @@ async function _exec(
   return { stdout };
 }
 
-
-export default async function(
+export default async function (
   args: CreateOptions,
   logger: logging.Logger,
   cwd: string,

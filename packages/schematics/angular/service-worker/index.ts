@@ -1,11 +1,12 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-import { join, normalize } from '@angular-devkit/core';
+
+import { join, normalize, tags } from '@angular-devkit/core';
 import {
   Rule,
   SchematicContext,
@@ -20,7 +21,12 @@ import {
 } from '@angular-devkit/schematics';
 import { NodePackageInstallTask } from '@angular-devkit/schematics/tasks';
 import * as ts from '../third_party/github.com/Microsoft/TypeScript/lib/typescript';
-import { addSymbolToNgModuleMetadata, getEnvironmentExportName, insertImport, isImported } from '../utility/ast-utils';
+import {
+  addSymbolToNgModuleMetadata,
+  getEnvironmentExportName,
+  insertImport,
+  isImported,
+} from '../utility/ast-utils';
 import { applyToUpdateRecorder } from '../utility/change';
 import { addPackageJsonDependency, getPackageJsonDependency } from '../utility/dependencies';
 import { getAppModulePath } from '../utility/ng-ast-utils';
@@ -90,11 +96,21 @@ function updateAppModule(mainPath: string): Rule {
     }
 
     // register SW in app module
-    const importText =
-      `ServiceWorkerModule.register('ngsw-worker.js', { enabled: ${importModule}.production })`;
+    const importText = tags.stripIndent`
+      ServiceWorkerModule.register('ngsw-worker.js', {
+        enabled: ${importModule}.production,
+        // Register the ServiceWorker as soon as the app is stable
+        // or after 30 seconds (whichever comes first).
+        registrationStrategy: 'registerWhenStable:30000'
+      })
+    `;
     moduleSource = getTsSourceFile(host, modulePath);
     const metadataChanges = addSymbolToNgModuleMetadata(
-      moduleSource, modulePath, 'imports', importText);
+      moduleSource,
+      modulePath,
+      'imports',
+      importText,
+    );
     if (metadataChanges) {
       const recorder = host.beginUpdate(modulePath);
       applyToUpdateRecorder(recorder, metadataChanges);
@@ -130,21 +146,12 @@ export default function (options: ServiceWorkerOptions): Rule {
     if (!buildTarget) {
       throw targetBuildNotFoundError();
     }
-    const buildOptions =
-      (buildTarget.options || {}) as unknown as BrowserBuilderOptions;
-    let buildConfiguration;
-    if (options.configuration && buildTarget.configurations) {
-      buildConfiguration =
-        buildTarget.configurations[options.configuration] as unknown as BrowserBuilderOptions | undefined;
-    }
-
-    const config = buildConfiguration || buildOptions;
+    const buildOptions = ((buildTarget.options || {}) as unknown) as BrowserBuilderOptions;
     const root = project.root;
+    buildOptions.serviceWorker = true;
+    buildOptions.ngswConfigPath = join(normalize(root), 'ngsw-config.json');
 
-    config.serviceWorker = true;
-    config.ngswConfigPath = join(normalize(root), 'ngsw-config.json');
-
-    let { resourcesOutputPath = '' } = config;
+    let { resourcesOutputPath = '' } = buildOptions;
     if (resourcesOutputPath) {
       resourcesOutputPath = normalize(`/${resourcesOutputPath}`);
     }

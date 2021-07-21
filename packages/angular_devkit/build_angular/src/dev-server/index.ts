@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
@@ -18,10 +18,9 @@ import { Observable, from } from 'rxjs';
 import { concatMap, switchMap } from 'rxjs/operators';
 import * as ts from 'typescript';
 import * as url from 'url';
-import * as webpack from 'webpack';
-import * as webpackDevServer from 'webpack-dev-server';
-import { getAnalyticsConfig, getCompilerConfig } from '../browser';
-import { OutputHashing, Schema as BrowserBuilderSchema } from '../browser/schema';
+import webpack from 'webpack';
+import webpackDevServer from 'webpack-dev-server';
+import { Schema as BrowserBuilderSchema, OutputHashing } from '../browser/schema';
 import { ExecutionTransformer } from '../transforms';
 import { BuildBrowserFeatures, normalizeOptimization } from '../utils';
 import { findCachePath } from '../utils/cache-path';
@@ -32,14 +31,19 @@ import { IndexHtmlTransform } from '../utils/index-file/index-html-generator';
 import { generateEntryPoints } from '../utils/package-chunk-sort';
 import { readTsconfig } from '../utils/read-tsconfig';
 import { assertCompatibleAngularVersion } from '../utils/version';
-import { generateI18nBrowserWebpackConfigFromContext, getIndexInputFile, getIndexOutputFile } from '../utils/webpack-browser-config';
-import { addError, addWarning } from '../utils/webpack-diagnostics';
 import {
+  generateI18nBrowserWebpackConfigFromContext,
+  getIndexInputFile,
+  getIndexOutputFile,
+} from '../utils/webpack-browser-config';
+import {
+  getAnalyticsConfig,
   getBrowserConfig,
   getCommonConfig,
   getDevServerConfig,
   getStatsConfig,
   getStylesConfig,
+  getTypeScriptConfig,
   getWorkerConfig,
 } from '../webpack/configs';
 import { IndexHtmlWebpackPlugin } from '../webpack/plugins/index-html-webpack-plugin';
@@ -62,18 +66,41 @@ const devServerBuildOverriddenKeys: (keyof DevServerBuilderOptions)[] = [
   'deployUrl',
 ];
 
+// Get dev-server only options.
+type DevServerOptions = Partial<
+  Omit<
+    Schema,
+    | 'watch'
+    | 'optimization'
+    | 'aot'
+    | 'sourceMap'
+    | 'vendorChunk'
+    | 'commonChunk'
+    | 'baseHref'
+    | 'progress'
+    | 'poll'
+    | 'verbose'
+    | 'deployUrl'
+  >
+>;
+
+/**
+ * @experimental Direct usage of this type is considered experimental.
+ */
 export type DevServerBuilderOutput = DevServerBuildOutput & {
   baseUrl: string;
 };
 
 /**
- * Reusable implementation of the build angular webpack dev server builder.
+ * Reusable implementation of the Angular Webpack development server builder.
  * @param options Dev Server options.
  * @param context The build context.
  * @param transforms A map of transforms that can be used to hook into some logic (such as
  *     transforming webpack configuration before passing it to webpack).
+ *
+ * @experimental Direct usage of this function is considered experimental.
  */
-// tslint:disable-next-line: no-big-function
+// eslint-disable-next-line max-lines-per-function
 export function serveWebpackBrowser(
   options: DevServerBuilderOptions,
   context: BuilderContext,
@@ -85,7 +112,7 @@ export function serveWebpackBrowser(
 ): Observable<DevServerBuilderOutput> {
   // Check Angular version.
   const { logger, workspaceRoot } = context;
-  assertCompatibleAngularVersion(workspaceRoot, logger);
+  assertCompatibleAngularVersion(workspaceRoot);
 
   const browserTarget = targetFromTargetString(options.browserTarget);
 
@@ -96,12 +123,13 @@ export function serveWebpackBrowser(
     locale: string | undefined;
   }> {
     // Get the browser configuration from the target name.
-    const rawBrowserOptions = (await context.getTargetOptions(browserTarget)) as json.JsonObject & BrowserBuilderSchema;
+    const rawBrowserOptions = (await context.getTargetOptions(browserTarget)) as json.JsonObject &
+      BrowserBuilderSchema;
     options.port = await checkPort(options.port ?? 4200, options.host || 'localhost');
 
     // Override options we need to override, if defined.
     const overrides = (Object.keys(options) as (keyof DevServerBuilderOptions)[])
-      .filter(key => options[key] !== undefined && devServerBuildOverriddenKeys.includes(key))
+      .filter((key) => options[key] !== undefined && devServerBuildOverriddenKeys.includes(key))
       .reduce<json.JsonObject & Partial<BrowserBuilderSchema>>(
         (previous, key) => ({
           ...previous,
@@ -110,11 +138,8 @@ export function serveWebpackBrowser(
         {},
       );
 
-    // Get dev-server only options.
-    type DevServerOptions = Partial<Omit<Schema,
-      'watch' | 'optimization' | 'aot' | 'sourceMap' | 'vendorChunk' | 'commonChunk' | 'baseHref' | 'progress' | 'poll' | 'verbose' | 'deployUrl'>>;
     const devServerOptions: DevServerOptions = (Object.keys(options) as (keyof Schema)[])
-      .filter(key => !devServerBuildOverriddenKeys.includes(key) && key !== 'browserTarget')
+      .filter((key) => !devServerBuildOverriddenKeys.includes(key) && key !== 'browserTarget')
       .reduce<DevServerOptions>(
         (previous, key) => ({
           ...previous,
@@ -133,32 +158,76 @@ export function serveWebpackBrowser(
       logger.warn(`Warning: 'outputHashing' option is disabled when using the dev-server.`);
     }
 
+    if (options.hmr) {
+      logger.warn(tags.stripIndents`NOTICE: Hot Module Replacement (HMR) is enabled for the dev server.
+      See https://webpack.js.org/guides/hot-module-replacement for information on working with HMR for Webpack.`);
+    }
+
+    if (
+      !options.disableHostCheck &&
+      options.host &&
+      !/^127\.\d+\.\d+\.\d+/g.test(options.host) &&
+      options.host !== 'localhost'
+    ) {
+      logger.warn(tags.stripIndent`
+        Warning: This is a simple server for use in testing or debugging Angular applications
+        locally. It hasn't been reviewed for security issues.
+
+        Binding this server to an open connection can result in compromising your application or
+        computer. Using a different host than the one passed to the "--host" flag might result in
+        websocket connection issues. You might need to use "--disable-host-check" if that's the
+        case.
+      `);
+    }
+
+    if (options.disableHostCheck) {
+      logger.warn(tags.oneLine`
+        Warning: Running a server with --disable-host-check is a security risk.
+        See https://medium.com/webpack/webpack-dev-server-middleware-security-issues-1489d950874a
+        for more information.
+      `);
+    }
+
+    // Webpack's live reload functionality adds the `strip-ansi` package which is commonJS
+    rawBrowserOptions.allowedCommonJsDependencies ??= [];
+    rawBrowserOptions.allowedCommonJsDependencies.push('strip-ansi');
+
     const browserName = await context.getBuilderNameForTarget(browserTarget);
-    const browserOptions = await context.validateOptions(
+    const browserOptions = (await context.validateOptions(
       { ...rawBrowserOptions, ...overrides },
       browserName,
-    ) as json.JsonObject & BrowserBuilderSchema;
+    )) as json.JsonObject & BrowserBuilderSchema;
+
+    const { styles, scripts } = normalizeOptimization(browserOptions.optimization);
+    if (scripts || styles.minify) {
+      logger.error(tags.stripIndents`
+        ****************************************************************************************
+        This is a simple server for use in testing or debugging Angular applications locally.
+        It hasn't been reviewed for security issues.
+
+        DON'T USE IT FOR PRODUCTION!
+        ****************************************************************************************
+      `);
+    }
 
     const { config, projectRoot, i18n } = await generateI18nBrowserWebpackConfigFromContext(
       browserOptions,
       context,
-      wco => [
+      (wco) => [
         getDevServerConfig(wco),
         getCommonConfig(wco),
         getBrowserConfig(wco),
         getStylesConfig(wco),
         getStatsConfig(wco),
         getAnalyticsConfig(wco, context),
-        getCompilerConfig(wco),
+        getTypeScriptConfig(wco),
         browserOptions.webWorkerTsConfig ? getWorkerConfig(wco) : {},
       ],
       devServerOptions,
     );
 
     if (!config.devServer) {
-      throw new Error(
-        'Webpack Dev Server configuration was not set.',
-      );
+      throw new Error('Webpack Dev Server configuration was not set.');
     }
 
     if (options.liveReload && !options.hmr) {
@@ -173,13 +242,20 @@ export function serveWebpackBrowser(
       // Remove live-reload code from all entrypoints but not main.
       // Otherwise this will break SuppressExtractedTextChunksWebpackPlugin because
       // 'addDevServerEntrypoints' adds addional entry-points to all entries.
-      if (config.entry && typeof config.entry === 'object' && !Array.isArray(config.entry) && config.entry.main) {
+      if (
+        config.entry &&
+        typeof config.entry === 'object' &&
+        !Array.isArray(config.entry) &&
+        config.entry.main
+      ) {
         for (const [key, value] of Object.entries(config.entry)) {
-          if (key === 'main' || typeof value === 'string') {
+          if (key === 'main' || !Array.isArray(value)) {
             continue;
           }
 
-          const webpackClientScriptIndex = value.findIndex(x => x.includes('webpack-dev-server/client/index.js'));
+          const webpackClientScriptIndex = value.findIndex((x) =>
+            x.includes('webpack-dev-server/client/index.js'),
+          );
           if (webpackClientScriptIndex >= 0) {
             // Remove the webpack-dev-server/client script from array.
             value.splice(webpackClientScriptIndex, 1);
@@ -188,40 +264,8 @@ export function serveWebpackBrowser(
       }
     }
 
-    if (options.hmr) {
-      logger.warn(tags.stripIndents`NOTICE: Hot Module Replacement (HMR) is enabled for the dev server.
-      See https://webpack.js.org/guides/hot-module-replacement for information on working with HMR for Webpack.`);
-    }
-
-    if (
-      options.host
-      && !/^127\.\d+\.\d+\.\d+/g.test(options.host)
-      && options.host !== 'localhost'
-    ) {
-      logger.warn(tags.stripIndent`
-        Warning: This is a simple server for use in testing or debugging Angular applications
-        locally. It hasn't been reviewed for security issues.
-
-        Binding this server to an open connection can result in compromising your application or
-        computer. Using a different host than the one passed to the "--host" flag might result in
-        websocket connection issues. You might need to use "--disableHostCheck" if that's the
-        case.
-      `);
-    }
-
-    if (options.disableHostCheck) {
-      logger.warn(tags.oneLine`
-        Warning: Running a server with --disable-host-check is a security risk.
-        See https://medium.com/webpack/webpack-dev-server-middleware-security-issues-1489d950874a
-        for more information.
-      `);
-    }
-
     let locale: string | undefined;
-    if (browserOptions.i18nLocale) {
-      // Deprecated VE option
-      locale = browserOptions.i18nLocale;
-    } else if (i18n.shouldInline) {
+    if (i18n.shouldInline) {
       // Dev-server only supports one locale
       locale = [...i18n.inlineLocales][0];
     } else if (i18n.hasDefinedSourceLocale) {
@@ -260,8 +304,6 @@ export function serveWebpackBrowser(
 
   return from(setup()).pipe(
     switchMap(({ browserOptions, webpackConfig, projectRoot, locale }) => {
-      const normalizedOptimization = normalizeOptimization(browserOptions.optimization);
-
       if (browserOptions.index) {
         const { scripts = [], styles = [], baseHref, tsConfig } = browserOptions;
         const { options: compilerOptions } = readTsconfig(tsConfig, workspaceRoot);
@@ -285,7 +327,7 @@ export function serveWebpackBrowser(
             deployUrl: browserOptions.deployUrl,
             sri: browserOptions.subresourceIntegrity,
             postTransform: transforms.indexHtml,
-            optimization: normalizedOptimization,
+            optimization: normalizeOptimization(browserOptions.optimization),
             WOFFSupportNeeded: !buildBrowserFeatures.isFeatureSupported('woff2'),
             crossOrigin: browserOptions.crossOrigin,
             lang: locale,
@@ -293,26 +335,11 @@ export function serveWebpackBrowser(
         );
       }
 
-      if (normalizedOptimization.scripts || normalizedOptimization.styles.minify) {
-        logger.error(tags.stripIndents`
-          ****************************************************************************************
-          This is a simple server for use in testing or debugging Angular applications locally.
-          It hasn't been reviewed for security issues.
-
-          DON'T USE IT FOR PRODUCTION!
-          ****************************************************************************************
-        `);
-      }
-
-      return runWebpackDevServer(
-        webpackConfig,
-        context,
-        {
-          logging: transforms.logging || createWebpackLoggingCallback(!!options.verbose, logger),
-          webpackFactory: require('webpack') as typeof webpack,
-          webpackDevServerFactory: require('webpack-dev-server') as typeof webpackDevServer,
-        },
-      ).pipe(
+      return runWebpackDevServer(webpackConfig, context, {
+        logging: transforms.logging || createWebpackLoggingCallback(browserOptions, logger),
+        webpackFactory: require('webpack') as typeof webpack,
+        webpackDevServerFactory: require('webpack-dev-server') as typeof webpackDevServer,
+      }).pipe(
         concatMap(async (buildEvent, index) => {
           // Resolve serve address.
           const serverAddress = url.format({
@@ -323,15 +350,19 @@ export function serveWebpackBrowser(
           });
 
           if (index === 0) {
-            logger.info('\n' + tags.oneLine`
+            logger.info(
+              '\n' +
+                tags.oneLine`
               **
               Angular Live Development Server is listening on ${options.host}:${buildEvent.port},
               open your browser on ${serverAddress}
               **
-            ` + '\n');
+            ` +
+                '\n',
+            );
 
             if (options.open) {
-              const open = await import('open');
+              const open = (await import('open')).default;
               await open(serverAddress);
             }
           }
@@ -354,7 +385,6 @@ async function setupLocalize(
   webpackConfig: webpack.Configuration,
 ) {
   const localeDescription = i18n.locales[locale];
-  const i18nDiagnostics: { type: string, message: string }[] = [];
 
   // Modify main entrypoint to include locale data
   if (
@@ -366,7 +396,10 @@ async function setupLocalize(
     if (Array.isArray(webpackConfig.entry['main'])) {
       webpackConfig.entry['main'].unshift(localeDescription.dataPath);
     } else {
-      webpackConfig.entry['main'] = [localeDescription.dataPath, webpackConfig.entry['main']];
+      webpackConfig.entry['main'] = [
+        localeDescription.dataPath,
+        webpackConfig.entry['main'] as string,
+      ];
     }
   }
 
@@ -378,37 +411,25 @@ async function setupLocalize(
     translation = {};
   }
 
+  const i18nLoaderOptions = {
+    locale,
+    missingTranslationBehavior,
+    translation: i18n.shouldInline ? translation : undefined,
+  };
+
   const i18nRule: webpack.RuleSetRule = {
-    test: /\.(?:m?js|ts)$/,
+    test: /\.(?:[cm]?js|ts)$/,
     enforce: 'post',
     use: [
       {
-        loader: require.resolve('babel-loader'),
+        loader: require.resolve('../babel/webpack-loader'),
         options: {
-          babelrc: false,
-          configFile: false,
-          compact: false,
-          cacheCompression: false,
-          cacheDirectory: findCachePath('babel-loader'),
+          cacheDirectory: findCachePath('babel-dev-server-i18n'),
           cacheIdentifier: JSON.stringify({
-            buildAngular: require('../../package.json').version,
             locale,
             translationIntegrity: localeDescription?.files.map((file) => file.integrity),
           }),
-          sourceType: 'unambiguous',
-          presets: [
-            [
-              require.resolve('../babel/presets/application'),
-              {
-                i18n: {
-                  locale,
-                  translation: i18n.shouldInline ? translation : undefined,
-                  missingTranslationBehavior,
-                },
-                diagnosticReporter: (type, message) => i18nDiagnostics.push({ type, message }),
-              } as import('../babel/presets/application').ApplicationPresetOptions,
-            ],
-          ],
+          i18n: i18nLoaderOptions,
         },
       },
     ],
@@ -423,25 +444,6 @@ async function setupLocalize(
   }
 
   rules.push(i18nRule);
-
-  // Add a plugin to inject the i18n diagnostics
-  // tslint:disable-next-line: no-non-null-assertion
-  webpackConfig.plugins!.push({
-    apply: (compiler: webpack.Compiler) => {
-      compiler.hooks.thisCompilation.tap('build-angular', compilation => {
-        compilation.hooks.finishModules.tap('build-angular', () => {
-          for (const diagnostic of i18nDiagnostics) {
-            if (diagnostic.type === 'error') {
-              addError(compilation, diagnostic.message);
-            } else {
-              addWarning(compilation, diagnostic.message);
-            }
-          }
-          i18nDiagnostics.length = 0;
-        });
-      });
-    },
-  });
 }
 
 export default createBuilder<DevServerBuilderOptions, DevServerBuilderOutput>(serveWebpackBrowser);

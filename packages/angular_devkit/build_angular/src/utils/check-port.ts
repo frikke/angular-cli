@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { prompt } from 'inquirer';
 import * as net from 'net';
 import { isTTY } from './tty';
@@ -41,7 +42,7 @@ export async function checkPort(port: number, host: string): Promise<number> {
           message: `Port ${port} is already in use.\nWould you like to use a different port?`,
           default: true,
         }).then(
-          (answers) => answers.useDifferent ? resolve(0) : reject(createInUseError(port)),
+          (answers) => (answers.useDifferent ? resolve(0) : reject(createInUseError(port))),
           () => reject(createInUseError(port)),
         );
       })

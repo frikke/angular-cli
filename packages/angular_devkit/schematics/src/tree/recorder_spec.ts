@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { normalize } from '@angular-devkit/core';
 import { SimpleFileEntry } from './entry';
 import { UpdateRecorderBase, UpdateRecorderBom } from './recorder';
@@ -31,7 +32,7 @@ describe('UpdateRecorderBase', () => {
   });
 
   it('can create the proper recorder', () => {
-    const e = new SimpleFileEntry(normalize('/some/path'),  Buffer.from('hello'));
+    const e = new SimpleFileEntry(normalize('/some/path'), Buffer.from('hello'));
     expect(UpdateRecorderBase.createFromFileEntry(e) instanceof UpdateRecorderBase).toBe(true);
     expect(UpdateRecorderBase.createFromFileEntry(e) instanceof UpdateRecorderBom).toBe(false);
   });
@@ -43,7 +44,7 @@ describe('UpdateRecorderBase', () => {
   });
 
   it('supports empty files', () => {
-    const e = new SimpleFileEntry(normalize('/some/path'),  Buffer.from(''));
+    const e = new SimpleFileEntry(normalize('/some/path'), Buffer.from(''));
     expect(UpdateRecorderBase.createFromFileEntry(e) instanceof UpdateRecorderBase).toBe(true);
   });
 

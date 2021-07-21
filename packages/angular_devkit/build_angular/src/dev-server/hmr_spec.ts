@@ -1,23 +1,24 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { Architect, BuilderRun } from '@angular-devkit/architect';
-// tslint:disable: no-implicit-dependencies
+/* eslint-disable import/no-extraneous-dependencies */
 import { Browser } from 'puppeteer/lib/cjs/puppeteer/common/Browser';
 import { Page } from 'puppeteer/lib/cjs/puppeteer/common/Page';
 import puppeteer from 'puppeteer/lib/cjs/puppeteer/node';
-// tslint:enable: no-implicit-dependencies
+/* eslint-enable import/no-extraneous-dependencies */
 import { debounceTime, switchMap, take } from 'rxjs/operators';
 import { createArchitect, host } from '../test-utils';
 
-// tslint:disable: no-any
+/* eslint-disable @typescript-eslint/no-explicit-any */
 declare const document: any;
 declare const getComputedStyle: any;
-// tslint:enable: no-any
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 describe('Dev Server Builder HMR', () => {
   const target = { project: 'app', target: 'serve' };
@@ -33,7 +34,7 @@ describe('Dev Server Builder HMR', () => {
       // MacOSX users need to set the local binary manually because Chrome has lib files with
       // spaces in them which Bazel does not support in runfiles
       // See: https://github.com/angular/angular-cli/pull/17624
-      // tslint:disable-next-line: max-line-length
+      // eslint-disable-next-line max-len
       // executablePath: '/Users/<USERNAME>/git/angular-cli/node_modules/puppeteer/.local-chromium/mac-800071/chrome-mac/Chromium.app/Contents/MacOS/Chromium',
       args: ['--no-sandbox', '--disable-gpu'],
     });
@@ -50,7 +51,7 @@ describe('Dev Server Builder HMR', () => {
     logs = [];
     runs = [];
     page = await browser.newPage();
-    page.on('console', msg => logs.push(msg.text()));
+    page.on('console', (msg) => logs.push(msg.text()));
 
     host.writeMultipleFiles({
       'src/app/app.component.html': `
@@ -69,7 +70,7 @@ describe('Dev Server Builder HMR', () => {
   afterEach(async () => {
     await host.restore().toPromise();
     await page.close();
-    await Promise.all(runs.map(r => r.stop()));
+    await Promise.all(runs.map((r) => r.stop()));
   });
 
   it('works for CSS changes', async () => {
@@ -80,7 +81,7 @@ describe('Dev Server Builder HMR', () => {
     await run.output
       .pipe(
         debounceTime(1000),
-        switchMap(async buildEvent => {
+        switchMap(async (buildEvent) => {
           expect(buildEvent.success).toBe(true);
           const url = buildEvent.baseUrl as string;
           switch (buildCount) {
@@ -96,13 +97,13 @@ describe('Dev Server Builder HMR', () => {
               expect(logs).toContain(`[HMR] css reload %s ${url}styles.css`);
               expect(logs).toContain('[HMR] App is up to date.');
 
-              const pTag = await page.evaluate(() => {
+              const pTagColor = await page.evaluate(() => {
                 const el = document.querySelector('p');
 
-                return JSON.parse(JSON.stringify(getComputedStyle(el)));
+                return getComputedStyle(el).color;
               });
 
-              expect(pTag.color).toBe('rgb(255, 255, 0)');
+              expect(pTagColor).toBe('rgb(255, 255, 0)');
               break;
           }
 
@@ -112,7 +113,7 @@ describe('Dev Server Builder HMR', () => {
         take(2),
       )
       .toPromise();
-  }, 30000);
+  });
 
   it('works for TS changes', async () => {
     const run = await architect.scheduleTarget(target, overrides);
@@ -122,7 +123,7 @@ describe('Dev Server Builder HMR', () => {
     await run.output
       .pipe(
         debounceTime(1000),
-        switchMap(async buildEvent => {
+        switchMap(async (buildEvent) => {
           expect(buildEvent.success).toBe(true);
           const url = buildEvent.baseUrl as string;
 
@@ -147,7 +148,7 @@ describe('Dev Server Builder HMR', () => {
         take(2),
       )
       .toPromise();
-  }, 30000);
+  });
 
   it('restores input and select values', async () => {
     const run = await architect.scheduleTarget(target, overrides);
@@ -157,7 +158,7 @@ describe('Dev Server Builder HMR', () => {
     await run.output
       .pipe(
         debounceTime(1000),
-        switchMap(async buildEvent => {
+        switchMap(async (buildEvent) => {
           expect(buildEvent.success).toBe(true);
           const url = buildEvent.baseUrl as string;
           switch (buildCount) {
@@ -177,7 +178,9 @@ describe('Dev Server Builder HMR', () => {
               expect(logs).toContain('[NG HMR] Restoring input/textarea values.');
               expect(logs).toContain('[NG HMR] Restoring selected options.');
 
-              const inputValue = await page.evaluate(() => document.querySelector('input.visible').value);
+              const inputValue = await page.evaluate(
+                () => document.querySelector('input.visible').value,
+              );
               expect(inputValue).toBe('input value');
 
               const selectValue = await page.evaluate(() => document.querySelector('select').value);
@@ -191,5 +194,5 @@ describe('Dev Server Builder HMR', () => {
         take(2),
       )
       .toPromise();
-  }, 30000);
+  });
 });

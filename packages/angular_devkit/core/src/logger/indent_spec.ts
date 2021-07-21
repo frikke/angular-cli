@@ -1,20 +1,21 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-// tslint:disable:no-any
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { toArray } from 'rxjs/operators';
 import { IndentLogger } from './indent';
 import { LogEntry, Logger } from './logger';
 
-
 describe('IndentSpec', () => {
   it('works', (done: DoneFn) => {
     const logger = new IndentLogger('test');
-    logger.pipe(toArray())
+    logger
+      .pipe(toArray())
       .toPromise()
       .then((observed: LogEntry[]) => {
         expect(observed).toEqual([
@@ -25,7 +26,10 @@ describe('IndentSpec', () => {
           jasmine.objectContaining({ message: 'test5', level: 'info', name: 'test' }) as any,
         ]);
       })
-      .then(() => done(), err => done.fail(err));
+      .then(
+        () => done(),
+        (err) => done.fail(err),
+      );
     const logger2 = new Logger('test2', logger);
     const logger3 = new Logger('test3', logger2);
     const logger4 = new Logger('test4', logger);

@@ -1,13 +1,15 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
+import { ScriptTarget } from 'typescript';
 import * as webpack from 'webpack';
+import { BuildBrowserFeatures } from '../../utils';
 import { WebpackConfigOptions } from '../../utils/build-options';
-import { withWebpackFourOrFive } from '../../utils/webpack-version';
 import { CommonJsUsageWarnPlugin } from '../plugins';
 import { getSourceMapDevTool } from '../utils/helpers';
 
@@ -32,31 +34,22 @@ export function getBrowserConfig(wco: WebpackConfigOptions): webpack.Configurati
 
   if (subresourceIntegrity) {
     const SubresourceIntegrityPlugin = require('webpack-subresource-integrity');
-    extraPlugins.push(new SubresourceIntegrityPlugin({
-      hashFuncNames: ['sha384'],
-    }));
-  }
-
-  if (extractLicenses) {
-    const LicenseWebpackPlugin = require('license-webpack-plugin').LicenseWebpackPlugin;
-    extraPlugins.push(new LicenseWebpackPlugin({
-      stats: {
-        warnings: false,
-        errors: false,
-      },
-      perChunkOutput: false,
-      outputFilename: '3rdpartylicenses.txt',
-      skipChildCompilers: true,
-    }));
+    extraPlugins.push(
+      new SubresourceIntegrityPlugin({
+        hashFuncNames: ['sha384'],
+      }),
+    );
   }
 
   if (scriptsSourceMap || stylesSourceMap) {
-    extraPlugins.push(getSourceMapDevTool(
-      scriptsSourceMap,
-      stylesSourceMap,
-      buildOptions.differentialLoadingNeeded && !buildOptions.watch ? true : hiddenSourceMap,
-      false,
-    ));
+    extraPlugins.push(
+      getSourceMapDevTool(
+        scriptsSourceMap,
+        stylesSourceMap,
+        buildOptions.differentialLoadingNeeded && !buildOptions.watch ? true : hiddenSourceMap,
+        false,
+      ),
+    );
   }
 
   let crossOriginLoading: 'anonymous' | 'use-credentials' | false = false;
@@ -66,14 +59,16 @@ export function getBrowserConfig(wco: WebpackConfigOptions): webpack.Configurati
     crossOriginLoading = crossOrigin;
   }
 
+  const buildBrowserFeatures = new BuildBrowserFeatures(wco.projectRoot);
+
   return {
     devtool: false,
     resolve: {
       mainFields: ['es2015', 'browser', 'module', 'main'],
     },
-    ...withWebpackFourOrFive({}, { target: ['web', 'es5'] }),
     output: {
       crossOriginLoading,
+      trustedTypes: 'angular#bundler',
     },
     optimization: {
       runtimeChunk: 'single',

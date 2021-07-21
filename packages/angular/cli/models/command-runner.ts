@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import {
   analytics,
   isJsonObject,
@@ -60,7 +61,10 @@ export interface CommandMapOptions {
  * Create the analytics instance.
  * @private
  */
-async function _createAnalytics(workspace: boolean, skipPrompt = false): Promise<analytics.Analytics> {
+async function _createAnalytics(
+  workspace: boolean,
+  skipPrompt = false,
+): Promise<analytics.Analytics> {
   let config = await getGlobalAnalytics();
   // If in workspace and global analytics is enabled, defer to workspace level
   if (workspace && config) {
@@ -118,7 +122,9 @@ export async function runCommand(
   logger: logging.Logger,
   workspace: AngularWorkspace | undefined,
   commands: CommandMapOptions = standardCommands,
-  options: { analytics?: analytics.Analytics; currentDirectory: string } = { currentDirectory: process.cwd() },
+  options: { analytics?: analytics.Analytics; currentDirectory: string } = {
+    currentDirectory: process.cwd(),
+  },
 ): Promise<number | void> {
   // This registry is exclusively used for flattening schemas, and not for validating.
   const registry = new schema.CoreSchemaRegistry([]);
@@ -188,7 +194,7 @@ export async function runCommand(
       const aliasDesc = await loadCommandDescription(name, commands[name], registry);
       const aliases = aliasDesc.aliases;
 
-      if (aliases && aliases.some(alias => alias === commandName)) {
+      if (aliases && aliases.some((alias) => alias === commandName)) {
         commandName = name;
         description = aliasDesc;
         break;
@@ -232,8 +238,7 @@ export async function runCommand(
     });
 
     const analytics =
-      options.analytics ||
-      (await _createAnalytics(!!workspace, description.name === 'update'));
+      options.analytics || (await _createAnalytics(!!workspace, description.name === 'update'));
     const context = {
       workspace,
       analytics,
@@ -244,13 +249,14 @@ export async function runCommand(
 
     // Flush on an interval (if the event loop is waiting).
     let analyticsFlushPromise = Promise.resolve();
-    setInterval(() => {
+    const analyticsFlushInterval = setInterval(() => {
       analyticsFlushPromise = analyticsFlushPromise.then(() => analytics.flush());
     }, 1000);
 
     const result = await command.validateAndRun(parsedOptions);
 
     // Flush one last time.
+    clearInterval(analyticsFlushInterval);
     await analyticsFlushPromise.then(() => analytics.flush());
 
     return result;

@@ -1,19 +1,20 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { Observable, of } from 'rxjs';
 import { JsonValue, schema } from '../../json';
 import { JobDescription, JobHandler, JobName, Registry, isJobHandler } from './api';
 import { JobNameAlreadyRegisteredException } from './exception';
 
-
 /**
  * SimpleJobRegistry job registration options.
  */
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface RegisterJobOptions extends Partial<JobDescription> {}
 
 /**
@@ -22,7 +23,7 @@ export interface RegisterJobOptions extends Partial<JobDescription> {}
 export class SimpleJobRegistry<
   MinimumArgumentValueT extends JsonValue = JsonValue,
   MinimumInputValueT extends JsonValue = JsonValue,
-  MinimumOutputValueT extends JsonValue = JsonValue,
+  MinimumOutputValueT extends JsonValue = JsonValue
 > implements Registry<MinimumArgumentValueT, MinimumInputValueT, MinimumOutputValueT> {
   private _jobNames = new Map<
     JobName,
@@ -32,9 +33,9 @@ export class SimpleJobRegistry<
   get<
     A extends MinimumArgumentValueT = MinimumArgumentValueT,
     I extends MinimumInputValueT = MinimumInputValueT,
-    O extends MinimumOutputValueT = MinimumOutputValueT,
+    O extends MinimumOutputValueT = MinimumOutputValueT
   >(name: JobName): Observable<JobHandler<A, I, O> | null> {
-    return of(this._jobNames.get(name) as unknown as (JobHandler<A, I, O> | null) || null);
+    return of(((this._jobNames.get(name) as unknown) as JobHandler<A, I, O> | null) || null);
   }
 
   /**
@@ -47,12 +48,8 @@ export class SimpleJobRegistry<
   register<
     A extends MinimumArgumentValueT,
     I extends MinimumInputValueT,
-    O extends MinimumOutputValueT,
-  >(
-    name: JobName,
-    handler: JobHandler<A, I, O>,
-    options?: RegisterJobOptions,
-  ): void;
+    O extends MinimumOutputValueT
+  >(name: JobName, handler: JobHandler<A, I, O>, options?: RegisterJobOptions): void;
 
   /**
    * Register a job handler. The name must be unique.
@@ -99,7 +96,7 @@ export class SimpleJobRegistry<
   protected _register<
     ArgumentT extends JsonValue,
     InputT extends JsonValue,
-    OutputT extends JsonValue,
+    OutputT extends JsonValue
   >(
     name: JobName,
     handler: JobHandler<ArgumentT, InputT, OutputT>,
@@ -111,18 +108,9 @@ export class SimpleJobRegistry<
     }
 
     // Merge all fields with the ones in the handler (to make sure we respect the handler).
-    const argument = schema.mergeSchemas(
-      handler.jobDescription.argument,
-      options.argument,
-    );
-    const input = schema.mergeSchemas(
-      handler.jobDescription.input,
-      options.input,
-    );
-    const output = schema.mergeSchemas(
-      handler.jobDescription.output,
-      options.output,
-    );
+    const argument = schema.mergeSchemas(handler.jobDescription.argument, options.argument);
+    const input = schema.mergeSchemas(handler.jobDescription.input, options.input);
+    const output = schema.mergeSchemas(handler.jobDescription.output, options.output);
 
     // Create the job description.
     const jobDescription: JobDescription = {
@@ -132,8 +120,9 @@ export class SimpleJobRegistry<
       input,
     };
 
-    const jobHandler = Object.assign(handler.bind(undefined), { jobDescription }) as
-        unknown as JobHandler<MinimumArgumentValueT, MinimumInputValueT, MinimumOutputValueT>;
+    const jobHandler = (Object.assign(handler.bind(undefined), {
+      jobDescription,
+    }) as unknown) as JobHandler<MinimumArgumentValueT, MinimumInputValueT, MinimumOutputValueT>;
     this._jobNames.set(name, jobHandler);
   }
 

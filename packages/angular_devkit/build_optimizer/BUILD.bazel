@@ -35,11 +35,10 @@ ts_library(
     module_root = "src/index.d.ts",
     deps = [
         "@npm//@types/node",
-        "@npm//@types/webpack",
-        "@npm//@types/webpack-sources",
         "@npm//source-map",
         "@npm//tslib",
         "@npm//typescript",
+        "@npm//webpack",
     ],
 )
 

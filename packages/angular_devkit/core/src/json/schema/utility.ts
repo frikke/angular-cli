@@ -1,13 +1,13 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { JsonObject, isJsonArray, isJsonObject } from '../interface';
 import { JsonSchema } from './schema';
-
 
 const allTypes = ['string', 'integer', 'number', 'object', 'array', 'boolean', 'null'];
 
@@ -53,13 +53,13 @@ export function getTypesOfSchema(schema: JsonSchema): Set<string> {
 
   if (isJsonObject(schema.not)) {
     const notTypes = getTypesOfSchema(schema.not);
-    potentials = new Set([...potentials].filter(p => !notTypes.has(p)));
+    potentials = new Set([...potentials].filter((p) => !notTypes.has(p)));
   }
 
   if (Array.isArray(schema.allOf)) {
     for (const sub of schema.allOf) {
       const types = getTypesOfSchema(sub as JsonObject);
-      potentials = new Set([...types].filter(t => potentials.has(t)));
+      potentials = new Set([...types].filter((t) => potentials.has(t)));
     }
   }
 
@@ -69,7 +69,7 @@ export function getTypesOfSchema(schema: JsonSchema): Set<string> {
       const types = getTypesOfSchema(sub as JsonObject);
       options = new Set([...options, ...types]);
     }
-    potentials = new Set([...options].filter(o => potentials.has(o)));
+    potentials = new Set([...options].filter((o) => potentials.has(o)));
   }
 
   if (Array.isArray(schema.anyOf)) {
@@ -78,7 +78,7 @@ export function getTypesOfSchema(schema: JsonSchema): Set<string> {
       const types = getTypesOfSchema(sub as JsonObject);
       options = new Set([...options, ...types]);
     }
-    potentials = new Set([...options].filter(o => potentials.has(o)));
+    potentials = new Set([...options].filter((o) => potentials.has(o)));
   }
 
   if (schema.properties) {

@@ -1,61 +1,25 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
+import { ErrorObject, Format } from 'ajv';
 import { Observable, SubscribableOrPromise } from 'rxjs';
 import { JsonArray, JsonObject, JsonValue } from '../interface';
 
 export type JsonPointer = string & {
   __PRIVATE_DEVKIT_JSON_POINTER: void;
 };
-
-export type SchemaValidatorError =
-  RefValidatorError |
-  LimitValidatorError |
-  AdditionalPropertiesValidatorError |
-  FormatValidatorError |
-  RequiredValidatorError;
-
-export interface SchemaValidatorErrorBase {
-  keyword: string;
-  dataPath: string;
-  message?: string;
-  data?: JsonValue;
-}
-
-export interface RefValidatorError extends SchemaValidatorErrorBase {
-  keyword: '$ref';
-  params: { ref: string };
-}
-
-export interface LimitValidatorError extends SchemaValidatorErrorBase {
-  keyword: 'maxItems' | 'minItems' | 'maxLength' | 'minLength' | 'maxProperties' | 'minProperties';
-  params: { limit: number };
-}
-
-export interface AdditionalPropertiesValidatorError extends SchemaValidatorErrorBase {
-  keyword: 'additionalProperties';
-  params: { additionalProperty: string };
-}
-
-export interface FormatValidatorError extends SchemaValidatorErrorBase {
-  keyword: 'format';
-  params: { format: string };
-}
-
-export interface RequiredValidatorError extends SchemaValidatorErrorBase {
-  keyword: 'required';
-  params: { missingProperty: string };
-}
-
 export interface SchemaValidatorResult {
   data: JsonValue;
   success: boolean;
   errors?: SchemaValidatorError[];
 }
+
+export type SchemaValidatorError = Partial<ErrorObject>;
 
 export interface SchemaValidatorOptions {
   applyPreTransforms?: boolean;
@@ -67,12 +31,7 @@ export interface SchemaValidator {
   (data: JsonValue, options?: SchemaValidatorOptions): Observable<SchemaValidatorResult>;
 }
 
-export interface SchemaFormatter {
-  readonly async: boolean;
-  // TODO should be unknown remove before next major release
-  // tslint:disable-next-line:no-any
-  validate(data: any): boolean | Observable<boolean>;
-}
+export type SchemaFormatter = Format;
 
 export interface SchemaFormat {
   name: string;
@@ -101,15 +60,16 @@ export interface PromptDefinition {
   default?: string | string[] | number | boolean | null;
   validator?: (value: JsonValue) => boolean | string | Promise<boolean | string>;
 
-  items?: Array<string | { value: JsonValue, label: string }>;
+  items?: Array<string | { value: JsonValue; label: string }>;
 
   raw?: string | JsonObject;
   multiselect?: boolean;
   propertyTypes: Set<string>;
 }
 
-export type PromptProvider = (definitions: Array<PromptDefinition>)
-  => SubscribableOrPromise<{ [id: string]: JsonValue }>;
+export type PromptProvider = (
+  definitions: Array<PromptDefinition>,
+) => SubscribableOrPromise<{ [id: string]: JsonValue }>;
 
 export interface SchemaRegistry {
   compile(schema: Object): Observable<SchemaValidator>;
@@ -151,10 +111,7 @@ export interface JsonSchemaVisitor {
 }
 
 export interface JsonVisitor {
-  (
-    value: JsonValue,
-    pointer: JsonPointer,
-    schema?: JsonObject,
-    root?: JsonObject | JsonArray,
-  ): Observable<JsonValue> | JsonValue;
+  (value: JsonValue, pointer: JsonPointer, schema?: JsonObject, root?: JsonObject | JsonArray):
+    | Observable<JsonValue>
+    | JsonValue;
 }

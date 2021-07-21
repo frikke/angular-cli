@@ -1,24 +1,28 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-// tslint:disable:no-big-function
-// tslint:disable-next-line:no-implicit-dependencies
+
+/* eslint-disable max-len */
 import { tags } from '@angular-devkit/core';
 import { transformJavascript } from '../helpers/transform-javascript';
-import {
-  createScrubFileTransformerFactory,
-  testScrubFile,
-} from './scrub-file';
+import { createScrubFileTransformerFactory, testScrubFile } from './scrub-file';
 
-
-const transform = (content: string) => transformJavascript(
-  { content, getTransforms: [createScrubFileTransformerFactory(false)], typeCheck: true }).content;
-const transformCore = (content: string) => transformJavascript(
-  { content, getTransforms: [createScrubFileTransformerFactory(true)], typeCheck: true }).content;
+const transform = (content: string) =>
+  transformJavascript({
+    content,
+    getTransforms: [createScrubFileTransformerFactory(false)],
+    typeCheck: true,
+  }).content;
+const transformCore = (content: string) =>
+  transformJavascript({
+    content,
+    getTransforms: [createScrubFileTransformerFactory(true)],
+    typeCheck: true,
+  }).content;
 
 describe('scrub-file', () => {
   const clazz = 'var Clazz = (function () { function Clazz() { } return Clazz; }());';
@@ -58,7 +62,7 @@ describe('scrub-file', () => {
       expect(tags.oneLine`${transform(input)}`).toEqual(tags.oneLine`${output}`);
     });
 
-    it('doesn\'t remove non Angular decorators', () => {
+    it("doesn't remove non Angular decorators", () => {
       const input = tags.stripIndent`
         import { Injectable } from 'another-lib';
         ${clazz}
@@ -760,7 +764,7 @@ describe('scrub-file', () => {
       expect(tags.oneLine`${transform(input)}`).toEqual(tags.oneLine`${output}`);
     });
 
-    it('doesn\'t remove non Angular propDecorators', () => {
+    it("doesn't remove non Angular propDecorators", () => {
       const input = tags.stripIndent`
         import { Input } from 'another-lib';
         ${clazz}
@@ -818,7 +822,6 @@ describe('scrub-file', () => {
 
       expect(tags.oneLine`${transform(input)}`).toEqual(tags.oneLine`${output}`);
     });
-
 
     it('removes top-level Angular constructor parameters in es2015', () => {
       const output = tags.stripIndent`

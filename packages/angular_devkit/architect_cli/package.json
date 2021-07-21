@@ -2,6 +2,7 @@
   "name": "@angular-devkit/architect-cli",
   "version": "0.0.0",
   "description": "Angular Architect CLI",
+  "homepage": "https://github.com/angular/angular-cli",
   "experimental": true,
   "bin": {
     "architect": "./bin/architect.js"
@@ -18,10 +19,10 @@
     "ansi-colors": "4.1.1",
     "minimist": "1.2.5",
     "progress": "2.0.3",
-    "rxjs": "6.6.3",
-    "symbol-observable": "3.0.0"
+    "rxjs": "6.6.7",
+    "symbol-observable": "4.0.0"
   },
   "devDependencies": {
-    "@types/progress": "2.0.3"
+    "@types/progress": "2.0.4"
   }
 }

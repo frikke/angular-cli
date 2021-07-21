@@ -1,5 +1,5 @@
 import { join } from 'path';
-import * as glob from 'glob';
+import glob from 'glob';
 import { getGlobalVariable } from './env';
 import { relative, resolve } from 'path';
 import { copyFile, writeFile } from './fs';
@@ -49,11 +49,14 @@ export async function createProjectFromAsset(
   process.chdir(dir);
   if (!useNpmPackages) {
     await useBuiltPackages();
-    await writeFile('.npmrc', 'registry = http://localhost:4873', 'utf8');
+    if (!getGlobalVariable('ci')) {
+      const testRegistry = getGlobalVariable('package-registry');
+      await writeFile('.npmrc', `registry=${testRegistry}`);
+    }
   }
 
   if (!skipInstall) {
-    await installWorkspacePackages(false);
+    await installWorkspacePackages();
   }
 
   return dir;

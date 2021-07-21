@@ -1,13 +1,12 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
 
 import { WebpackConfigOptions } from '../../utils/build-options';
-import { isWebpackFiveOrHigher } from '../../utils/webpack-version';
 
 const webpackOutputOptions = {
   all: false, // Fallback value for stats options when an option is not defined. It has precedence over local webpack defaults.
@@ -16,19 +15,17 @@ const webpackOutputOptions = {
   timings: true, // required by custom stat output
   chunks: true, // required by custom stat output
   builtAt: true, // required by custom stat output
-  chunkModules: false,
-  children: false, // listing all children is very noisy in AOT and hides warnings/errors
-  modules: false,
-  reasons: false,
   warnings: true,
   errors: true,
   assets: true, // required by custom stat output
-  version: false,
-  errorDetails: false,
-  moduleTrace: false,
+  cachedAssets: true, // required for bundle size calculators
+
+  // Needed for markAsyncChunksNonInitial.
+  ids: true,
+  entrypoints: true,
 };
 
-const verboseWebpackOutputOptions:  Record<string, boolean | string | number> = {
+const verboseWebpackOutputOptions: Record<string, boolean | string | number> = {
   // The verbose output will most likely be piped to a file, so colors just mess it up.
   colors: false,
   usedExports: true,
@@ -41,13 +38,8 @@ const verboseWebpackOutputOptions:  Record<string, boolean | string | number> = 
   errorDetails: true,
   moduleTrace: true,
   logging: 'verbose',
+  modulesSpace: Infinity,
 };
-
-if (isWebpackFiveOrHigher()) {
-  verboseWebpackOutputOptions['modulesSpace'] = Infinity;
-} else {
-  verboseWebpackOutputOptions['maxModules'] = Infinity;
-}
 
 export function getWebpackStatsConfig(verbose = false) {
   return verbose

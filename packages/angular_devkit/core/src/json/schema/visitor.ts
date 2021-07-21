@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { Observable, concat, from, isObservable, of as observableOf } from 'rxjs';
 import { concatMap, ignoreElements, mergeMap, tap } from 'rxjs/operators';
 import { JsonArray, JsonObject, JsonValue } from '../interface';
@@ -57,9 +58,10 @@ function _visitJsonRecursive<ContextT>(
     // There's no schema definition, so just visit the JSON recursively.
     schema = undefined;
   }
+  // eslint-disable-next-line no-prototype-builtins
   if (schema && schema.hasOwnProperty('$ref') && typeof schema['$ref'] == 'string') {
     if (refResolver) {
-      const resolved = refResolver(schema['$ref'] as string, context);
+      const resolved = refResolver(schema['$ref'], context);
       schema = resolved.schema;
       context = resolved.context;
     }
@@ -68,7 +70,7 @@ function _visitJsonRecursive<ContextT>(
   const value = visitor(json, ptr, schema as JsonObject, root);
 
   return (isObservable<JsonValue>(value) ? value : observableOf(value)).pipe(
-    concatMap(value => {
+    concatMap((value) => {
       if (Array.isArray(value)) {
         return concat(
           from(value).pipe(
@@ -81,7 +83,7 @@ function _visitJsonRecursive<ContextT>(
                 refResolver,
                 context,
                 root || value,
-              ).pipe(tap<JsonValue>(x => (value[i] = x)));
+              ).pipe(tap<JsonValue>((x) => (value[i] = x)));
             }),
             ignoreElements(),
           ),
@@ -90,7 +92,7 @@ function _visitJsonRecursive<ContextT>(
       } else if (typeof value == 'object' && value !== null) {
         return concat(
           from(Object.getOwnPropertyNames(value)).pipe(
-            mergeMap(key => {
+            mergeMap((key) => {
               return _visitJsonRecursive(
                 value[key],
                 visitor,
@@ -100,7 +102,7 @@ function _visitJsonRecursive<ContextT>(
                 context,
                 root || value,
               ).pipe(
-                tap<JsonValue>(x => {
+                tap<JsonValue>((x) => {
                   const descriptor = Object.getOwnPropertyDescriptor(value, key);
                   if (descriptor && descriptor.writable && value[key] !== x) {
                     value[key] = x;

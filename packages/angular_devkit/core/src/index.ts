@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import * as analytics from './analytics';
 import * as experimental from './experimental';
 import * as json from './json/index';
@@ -16,10 +17,4 @@ export * from './json/index';
 export * from './utils/index';
 export * from './virtual-fs/index';
 
-export {
-  analytics,
-  experimental,
-  json,
-  logging,
-  workspaces,
-};
+export { analytics, experimental, json, logging, workspaces };

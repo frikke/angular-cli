@@ -1,13 +1,13 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { JsonObject } from '../json';
 import { Analytics, EventOptions, PageviewOptions, ScreenviewOptions, TimingOptions } from './api';
-
 
 export enum AnalyticsReportKind {
   Event = 'event',
@@ -46,11 +46,10 @@ export interface AnalyticsReportTiming extends AnalyticsReportBase {
 }
 
 export type AnalyticsReport =
-  AnalyticsReportEvent
+  | AnalyticsReportEvent
   | AnalyticsReportScreenview
   | AnalyticsReportPageview
-  | AnalyticsReportTiming
-  ;
+  | AnalyticsReportTiming;
 
 /**
  * A function that can forward analytics along some stream. AnalyticsReport is already a
@@ -104,7 +103,6 @@ export class ForwardingAnalytics implements Analytics {
     return Promise.resolve();
   }
 }
-
 
 export class AnalyticsReporter {
   constructor(protected _analytics: Analytics) {}

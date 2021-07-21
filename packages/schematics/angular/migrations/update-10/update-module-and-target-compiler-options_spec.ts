@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { EmptyTree } from '@angular-devkit/schematics';
 import { SchematicTestRunner, UnitTestTree } from '@angular-devkit/schematics/testing';
 import { parse as parseJson } from 'jsonc-parser';
@@ -22,7 +23,7 @@ describe('Migration to update target and module compiler options', () => {
     tree.create(filePath, JSON.stringify(content, undefined, 2));
   }
 
-  // tslint:disable-next-line: no-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function readJsonFile(tree: UnitTestTree, filePath: string): any {
     return parseJson(tree.readContent(filePath).toString());
   }
@@ -80,7 +81,6 @@ describe('Migration to update target and module compiler options', () => {
     createJsonFile(tree, 'angular.json', angularConfig);
   }
 
-
   let tree: UnitTestTree;
   beforeEach(() => {
     tree = new UnitTestTree(new EmptyTree());
@@ -99,7 +99,9 @@ describe('Migration to update target and module compiler options', () => {
 
     // E2E
     createJsonFile(tree, 'src/e2e/protractor.conf.js', '');
-    createJsonFile(tree, 'src/e2e/tsconfig.json', { compilerOptions: { module: 'commonjs', target: 'es5' } });
+    createJsonFile(tree, 'src/e2e/tsconfig.json', {
+      compilerOptions: { module: 'commonjs', target: 'es5' },
+    });
 
     // Universal
     createJsonFile(tree, 'src/tsconfig.server.json', { compilerOptions: { module: 'commonjs' } });
@@ -144,7 +146,9 @@ describe('Migration to update target and module compiler options', () => {
 
   it(`should update target to es2016 in 'tsconfig.server.json'`, async () => {
     tree.delete('src/tsconfig.server.json');
-    createJsonFile(tree, 'src/tsconfig.server.json', { compilerOptions: { module: 'commonjs', target: 'es5' } });
+    createJsonFile(tree, 'src/tsconfig.server.json', {
+      compilerOptions: { module: 'commonjs', target: 'es5' },
+    });
     const newTree = await schematicRunner.runSchematicAsync(schematicName, {}, tree).toPromise();
     const { target } = readJsonFile(newTree, 'src/tsconfig.server.json').compilerOptions;
     expect(target).toBe('es2016');

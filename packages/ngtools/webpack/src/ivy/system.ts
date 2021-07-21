@@ -1,19 +1,29 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import * as ts from 'typescript';
-import { InputFileSystem } from 'webpack';
+import { Compiler } from 'webpack';
 import { externalizePath } from './paths';
+
+export type InputFileSystem = Compiler['inputFileSystem'];
+export interface InputFileSystemSync extends InputFileSystem {
+  readFileSync(path: string): Buffer;
+  statSync(path: string): { size: number; mtime: Date; isDirectory(): boolean; isFile(): boolean };
+}
 
 function shouldNotWrite(): never {
   throw new Error('Webpack TypeScript System should not write.');
 }
 
-export function createWebpackSystem(input: InputFileSystem, currentDirectory: string): ts.System {
+export function createWebpackSystem(
+  input: InputFileSystemSync,
+  currentDirectory: string,
+): ts.System {
   // Webpack's CachedInputFileSystem uses the default directory separator in the paths it uses
   // for keys to its cache. If the keys do not match then the file watcher will not purge outdated
   // files and cause stale data to be used in the next rebuild. TypeScript always uses a `/` (POSIX)

@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { JsonValue } from '@angular-devkit/core';
 import { Rule } from '@angular-devkit/schematics';
 import { getPackageJsonDependency } from '../../utility/dependencies';
@@ -35,7 +36,7 @@ export default function (): Rule {
     try {
       json = new JSONFile(tree, TSLINT_CONFIG_PATH);
     } catch {
-      const config = ['tslint.js', 'tslint.yaml'].find(c => tree.exists(c));
+      const config = ['tslint.js', 'tslint.yaml'].find((c) => tree.exists(c));
       if (config) {
         logger.warn(`Expected a JSON configuration file but found "${config}".`);
       } else {

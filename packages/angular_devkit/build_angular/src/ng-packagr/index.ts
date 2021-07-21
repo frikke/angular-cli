@@ -1,14 +1,15 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { BuilderContext, BuilderOutput, createBuilder } from '@angular-devkit/architect';
 import { resolve } from 'path';
-import { Observable, from } from 'rxjs';
-import { mapTo, switchMap } from 'rxjs/operators';
+import { Observable, from, of } from 'rxjs';
+import { catchError, mapTo, switchMap } from 'rxjs/operators';
 import { Schema as NgPackagrBuilderOptions } from './schema';
 
 async function initialize(
@@ -26,13 +27,17 @@ async function initialize(
   return packager;
 }
 
+/**
+ * @experimental Direct usage of this function is considered experimental.
+ */
 export function execute(
   options: NgPackagrBuilderOptions,
   context: BuilderContext,
 ): Observable<BuilderOutput> {
   return from(initialize(options, context.workspaceRoot)).pipe(
-    switchMap(packager => options.watch ? packager.watch() : packager.build()),
+    switchMap((packager) => (options.watch ? packager.watch() : packager.build())),
     mapTo({ success: true }),
+    catchError((err) => of({ success: false, error: err.message })),
   );
 }
 

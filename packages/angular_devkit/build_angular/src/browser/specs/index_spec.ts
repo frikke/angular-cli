@@ -1,16 +1,16 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { Architect } from '@angular-devkit/architect';
 import { BrowserBuilderOutput } from '@angular-devkit/build-angular';
 import { join, normalize, tags, virtualFs, workspaces } from '@angular-devkit/core';
 import { createArchitect, host } from '../../test-utils';
 
-// tslint:disable-next-line:no-big-function
 describe('Browser Builder index HTML processing', () => {
   const targetSpec = { project: 'app', target: 'build' };
   let architect: Architect;
@@ -25,19 +25,20 @@ describe('Browser Builder index HTML processing', () => {
     host.writeMultipleFiles({
       'src/index.html': Buffer.from(
         '\ufeff<html><head><base href="/"></head><body><app-root></app-root></body></html>',
-        'utf8'),
+        'utf8',
+      ),
     });
 
     const run = await architect.scheduleTarget(targetSpec);
-    const output = await run.result as BrowserBuilderOutput;
+    const output = (await run.result) as BrowserBuilderOutput;
     expect(output.success).toBe(true);
     const fileName = join(normalize(output.outputPath), 'index.html');
     const content = virtualFs.fileBufferToString(await host.read(normalize(fileName)).toPromise());
     expect(content).toBe(
-      `<html><head><base href="/"><link rel="stylesheet" href="styles.css"></head>`
-      + `<body><app-root></app-root><script src="runtime.js" defer></script>`
-      + `<script src="polyfills.js" defer></script>`
-      + `<script src="vendor.js" defer></script><script src="main.js" defer></script></body></html>`,
+      `<html><head><base href="/"><link rel="stylesheet" href="styles.css"></head>` +
+        `<body><app-root></app-root><script src="runtime.js" defer></script>` +
+        `<script src="polyfills.js" defer></script>` +
+        `<script src="vendor.js" defer></script><script src="main.js" defer></script></body></html>`,
     );
     await run.stop();
   });
@@ -47,20 +48,21 @@ describe('Browser Builder index HTML processing', () => {
     host.writeMultipleFiles({
       'src/index.html': Buffer.from(
         '\ufeff<html><head><base href="/"></head><body><app-root></app-root></body></html>',
-        'utf16le'),
+        'utf16le',
+      ),
     });
 
     const run = await architect.scheduleTarget(targetSpec);
-    const output = await run.result as BrowserBuilderOutput;
+    const output = (await run.result) as BrowserBuilderOutput;
     expect(output.success).toBe(true);
     const fileName = join(normalize(output.outputPath), 'index.html');
     const content = virtualFs.fileBufferToString(await host.read(normalize(fileName)).toPromise());
     expect(content).toBe(
-      `<html><head><base href="/"><link rel="stylesheet" href="styles.css"></head>`
-      + `<body><app-root></app-root>`
-      + `<script src="runtime.js" defer></script><script src="polyfills.js" defer></script>`
-      + `<script src="vendor.js" defer></script>`
-      + `<script src="main.js" defer></script></body></html>`,
+      `<html><head><base href="/"><link rel="stylesheet" href="styles.css"></head>` +
+        `<body><app-root></app-root>` +
+        `<script src="runtime.js" defer></script><script src="polyfills.js" defer></script>` +
+        `<script src="vendor.js" defer></script>` +
+        `<script src="main.js" defer></script></body></html>`,
     );
     await run.stop();
   });
@@ -74,15 +76,15 @@ describe('Browser Builder index HTML processing', () => {
     });
 
     const run = await architect.scheduleTarget(targetSpec);
-    const output = await run.result as BrowserBuilderOutput;
+    const output = (await run.result) as BrowserBuilderOutput;
     expect(output.success).toBe(true);
     const fileName = join(normalize(output.outputPath), 'index.html');
     const content = virtualFs.fileBufferToString(await host.read(normalize(fileName)).toPromise());
     expect(content).toBe(
-      `<html><head><title>&iacute;</title><base href="/"><link rel="stylesheet" href="styles.css"></head> `
-      + `<body><app-root></app-root><script src="runtime.js" defer></script>`
-      + `<script src="polyfills.js" defer></script>`
-      + `<script src="vendor.js" defer></script><script src="main.js" defer></script></body></html>`,
+      `<html><head><title>&iacute;</title><base href="/"><link rel="stylesheet" href="styles.css"></head> ` +
+        `<body><app-root></app-root><script src="runtime.js" defer></script>` +
+        `<script src="polyfills.js" defer></script>` +
+        `<script src="vendor.js" defer></script><script src="main.js" defer></script></body></html>`,
     );
     await run.stop();
   });
@@ -96,21 +98,24 @@ describe('Browser Builder index HTML processing', () => {
     });
 
     const run = await architect.scheduleTarget(targetSpec);
-    const output = await run.result as BrowserBuilderOutput;
+    const output = (await run.result) as BrowserBuilderOutput;
     expect(output.success).toBe(true);
     const fileName = join(normalize(output.outputPath), 'index.html');
     const content = virtualFs.fileBufferToString(await host.read(normalize(fileName)).toPromise());
     expect(content).toBe(
-      `<html><head><base href="/"><%= csrf_meta_tags %><link rel="stylesheet" href="styles.css"></head> `
-      + `<body><app-root></app-root><script src="runtime.js" defer></script>`
-      + `<script src="polyfills.js" defer></script>`
-      + `<script src="vendor.js" defer></script><script src="main.js" defer></script></body></html>`,
+      `<html><head><base href="/"><%= csrf_meta_tags %><link rel="stylesheet" href="styles.css"></head> ` +
+        `<body><app-root></app-root><script src="runtime.js" defer></script>` +
+        `<script src="polyfills.js" defer></script>` +
+        `<script src="vendor.js" defer></script><script src="main.js" defer></script></body></html>`,
     );
     await run.stop();
   });
 
   it('uses the input value from the index option longform', async () => {
-    const { workspace } = await workspaces.readWorkspace(host.root(), workspaces.createWorkspaceHost(host));
+    const { workspace } = await workspaces.readWorkspace(
+      host.root(),
+      workspaces.createWorkspaceHost(host),
+    );
     const app = workspace.projects.get('app');
     if (!app) {
       fail('Test application "app" not found.');
@@ -146,15 +151,18 @@ describe('Browser Builder index HTML processing', () => {
     const outputIndexPath = join(host.root(), 'dist', 'index.html');
     const content = await host.read(normalize(outputIndexPath)).toPromise();
     expect(virtualFs.fileBufferToString(content)).toBe(
-      `<html><head><base href="/"><%= csrf_meta_tags %><link rel="stylesheet" href="styles.css"></head> `
-      + `<body><app-root></app-root><script src="runtime.js" defer></script>`
-      + `<script src="polyfills.js" defer></script>`
-      + `<script src="vendor.js" defer></script><script src="main.js" defer></script></body></html>`,
+      `<html><head><base href="/"><%= csrf_meta_tags %><link rel="stylesheet" href="styles.css"></head> ` +
+        `<body><app-root></app-root><script src="runtime.js" defer></script>` +
+        `<script src="polyfills.js" defer></script>` +
+        `<script src="vendor.js" defer></script><script src="main.js" defer></script></body></html>`,
     );
   });
 
   it('uses the output value from the index option longform', async () => {
-    const { workspace } = await workspaces.readWorkspace(host.root(), workspaces.createWorkspaceHost(host));
+    const { workspace } = await workspaces.readWorkspace(
+      host.root(),
+      workspaces.createWorkspaceHost(host),
+    );
     const app = workspace.projects.get('app');
     if (!app) {
       fail('Test application "app" not found.');
@@ -189,15 +197,18 @@ describe('Browser Builder index HTML processing', () => {
     const outputIndexPath = join(host.root(), 'dist', 'main.html');
     const content = await host.read(normalize(outputIndexPath)).toPromise();
     expect(virtualFs.fileBufferToString(content)).toBe(
-      `<html><head><base href="/"><link rel="stylesheet" href="styles.css"></head> `
-      + `<body><app-root></app-root><script src="runtime.js" defer></script>`
-      + `<script src="polyfills.js" defer></script>`
-      + `<script src="vendor.js" defer></script><script src="main.js" defer></script></body></html>`,
+      `<html><head><base href="/"><link rel="stylesheet" href="styles.css"></head> ` +
+        `<body><app-root></app-root><script src="runtime.js" defer></script>` +
+        `<script src="polyfills.js" defer></script>` +
+        `<script src="vendor.js" defer></script><script src="main.js" defer></script></body></html>`,
     );
   });
 
   it('creates subdirectories for output value from the index option longform', async () => {
-    const { workspace } = await workspaces.readWorkspace(host.root(), workspaces.createWorkspaceHost(host));
+    const { workspace } = await workspaces.readWorkspace(
+      host.root(),
+      workspaces.createWorkspaceHost(host),
+    );
     const app = workspace.projects.get('app');
     if (!app) {
       fail('Test application "app" not found.');
@@ -232,10 +243,10 @@ describe('Browser Builder index HTML processing', () => {
     const outputIndexPath = join(host.root(), 'dist', 'extra', 'main.html');
     const content = await host.read(normalize(outputIndexPath)).toPromise();
     expect(virtualFs.fileBufferToString(content)).toBe(
-      `<html><head><base href="/"><link rel="stylesheet" href="styles.css"></head> `
-      + `<body><app-root></app-root><script src="runtime.js" defer></script>`
-      + `<script src="polyfills.js" defer></script>`
-      + `<script src="vendor.js" defer></script><script src="main.js" defer></script></body></html>`,
+      `<html><head><base href="/"><link rel="stylesheet" href="styles.css"></head> ` +
+        `<body><app-root></app-root><script src="runtime.js" defer></script>` +
+        `<script src="polyfills.js" defer></script>` +
+        `<script src="vendor.js" defer></script><script src="main.js" defer></script></body></html>`,
     );
   });
 });

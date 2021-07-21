@@ -1,11 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-// tslint:disable:no-big-function
+
 import { buildWebpackBrowser } from '../../index';
 import { BASE_OPTIONS, BROWSER_BUILDER_INFO, describeBuilder } from '../setup';
 
@@ -243,9 +243,7 @@ describeBuilder(buildWebpackBrowser, BROWSER_BUILDER_INFO, (harness) => {
 
         harness.useTarget('build', {
           ...BASE_OPTIONS,
-          assets: [
-            { glob: '**/*', input: 'src/files', output: '.', ignore: ['another.file'] },
-          ],
+          assets: [{ glob: '**/*', input: 'src/files', output: '.', ignore: ['another.file'] }],
         });
 
         const { result } = await harness.executeOnce();
@@ -266,9 +264,7 @@ describeBuilder(buildWebpackBrowser, BROWSER_BUILDER_INFO, (harness) => {
 
         harness.useTarget('build', {
           ...BASE_OPTIONS,
-          assets: [
-            { glob: '**/*', input: 'src/files', output: '.', ignore: ['**/*.file'] },
-          ],
+          assets: [{ glob: '**/*', input: 'src/files', output: '.', ignore: ['**/*.file'] }],
         });
 
         const { result } = await harness.executeOnce();

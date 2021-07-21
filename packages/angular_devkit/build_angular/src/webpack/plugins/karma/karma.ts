@@ -1,36 +1,26 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
-// tslint:disable
+
+/* eslint-disable */
 // TODO: cleanup this file, it's copied as is from Angular CLI.
 import * as http from 'http';
 import * as path from 'path';
 import * as glob from 'glob';
-import * as webpack from 'webpack';
+import webpack from 'webpack';
 const webpackDevMiddleware = require('webpack-dev-middleware');
 
-import { KarmaWebpackFailureCb } from './karma-webpack-failure-cb';
 import { statsErrorsToString } from '../../utils/stats';
-import { getWebpackStatsConfig } from '../../configs/stats';
 import { createConsoleLogger } from '@angular-devkit/core/node';
 import { logging } from '@angular-devkit/core';
 import { WebpackTestOptions } from '../../../utils/build-options';
 import { normalizeSourceMaps } from '../../../utils/index';
 
-/**
- * Enumerate needed (but not require/imported) dependencies from this file
- *  to let the dependency validator know they are used.
- *
- * require('source-map-support')
- * require('karma-source-map-support')
- */
-
- const KARMA_APPLICATION_PATH = '_karma_webpack_';
-
+const KARMA_APPLICATION_PATH = '_karma_webpack_';
 
 let blocked: any[] = [];
 let isBlocked = false;
@@ -43,14 +33,14 @@ function addKarmaFiles(files: any[], newFiles: any[], prepend = false) {
   const defaults = {
     included: true,
     served: true,
-    watched: true
+    watched: true,
   };
 
   const processedFiles = newFiles
     // Remove globs that do not match any files, otherwise Karma will show a warning for these.
-    .filter(file => glob.sync(file.pattern, { nodir: true }).length != 0)
+    .filter((file) => glob.sync(file.pattern, { nodir: true }).length != 0)
     // Fill in pattern properties with defaults.
-    .map(file => ({ ...defaults, ...file }));
+    .map((file) => ({ ...defaults, ...file }));
 
   // It's important to not replace the array, because
   // karma already has a reference to the existing array.
@@ -63,9 +53,10 @@ function addKarmaFiles(files: any[], newFiles: any[], prepend = false) {
 
 const init: any = (config: any, emitter: any) => {
   if (!config.buildWebpack) {
-    throw new Error(`The '@angular-devkit/build-angular/plugins/karma' karma plugin is meant to` +
-    ` be used from within Angular CLI and will not work correctly outside of it.`
-    )
+    throw new Error(
+      `The '@angular-devkit/build-angular/plugins/karma' karma plugin is meant to` +
+        ` be used from within Angular CLI and will not work correctly outside of it.`,
+    );
   }
   const options = config.buildWebpack.options as WebpackTestOptions;
   const logger: logging.Logger = config.buildWebpack.logger || createConsoleLogger();
@@ -82,10 +73,14 @@ const init: any = (config: any, emitter: any) => {
     const smsPath = path.dirname(require.resolve('source-map-support'));
     const ksmsPath = path.dirname(require.resolve('karma-source-map-support'));
 
-    addKarmaFiles(config.files, [
-      { pattern: path.join(smsPath, 'browser-source-map-support.js'), watched: false },
-      { pattern: path.join(ksmsPath, 'client.js'), watched: false }
-    ], true);
+    addKarmaFiles(
+      config.files,
+      [
+        { pattern: path.join(smsPath, 'browser-source-map-support.js'), watched: false },
+        { pattern: path.join(ksmsPath, 'client.js'), watched: false },
+      ],
+      true,
+    );
   }
 
   config.reporters.unshift('@angular-devkit/build-angular--event-reporter');
@@ -94,9 +89,11 @@ const init: any = (config: any, emitter: any) => {
   if (options.codeCoverage) {
     config.plugins = config.plugins || [];
     config.reporters = config.reporters || [];
-    const {plugins, reporters} = config;
+    const { plugins, reporters } = config;
     const hasCoveragePlugin = plugins.some(isPlugin('karma-coverage', 'reporter:coverage'));
-    const hasIstanbulPlugin = plugins.some(isPlugin('karma-coverage-istanbul-reporter', 'reporter:coverage-istanbul'));
+    const hasIstanbulPlugin = plugins.some(
+      isPlugin('karma-coverage-istanbul-reporter', 'reporter:coverage-istanbul'),
+    );
     const hasCoverageReporter = reporters.includes('coverage');
     const hasIstanbulReporter = reporters.includes('coverage-istanbul');
     if (hasCoveragePlugin && !hasCoverageReporter) {
@@ -109,9 +106,11 @@ const init: any = (config: any, emitter: any) => {
     }
 
     if (hasIstanbulPlugin) {
-      logger.warn(`'karma-coverage-istanbul-reporter' usage has been deprecated since version 11.\n` +
-       `Please install 'karma-coverage' and update 'karma.conf.js.' ` +
-       'For more info, see https://github.com/karma-runner/karma-coverage/blob/master/README.md');
+      logger.warn(
+        `'karma-coverage-istanbul-reporter' usage has been deprecated since version 11.\n` +
+          `Please install 'karma-coverage' and update 'karma.conf.js.' ` +
+          'For more info, see https://github.com/karma-runner/karma-coverage/blob/master/README.md',
+      );
     }
   }
 
@@ -119,26 +118,13 @@ const init: any = (config: any, emitter: any) => {
   const webpackConfig = config.buildWebpack.webpackConfig;
   const webpackMiddlewareConfig = {
     // Hide webpack output because its noisy.
-    logLevel: 'error',
     stats: false,
     publicPath: `/${KARMA_APPLICATION_PATH}/`,
   };
 
-  const compilationErrorCb = (error: string | undefined, errors: string[]) => {
-    // Notify potential listeners of the compile error
-    emitter.emit('compile_error', errors);
-
-    // Finish Karma run early in case of compilation error.
-    emitter.emit('run_complete', [], { exitCode: 1 });
-
-    // Unblock any karma requests (potentially started using `karma run`)
-    unblock();
-  }
-  webpackConfig.plugins.push(new KarmaWebpackFailureCb(compilationErrorCb));
-
   // Use existing config if any.
-  config.webpack = Object.assign(webpackConfig, config.webpack);
-  config.webpackMiddleware = Object.assign(webpackMiddlewareConfig, config.webpackMiddleware);
+  config.webpack = { ...webpackConfig, ...config.webpack };
+  config.webpackMiddleware = { ...webpackMiddlewareConfig, ...config.webpackMiddleware };
 
   // Our custom context and debug files list the webpack bundles directly instead of using
   // the karma files array.
@@ -151,15 +137,13 @@ const init: any = (config: any, emitter: any) => {
   config.middleware = config.middleware || [];
   config.middleware.push('@angular-devkit/build-angular--fallback');
 
-  // The webpack tier owns the watch behavior so we want to force it in the config.
-  webpackConfig.watch = !config.singleRun;
   if (config.singleRun) {
     // There's no option to turn off file watching in webpack-dev-server, but
     // we can override the file watcher instead.
     webpackConfig.plugins.unshift({
-      apply: (compiler: any) => { // tslint:disable-line:no-any
+      apply: (compiler: any) => {
         compiler.hooks.afterEnvironment.tap('karma', () => {
-          compiler.watchFileSystem = { watch: () => { } };
+          compiler.watchFileSystem = { watch: () => {} };
         });
       },
     });
@@ -168,47 +152,54 @@ const init: any = (config: any, emitter: any) => {
   webpackConfig.output.path = `/${KARMA_APPLICATION_PATH}/`;
   webpackConfig.output.publicPath = `/${KARMA_APPLICATION_PATH}/`;
 
-  let compiler: any;
-  try {
-    compiler = webpack(webpackConfig);
-  } catch (e) {
-    logger.error(e.stack || e)
-    if (e.details) {
-      logger.error(e.details)
+  const compiler = webpack(webpackConfig, (error, stats) => {
+    if (error) {
+      throw error;
     }
-    throw e;
-  }
 
-  function handler(callback?: () => void) {
+    if (stats?.hasErrors()) {
+      // Only generate needed JSON stats and when needed.
+      const statsJson = stats?.toJson({
+        all: false,
+        children: true,
+        errors: true,
+        warnings: true,
+      });
+
+      logger.error(statsErrorsToString(statsJson, { colors: true }));
+
+      // Notify potential listeners of the compile error.
+      emitter.emit('compile_error', {
+        errors: statsJson.errors?.map((e) => e.message),
+      });
+
+      // Finish Karma run early in case of compilation error.
+      emitter.emit('run_complete', [], { exitCode: 1 });
+
+      // Emit a failure build event if there are compilation errors.
+      failureCb();
+    }
+  });
+
+  function handler(callback?: () => void): void {
     isBlocked = true;
-
-    if (typeof callback === 'function') {
-      callback();
-    }
+    callback?.();
   }
 
   compiler.hooks.invalid.tap('karma', () => handler());
-
   compiler.hooks.watchRun.tapAsync('karma', (_: any, callback: () => void) => handler(callback));
-
   compiler.hooks.run.tapAsync('karma', (_: any, callback: () => void) => handler(callback));
 
-  function unblock(){
+  function unblock() {
     isBlocked = false;
     blocked.forEach((cb) => cb());
     blocked = [];
   }
 
   let lastCompilationHash: string | undefined;
-  const statsConfig = getWebpackStatsConfig();
-  compiler.hooks.done.tap('karma', (stats: any) => {
-    if (stats.compilation.errors.length > 0) {
-      const json = stats.toJson(config.stats);
-      // Print compilation errors.
-      logger.error(statsErrorsToString(json, statsConfig));
+  compiler.hooks.done.tap('karma', (stats) => {
+    if (stats.hasErrors()) {
       lastCompilationHash = undefined;
-      // Emit a failure build event if there are compilation errors.
-      failureCb();
     } else if (stats.hash != lastCompilationHash) {
       // Refresh karma only when there are no webpack errors, and if the compilation changed.
       lastCompilationHash = stats.hash;
@@ -217,7 +208,7 @@ const init: any = (config: any, emitter: any) => {
     unblock();
   });
 
-  webpackMiddleware = new webpackDevMiddleware(compiler, webpackMiddlewareConfig);
+  webpackMiddleware = webpackDevMiddleware(compiler, webpackMiddlewareConfig);
 
   emitter.on('exit', (done: any) => {
     webpackMiddleware.close();
@@ -246,12 +237,12 @@ function requestBlocker() {
 // browser log, because it is an utility reporter,
 // unless it's alone in the "reporters" option and base reporter is used.
 function muteDuplicateReporterLogging(context: any, config: any) {
-  context.writeCommonMsg = function () { };
+  context.writeCommonMsg = () => {};
   const reporterName = '@angular/cli';
   const hasTrailingReporters = config.reporters.slice(-1).pop() !== reporterName;
 
   if (hasTrailingReporters) {
-    context.writeCommonMsg = function () { };
+    context.writeCommonMsg = () => {};
   }
 }
 
@@ -267,7 +258,7 @@ const eventReporter: any = function (this: any, baseReporterDecorator: any, conf
     } else {
       failureCb();
     }
-  }
+  };
 
   // avoid duplicate failure message
   this.specFailure = () => {};
@@ -310,7 +301,7 @@ function fallbackMiddleware() {
           `/${KARMA_APPLICATION_PATH}/polyfills.js`,
           `/${KARMA_APPLICATION_PATH}/polyfills-es5.js`,
           `/${KARMA_APPLICATION_PATH}/scripts.js`,
-          `/${KARMA_APPLICATION_PATH}/styles.js`,
+          `/${KARMA_APPLICATION_PATH}/styles.css`,
           `/${KARMA_APPLICATION_PATH}/vendor.js`,
         ];
         if (request.url && alwaysServe.includes(request.url)) {
@@ -334,12 +325,22 @@ function fallbackMiddleware() {
  * @param pluginName name of the karma plugin (e.g. reporter:coverage)
  */
 function isPlugin(moduleId: string, pluginName: string) {
-  return (plugin: string|{}): boolean => {
+  return (plugin: string | {}): boolean => {
     if (typeof plugin === 'string') {
-      return plugin === moduleId;
+      if (!plugin.includes('*')) {
+        return plugin === moduleId;
+      }
+      const regexp = new RegExp(`^${plugin.replace('*', '.*')}`);
+      if (regexp.test(moduleId)) {
+        try {
+          require.resolve(moduleId);
+          return true;
+        } catch {}
+      }
+      return false;
     }
     return pluginName in plugin;
-  }
+  };
 }
 
 module.exports = {
@@ -347,5 +348,5 @@ module.exports = {
   'reporter:@angular-devkit/build-angular--sourcemap-reporter': ['type', sourceMapReporter],
   'reporter:@angular-devkit/build-angular--event-reporter': ['type', eventReporter],
   'middleware:@angular-devkit/build-angular--blocker': ['factory', requestBlocker],
-  'middleware:@angular-devkit/build-angular--fallback': ['factory', fallbackMiddleware]
+  'middleware:@angular-devkit/build-angular--fallback': ['factory', fallbackMiddleware],
 };

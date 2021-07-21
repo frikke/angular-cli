@@ -1,13 +1,13 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { EMPTY } from 'rxjs';
 import { Logger, LoggerApi } from './logger';
-
 
 export class NullLogger extends Logger {
   constructor(parent: Logger | null = null) {
@@ -15,7 +15,7 @@ export class NullLogger extends Logger {
     this._observable = EMPTY;
   }
 
-  asApi(): LoggerApi {
+  override asApi(): LoggerApi {
     return {
       createChild: () => new NullLogger(this),
       log() {},

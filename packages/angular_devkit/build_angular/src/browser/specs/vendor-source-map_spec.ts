@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { Architect } from '@angular-devkit/architect';
 import * as path from 'path';
 import { browserBuild, createArchitect, host } from '../../test-utils';
@@ -30,7 +31,7 @@ describe('Browser Builder external source map', () => {
 
     const { files } = await browserBuild(architect, host, target, overrides);
     const sourcePaths: string[] = JSON.parse(await files['vendor.js.map']).sources;
-    const hasTsSourcePaths = sourcePaths.some(p => path.extname(p) == '.ts');
+    const hasTsSourcePaths = sourcePaths.some((p) => path.extname(p) == '.ts');
     expect(hasTsSourcePaths).toBe(true, `vendor.js.map should have '.ts' extentions`);
   });
 
@@ -45,7 +46,7 @@ describe('Browser Builder external source map', () => {
 
     const { files } = await browserBuild(architect, host, target, overrides);
     const sourcePaths: string[] = JSON.parse(await files['vendor.js.map']).sources;
-    const hasTsSourcePaths = sourcePaths.some(p => path.extname(p) == '.ts');
+    const hasTsSourcePaths = sourcePaths.some((p) => path.extname(p) == '.ts');
     expect(hasTsSourcePaths).toBe(false, `vendor.js.map not should have '.ts' extentions`);
   });
 });

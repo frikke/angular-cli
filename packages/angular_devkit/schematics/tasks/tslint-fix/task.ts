@@ -1,14 +1,14 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { JsonObject } from '@angular-devkit/core';
 import { TaskConfiguration, TaskConfigurationGenerator } from '../../src';
 import { TslintFixName, TslintFixTaskOptions, TslintFixTaskOptionsBase } from './options';
-
 
 /** @deprecated since version 11. Use `ng lint --fix` directly instead. */
 export class TslintFixTask implements TaskConfigurationGenerator<TslintFixTaskOptions> {
@@ -33,9 +33,10 @@ export class TslintFixTask implements TaskConfigurationGenerator<TslintFixTaskOp
 
   toConfiguration(): TaskConfiguration<TslintFixTaskOptions> {
     const path = typeof this._configOrPath == 'string' ? { tslintPath: this._configOrPath } : {};
-    const config = typeof this._configOrPath == 'object' && this._configOrPath !== null
-                 ? { tslintConfig: this._configOrPath }
-                 : {};
+    const config =
+      typeof this._configOrPath == 'object' && this._configOrPath !== null
+        ? { tslintConfig: this._configOrPath }
+        : {};
     const options = {
       ...this._options,
       ...path,

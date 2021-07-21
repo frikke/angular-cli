@@ -1,10 +1,11 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { existsSync } from 'fs';
 import { join } from 'path';
 import { Observable, from, throwError } from 'rxjs';
@@ -19,13 +20,14 @@ import {
   SchematicMissingFieldsException,
 } from './file-system-engine-host-base';
 
-
 /**
  * A simple EngineHost that uses a root with one directory per collection inside of it. The
  * collection declaration follows the same rules as the regular FileSystemEngineHostBase.
  */
 export class FileSystemEngineHost extends FileSystemEngineHostBase {
-  constructor(protected _root: string) { super(); }
+  constructor(protected _root: string) {
+    super();
+  }
 
   protected _resolveCollectionPath(name: string): string {
     try {
@@ -34,7 +36,7 @@ export class FileSystemEngineHost extends FileSystemEngineHostBase {
       if (existsSync(maybePath)) {
         return maybePath;
       }
-    } catch (error) { }
+    } catch (error) {}
 
     try {
       // Allow `${_root}/${name}/collection.json.
@@ -42,8 +44,7 @@ export class FileSystemEngineHost extends FileSystemEngineHostBase {
       if (existsSync(maybePath)) {
         return maybePath;
       }
-    } catch (error) { }
-
+    } catch (error) {}
 
     throw new CollectionCannotBeResolvedException(name);
   }
@@ -84,7 +85,7 @@ export class FileSystemEngineHost extends FileSystemEngineHostBase {
     return desc as FileSystemSchematicDesc;
   }
 
-  hasTaskExecutor(name: string): boolean {
+  override hasTaskExecutor(name: string): boolean {
     if (super.hasTaskExecutor(name)) {
       return true;
     }
@@ -99,12 +100,13 @@ export class FileSystemEngineHost extends FileSystemEngineHostBase {
     return false;
   }
 
-  createTaskExecutor(name: string): Observable<TaskExecutor> {
+  override createTaskExecutor(name: string): Observable<TaskExecutor> {
     if (!super.hasTaskExecutor(name)) {
       try {
         const path = require.resolve(join(this._root, name));
 
-        return from(import(path).then(mod => mod.default())).pipe(
+        // Default handling code is for old tasks that incorrectly export `default` with non-ESM module
+        return from(import(path).then((mod) => (mod.default?.default || mod.default)())).pipe(
           catchError(() => throwError(new UnregisteredTaskException(name))),
         );
       } catch {}

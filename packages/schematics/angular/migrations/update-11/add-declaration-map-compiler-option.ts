@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
@@ -12,7 +12,7 @@ import { getWorkspace } from '../../utility/workspace';
 import { Builders } from '../../utility/workspace-models';
 
 export default function (): Rule {
-  return async host => {
+  return async (host) => {
     const workspace = await getWorkspace(host);
 
     for (const [, project] of workspace.projects) {

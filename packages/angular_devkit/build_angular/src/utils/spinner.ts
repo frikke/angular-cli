@@ -1,19 +1,21 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
 
-import * as ora from 'ora';
+import ora from 'ora';
 import { colors } from './color';
+import { isTTY } from './tty';
 
 export class Spinner {
   private readonly spinner: ora.Ora;
 
   /** When false, only fail messages will be displayed. */
   enabled = true;
+  readonly #isTTY = isTTY();
 
   constructor(text?: string) {
     this.spinner = ora({
@@ -22,11 +24,16 @@ export class Spinner {
       // when the underlying process is sync.
       hideCursor: false,
       discardStdin: false,
+      isEnabled: this.#isTTY,
     });
   }
 
   set text(text: string) {
     this.spinner.text = text;
+  }
+
+  get isSpinning(): boolean {
+    return this.spinner.isSpinning || !this.#isTTY;
   }
 
   succeed(text?: string): void {

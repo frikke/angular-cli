@@ -1,16 +1,22 @@
 /**
  * @license
- * Copyright Google Inc. All Rights Reserved.
+ * Copyright Google LLC All Rights Reserved.
  *
  * Use of this source code is governed by an MIT-style license that can be
  * found in the LICENSE file at https://angular.io/license
  */
+
 import { concatMap, count, take, timeout } from 'rxjs/operators';
 import { buildWebpackBrowser } from '../../index';
 import { BASE_OPTIONS, BROWSER_BUILDER_INFO, describeBuilder } from '../setup';
 
 describeBuilder(buildWebpackBrowser, BROWSER_BUILDER_INFO, (harness) => {
   describe('Option: "watch"', () => {
+    beforeEach(async () => {
+      // Application code is not needed for these tests
+      await harness.writeFile('src/main.ts', '');
+    });
+
     it('does not wait for file changes when false', (done) => {
       harness.useTarget('build', {
         ...BASE_OPTIONS,
