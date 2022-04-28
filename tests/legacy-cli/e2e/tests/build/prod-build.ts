@@ -1,7 +1,8 @@
 import { statSync } from 'fs';
 import { join } from 'path';
+import { getGlobalVariable } from '../../utils/env';
 import { expectFileToExist, expectFileToMatch, readFile } from '../../utils/fs';
-import { ng } from '../../utils/process';
+import { noSilentNg } from '../../utils/process';
 
 function verifySize(bundle: string, baselineBytes: number) {
   const size = statSync(`dist/test-project/${bundle}`).size;
@@ -27,21 +28,24 @@ export default async function () {
 
   // Can't use the `ng` helper because somewhere the environment gets
   // stuck to the first build done
-  const bootstrapRegExp = /bootstrapModule\([a-zA-Z]+[0-9]*\)\./;
+  const bootstrapRegExp = /bootstrapModule\([_a-zA-Z]+[0-9]*\)\./;
 
-  await ng('build');
+  await noSilentNg('build');
   await expectFileToExist(join(process.cwd(), 'dist'));
   // Check for cache busting hash script src
-  await expectFileToMatch('dist/test-project/index.html', /main\.[0-9a-f]{16}\.js/);
-  await expectFileToMatch('dist/test-project/index.html', /styles\.[0-9a-f]{16}\.css/);
-  await expectFileToMatch('dist/test-project/3rdpartylicenses.txt', /MIT/);
+  await expectFileToMatch('dist/test-project/index.html', /main\.[0-9a-zA-Z]{8,16}\.js/);
+  await expectFileToMatch('dist/test-project/index.html', /styles\.[0-9a-zA-Z]{8,16}\.css/);
+  if (!getGlobalVariable('argv')['esbuild']) {
+    // EXPERIMENTAL_ESBUILD: esbuild does not yet extract license text
+    await expectFileToMatch('dist/test-project/3rdpartylicenses.txt', /MIT/);
+  }
 
   const indexContent = await readFile('dist/test-project/index.html');
-  const mainES2017Path = indexContent.match(/src="(main\.[a-z0-9]{0,32}\.js)"/)[1];
+  const mainPath = indexContent.match(/src="(main\.[0-9a-zA-Z]{0,32}\.js)"/)[1];
 
   // Content checks
-  await expectFileToMatch(`dist/test-project/${mainES2017Path}`, bootstrapRegExp);
+  await expectFileToMatch(`dist/test-project/${mainPath}`, bootstrapRegExp);
 
   // Size checks in bytes
-  verifySize(mainES2017Path, 141032);
+  verifySize(mainPath, 124000);
 }

@@ -6,7 +6,6 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import { strings } from '@angular-devkit/core';
 import {
   FileOperator,
   Rule,
@@ -20,6 +19,7 @@ import {
   mergeWith,
   move,
   noop,
+  strings,
   url,
 } from '@angular-devkit/schematics';
 import * as ts from '../third_party/github.com/Microsoft/TypeScript/lib/typescript';
@@ -27,23 +27,19 @@ import { addDeclarationToModule, addExportToModule } from '../utility/ast-utils'
 import { InsertChange } from '../utility/change';
 import { buildRelativePath, findModuleFromOptions } from '../utility/find-module';
 import { parseName } from '../utility/parse-name';
-import { validateHtmlSelector, validateName } from '../utility/validation';
+import { validateHtmlSelector } from '../utility/validation';
 import { buildDefaultPath, getWorkspace } from '../utility/workspace';
 import { Schema as ComponentOptions, Style } from './schema';
 
 function readIntoSourceFile(host: Tree, modulePath: string): ts.SourceFile {
-  const text = host.read(modulePath);
-  if (text === null) {
-    throw new SchematicsException(`File ${modulePath} does not exist.`);
-  }
-  const sourceText = text.toString('utf-8');
+  const sourceText = host.readText(modulePath);
 
   return ts.createSourceFile(modulePath, sourceText, ts.ScriptTarget.Latest, true);
 }
 
 function addDeclarationToNgModule(options: ComponentOptions): Rule {
   return (host: Tree) => {
-    if (options.skipImport || !options.module) {
+    if (options.skipImport || options.standalone || !options.module) {
       return host;
     }
 
@@ -131,7 +127,6 @@ export default function (options: ComponentOptions): Rule {
     options.selector =
       options.selector || buildSelector(options, (project && project.prefix) || '');
 
-    validateName(options.name);
     validateHtmlSelector(options.selector);
 
     const skipStyleFile = options.inlineStyle || options.style === Style.None;

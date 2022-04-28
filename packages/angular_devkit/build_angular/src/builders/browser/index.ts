@@ -8,7 +8,7 @@
 
 import { BuilderContext, BuilderOutput, createBuilder } from '@angular-devkit/architect';
 import { EmittedFiles, WebpackLoggingCallback, runWebpack } from '@angular-devkit/build-webpack';
-import { getSystemPath, json, logging, normalize, resolve } from '@angular-devkit/core';
+import { logging } from '@angular-devkit/core';
 import * as fs from 'fs';
 import * as path from 'path';
 import { Observable, from } from 'rxjs';
@@ -17,13 +17,16 @@ import { ScriptTarget } from 'typescript';
 import webpack from 'webpack';
 import { ExecutionTransformer } from '../../transforms';
 import {
-  BuildBrowserFeatures,
   deleteOutputDir,
   normalizeAssetPatterns,
   normalizeOptimization,
   urlJoin,
 } from '../../utils';
-import { ThresholdSeverity, checkBudgets } from '../../utils/bundle-calculator';
+import {
+  BudgetCalculatorResult,
+  ThresholdSeverity,
+  checkBudgets,
+} from '../../utils/bundle-calculator';
 import { colors } from '../../utils/color';
 import { copyAssets } from '../../utils/copy-assets';
 import { i18nInlineEmittedFiles } from '../../utils/i18n-inlining';
@@ -36,23 +39,17 @@ import {
 import { normalizeCacheOptions } from '../../utils/normalize-cache';
 import { ensureOutputPaths } from '../../utils/output-paths';
 import { generateEntryPoints } from '../../utils/package-chunk-sort';
+import { purgeStaleBuildCache } from '../../utils/purge-cache';
 import { augmentAppWithServiceWorker } from '../../utils/service-worker';
 import { Spinner } from '../../utils/spinner';
+import { getSupportedBrowsers } from '../../utils/supported-browsers';
 import { assertCompatibleAngularVersion } from '../../utils/version';
 import {
   generateI18nBrowserWebpackConfigFromContext,
   getIndexInputFile,
   getIndexOutputFile,
 } from '../../utils/webpack-browser-config';
-import {
-  getAnalyticsConfig,
-  getBrowserConfig,
-  getCommonConfig,
-  getStatsConfig,
-  getStylesConfig,
-  getTypeScriptConfig,
-  getWorkerConfig,
-} from '../../webpack/configs';
+import { getAnalyticsConfig, getCommonConfig, getStylesConfig } from '../../webpack/configs';
 import { markAsyncChunksNonInitial } from '../../webpack/utils/async-chunks';
 import { normalizeExtraEntryPoints } from '../../webpack/utils/helpers';
 import {
@@ -67,15 +64,20 @@ import { Schema as BrowserBuilderSchema } from './schema';
 /**
  * @experimental Direct usage of this type is considered experimental.
  */
-export type BrowserBuilderOutput = json.JsonObject &
-  BuilderOutput & {
-    baseOutputPath: string;
-    outputPaths: string[];
-    /**
-     * @deprecated in version 9. Use 'outputPaths' instead.
-     */
-    outputPath: string;
-  };
+export type BrowserBuilderOutput = BuilderOutput & {
+  baseOutputPath: string;
+  outputPaths: string[];
+  /**
+   * @deprecated in version 9. Use 'outputPaths' instead.
+   */
+  outputPath: string;
+};
+
+/**
+ * Maximum time in milliseconds for single build/rebuild
+ * This accounts for CI variability.
+ */
+export const BUILD_TIMEOUT = 30_000;
 
 async function initialize(
   options: BrowserBuilderSchema,
@@ -96,21 +98,17 @@ async function initialize(
   const { config, projectRoot, projectSourceRoot, i18n, target } =
     await generateI18nBrowserWebpackConfigFromContext(adjustedOptions, context, (wco) => [
       getCommonConfig(wco),
-      getBrowserConfig(wco),
       getStylesConfig(wco),
-      getStatsConfig(wco),
       getAnalyticsConfig(wco, context),
-      getTypeScriptConfig(wco),
-      wco.buildOptions.webWorkerTsConfig ? getWorkerConfig(wco) : {},
     ]);
 
   // Validate asset option values if processed directly
   if (options.assets?.length && !adjustedOptions.assets?.length) {
     normalizeAssetPatterns(
       options.assets,
-      normalize(context.workspaceRoot),
-      normalize(projectRoot),
-      projectSourceRoot === undefined ? undefined : normalize(projectSourceRoot),
+      context.workspaceRoot,
+      projectRoot,
+      projectSourceRoot,
     ).forEach(({ output }) => {
       if (output.startsWith('..')) {
         throw new Error('An asset cannot be written to a location outside of the output path.');
@@ -143,8 +141,6 @@ export function buildWebpackBrowser(
     indexHtml?: IndexHtmlTransform;
   } = {},
 ): Observable<BrowserBuilderOutput> {
-  const root = normalize(context.workspaceRoot);
-
   const projectName = context.target?.project;
   if (!projectName) {
     throw new Error('The builder requires a target.');
@@ -158,19 +154,17 @@ export function buildWebpackBrowser(
 
   return from(context.getProjectMetadata(projectName)).pipe(
     switchMap(async (projectMetadata) => {
-      const sysProjectRoot = getSystemPath(
-        resolve(
-          normalize(context.workspaceRoot),
-          normalize((projectMetadata.root as string) ?? ''),
-        ),
-      );
+      // Purge old build disk cache.
+      await purgeStaleBuildCache(context);
 
-      const buildBrowserFeatures = new BuildBrowserFeatures(sysProjectRoot);
+      // Initialize builder
+      const initialization = await initialize(options, context, transforms.webpackConfiguration);
 
-      checkInternetExplorerSupport(buildBrowserFeatures.supportedBrowsers, context.logger);
+      // Check and warn about IE browser support
+      checkInternetExplorerSupport(initialization.projectRoot, context.logger);
 
       return {
-        ...(await initialize(options, context, transforms.webpackConfiguration)),
+        ...initialization,
         cacheOptions: normalizeCacheOptions(projectMetadata, context.workspaceRoot),
       };
     }),
@@ -248,8 +242,9 @@ export function buildWebpackBrowser(
 
               // Check for budget errors and display them to the user.
               const budgets = options.budgets;
+              let budgetFailures: BudgetCalculatorResult[] | undefined;
               if (budgets?.length) {
-                const budgetFailures = checkBudgets(budgets, webpackStats);
+                budgetFailures = [...checkBudgets(budgets, webpackStats)];
                 for (const { severity, message } of budgetFailures) {
                   switch (severity) {
                     case ThresholdSeverity.Warning:
@@ -273,9 +268,9 @@ export function buildWebpackBrowser(
                     await copyAssets(
                       normalizeAssetPatterns(
                         options.assets,
-                        root,
-                        normalize(projectRoot),
-                        projectSourceRoot === undefined ? undefined : normalize(projectSourceRoot),
+                        context.workspaceRoot,
+                        projectRoot,
+                        projectSourceRoot,
                       ),
                       Array.from(outputPaths.values()),
                       context.workspaceRoot,
@@ -352,8 +347,9 @@ export function buildWebpackBrowser(
                   for (const [locale, outputPath] of outputPaths.entries()) {
                     try {
                       await augmentAppWithServiceWorker(
-                        normalize(projectRoot),
-                        normalize(outputPath),
+                        projectRoot,
+                        context.workspaceRoot,
+                        outputPath,
                         getLocaleBaseHref(i18n, locale) || options.baseHref || '/',
                         options.ngswConfigPath,
                       );
@@ -368,7 +364,7 @@ export function buildWebpackBrowser(
                 }
               }
 
-              webpackStatsLogger(context.logger, webpackStats, config);
+              webpackStatsLogger(context.logger, webpackStats, config, budgetFailures);
 
               return { success: buildSuccess };
             }
@@ -429,10 +425,8 @@ function mapEmittedFilesToFileInfo(files: EmittedFiles[] = []): FileInfo[] {
   return filteredFiles;
 }
 
-function checkInternetExplorerSupport(
-  supportedBrowsers: string[],
-  logger: logging.LoggerApi,
-): void {
+function checkInternetExplorerSupport(projectRoot: string, logger: logging.LoggerApi): void {
+  const supportedBrowsers = getSupportedBrowsers(projectRoot);
   if (supportedBrowsers.some((b) => b === 'ie 9' || b === 'ie 10' || b === 'ie 11')) {
     logger.warn(
       `Warning: Support was requested for Internet Explorer in the project's browserslist configuration. ` +
@@ -442,4 +436,4 @@ function checkInternetExplorerSupport(
   }
 }
 
-export default createBuilder<json.JsonObject & BrowserBuilderSchema>(buildWebpackBrowser);
+export default createBuilder<BrowserBuilderSchema>(buildWebpackBrowser);

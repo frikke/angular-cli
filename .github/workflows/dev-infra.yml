@@ -1,14 +1,18 @@
 name: DevInfra
 
+# Declare default permissions as read only.
+permissions:
+  contents: read
+
 on:
   pull_request_target:
     types: [opened, synchronize, reopened]
 
 jobs:
-  breaking-changes-label:
+  labels:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: angular/dev-infra/github-actions/breaking-changes-label@696fe0c5eb8535de2ceda83cd00edbd24f0561c6
+      - uses: actions/checkout@dcd71f646680f2efd8db4afa5ad64fdcba30e748 # tag=v3.0.1
+      - uses: angular/dev-infra/github-actions/commit-message-based-labels@303acfd7f5ae3118193047f604d821f3604a0512
         with:
           angular-robot-key: ${{ secrets.ANGULAR_ROBOT_PRIVATE_KEY }}

@@ -11,7 +11,7 @@ import { resolve as pathResolve } from 'path';
 import { Observable, from, isObservable, of } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 import webpack from 'webpack';
-import { EmittedFiles, getEmittedFiles } from '../utils';
+import { EmittedFiles, getEmittedFiles, getWebpackConfig } from '../utils';
 import { Schema as RealWebpackBuilderSchema } from './schema';
 
 export type WebpackBuilderSchema = RealWebpackBuilderSchema;
@@ -59,7 +59,7 @@ export function runWebpack(
     switchMap(
       (webpackCompiler) =>
         new Observable<BuildResult>((obs) => {
-          const callback = (err?: Error, stats?: webpack.Stats) => {
+          const callback = (err?: Error | null, stats?: webpack.Stats) => {
             if (err) {
               return obs.error(err);
             }
@@ -118,9 +118,7 @@ export function runWebpack(
 export default createBuilder<WebpackBuilderSchema>((options, context) => {
   const configPath = pathResolve(context.workspaceRoot, options.webpackConfig);
 
-  return from(import(configPath)).pipe(
-    switchMap(({ default: config }: { default: webpack.Configuration }) =>
-      runWebpack(config, context),
-    ),
+  return from(getWebpackConfig(configPath)).pipe(
+    switchMap((config) => runWebpack(config, context)),
   );
 });

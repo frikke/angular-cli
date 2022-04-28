@@ -65,7 +65,7 @@ export type CollectionDescription<CollectionMetadataT extends object> = Collecti
  */
 export type SchematicDescription<
   CollectionMetadataT extends object,
-  SchematicMetadataT extends object
+  SchematicMetadataT extends object,
 > = SchematicMetadataT & {
   readonly collection: CollectionDescription<CollectionMetadataT>;
   readonly name: string;
@@ -83,7 +83,10 @@ export interface EngineHost<CollectionMetadataT extends object, SchematicMetadat
     name: string,
     requester?: CollectionDescription<CollectionMetadataT>,
   ): CollectionDescription<CollectionMetadataT>;
-  listSchematicNames(collection: CollectionDescription<CollectionMetadataT>): string[];
+  listSchematicNames(
+    collection: CollectionDescription<CollectionMetadataT>,
+    includeHidden?: boolean,
+  ): string[];
 
   createSchematicDescription(
     name: string,
@@ -162,7 +165,7 @@ export interface Collection<CollectionMetadataT extends object, SchematicMetadat
     name: string,
     allowPrivate?: boolean,
   ): Schematic<CollectionMetadataT, SchematicMetadataT>;
-  listSchematicNames(): string[];
+  listSchematicNames(includeHidden?: boolean): string[];
 }
 
 /**
@@ -187,7 +190,7 @@ export interface Schematic<CollectionMetadataT extends object, SchematicMetadata
  */
 export interface TypedSchematicContext<
   CollectionMetadataT extends object,
-  SchematicMetadataT extends object
+  SchematicMetadataT extends object,
 > {
   readonly debug: boolean;
   readonly engine: Engine<CollectionMetadataT, SchematicMetadataT>;
@@ -196,10 +199,6 @@ export interface TypedSchematicContext<
   readonly strategy: MergeStrategy;
   readonly interactive: boolean;
   addTask<T>(task: TaskConfigurationGenerator<T>, dependencies?: Array<TaskId>): TaskId;
-
-  // This might be undefined if the feature is unsupported.
-  /** @deprecated since version 11 - as it's unused. */
-  readonly analytics?: analytics.Analytics;
 }
 
 /**

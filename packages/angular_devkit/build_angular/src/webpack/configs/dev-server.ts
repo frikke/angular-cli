@@ -7,11 +7,11 @@
  */
 
 import { logging, tags } from '@angular-devkit/core';
-import { existsSync } from 'fs';
-import { posix, resolve } from 'path';
-import * as url from 'url';
-import * as webpack from 'webpack';
-import { Configuration } from 'webpack-dev-server';
+import { existsSync, promises as fsPromises } from 'fs';
+import { extname, posix, resolve } from 'path';
+import { URL, pathToFileURL } from 'url';
+import { Configuration, RuleSetRule } from 'webpack';
+import { Configuration as DevServerConfiguration } from 'webpack-dev-server';
 import { WebpackConfigOptions, WebpackDevServerOptions } from '../../utils/build-options';
 import { loadEsmModule } from '../../utils/load-esm';
 import { getIndexOutputFile } from '../../utils/webpack-browser-config';
@@ -19,7 +19,7 @@ import { HmrLoader } from '../plugins/hmr/hmr-loader';
 
 export async function getDevServerConfig(
   wco: WebpackConfigOptions<WebpackDevServerOptions>,
-): Promise<webpack.Configuration> {
+): Promise<Configuration> {
   const {
     buildOptions: { host, port, index, headers, watch, hmr, main, liveReload, proxyConfig },
     logger,
@@ -28,7 +28,7 @@ export async function getDevServerConfig(
 
   const servePath = buildServePath(wco.buildOptions, logger);
 
-  const extraRules: webpack.RuleSetRule[] = [];
+  const extraRules: RuleSetRule[] = [];
   if (hmr) {
     extraRules.push({
       loader: HmrLoader,
@@ -51,8 +51,6 @@ export async function getDevServerConfig(
     });
   }
 
-  const webSocketPath = posix.join(servePath, 'ws');
-
   return {
     plugins: extraPlugins,
     module: {
@@ -72,18 +70,13 @@ export async function getDevServerConfig(
         rewrites: [
           {
             from: new RegExp(`^(?!${servePath})/.*`),
-            to: (context) => url.format(context.parsedUrl),
+            to: (context) => context.parsedUrl.href,
           },
         ],
       },
-      webSocketServer: {
-        options: {
-          path: webSocketPath,
-        },
-      },
       compress: false,
       static: false,
-      https: getSslConfig(root, wco.buildOptions),
+      server: getServerConfig(root, wco.buildOptions),
       allowedHosts: getAllowedHostsConfig(wco.buildOptions),
       devMiddleware: {
         publicPath: servePath,
@@ -92,14 +85,7 @@ export async function getDevServerConfig(
       liveReload,
       hot: hmr && !liveReload ? 'only' : hmr,
       proxy: await addProxyConfig(root, proxyConfig),
-      client: {
-        logging: 'info',
-        webSocketURL: getPublicHostOptions(wco.buildOptions, webSocketPath),
-        overlay: {
-          errors: true,
-          warnings: false,
-        },
-      },
+      ...getWebSocketSettings(wco.buildOptions, servePath),
     },
   };
 }
@@ -125,7 +111,7 @@ export function buildServePath(
   }
 
   if (servePath.endsWith('/')) {
-    servePath = servePath.substr(0, servePath.length - 1);
+    servePath = servePath.slice(0, -1);
   }
 
   if (!servePath.startsWith('/')) {
@@ -139,16 +125,25 @@ export function buildServePath(
  * Private method to enhance a webpack config with SSL configuration.
  * @private
  */
-function getSslConfig(root: string, options: WebpackDevServerOptions): Configuration['https'] {
+function getServerConfig(
+  root: string,
+  options: WebpackDevServerOptions,
+): DevServerConfiguration['server'] {
   const { ssl, sslCert, sslKey } = options;
-  if (ssl && sslCert && sslKey) {
-    return {
-      key: resolve(root, sslKey),
-      cert: resolve(root, sslCert),
-    };
+  if (!ssl) {
+    return 'http';
   }
 
-  return ssl;
+  return {
+    type: 'https',
+    options:
+      sslCert && sslKey
+        ? {
+            key: resolve(root, sslKey),
+            cert: resolve(root, sslCert),
+          }
+        : undefined,
+  };
 }
 
 /**
@@ -161,22 +156,81 @@ async function addProxyConfig(root: string, proxyConfig: string | undefined) {
   }
 
   const proxyPath = resolve(root, proxyConfig);
-  if (existsSync(proxyPath)) {
-    try {
-      return require(proxyPath);
-    } catch (e) {
-      if (e.code === 'ERR_REQUIRE_ESM') {
-        // Load the ESM configuration file using the TypeScript dynamic import workaround.
-        // Once TypeScript provides support for keeping the dynamic import this workaround can be
-        // changed to a direct dynamic import.
-        return (await loadEsmModule<{ default: unknown }>(url.pathToFileURL(proxyPath))).default;
-      }
 
-      throw e;
-    }
+  if (!existsSync(proxyPath)) {
+    throw new Error(`Proxy configuration file ${proxyPath} does not exist.`);
   }
 
-  throw new Error('Proxy config file ' + proxyPath + ' does not exist.');
+  switch (extname(proxyPath)) {
+    case '.json': {
+      const content = await fsPromises.readFile(proxyPath, 'utf-8');
+
+      const { parse, printParseErrorCode } = await import('jsonc-parser');
+      const parseErrors: import('jsonc-parser').ParseError[] = [];
+      const proxyConfiguration = parse(content, parseErrors, { allowTrailingComma: true });
+
+      if (parseErrors.length > 0) {
+        let errorMessage = `Proxy configuration file ${proxyPath} contains parse errors:`;
+        for (const parseError of parseErrors) {
+          const { line, column } = getJsonErrorLineColumn(parseError.offset, content);
+          errorMessage += `\n[${line}, ${column}] ${printParseErrorCode(parseError.error)}`;
+        }
+        throw new Error(errorMessage);
+      }
+
+      return proxyConfiguration;
+    }
+    case '.mjs':
+      // Load the ESM configuration file using the TypeScript dynamic import workaround.
+      // Once TypeScript provides support for keeping the dynamic import this workaround can be
+      // changed to a direct dynamic import.
+      return (await loadEsmModule<{ default: unknown }>(pathToFileURL(proxyPath))).default;
+    case '.cjs':
+      return require(proxyPath);
+    default:
+      // The file could be either CommonJS or ESM.
+      // CommonJS is tried first then ESM if loading fails.
+      try {
+        return require(proxyPath);
+      } catch (e) {
+        if (e.code === 'ERR_REQUIRE_ESM') {
+          // Load the ESM configuration file using the TypeScript dynamic import workaround.
+          // Once TypeScript provides support for keeping the dynamic import this workaround can be
+          // changed to a direct dynamic import.
+          return (await loadEsmModule<{ default: unknown }>(pathToFileURL(proxyPath))).default;
+        }
+
+        throw e;
+      }
+  }
+}
+
+/**
+ * Calculates the line and column for an error offset in the content of a JSON file.
+ * @param location The offset error location from the beginning of the content.
+ * @param content The full content of the file containing the error.
+ * @returns An object containing the line and column
+ */
+function getJsonErrorLineColumn(offset: number, content: string) {
+  if (offset === 0) {
+    return { line: 1, column: 1 };
+  }
+
+  let line = 0;
+  let position = 0;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    ++line;
+
+    const nextNewline = content.indexOf('\n', position);
+    if (nextNewline === -1 || nextNewline > offset) {
+      break;
+    }
+
+    position = nextNewline + 1;
+  }
+
+  return { line, column: offset - position + 1 };
 }
 
 /**
@@ -217,7 +271,9 @@ function findDefaultServePath(baseHref?: string, deployUrl?: string): string | n
   return `${normalizedBaseHref}${deployUrl || ''}`;
 }
 
-function getAllowedHostsConfig(options: WebpackDevServerOptions): Configuration['allowedHosts'] {
+function getAllowedHostsConfig(
+  options: WebpackDevServerOptions,
+): DevServerConfiguration['allowedHosts'] {
   if (options.disableHostCheck) {
     return 'all';
   } else if (options.allowedHosts?.length) {
@@ -227,14 +283,45 @@ function getAllowedHostsConfig(options: WebpackDevServerOptions): Configuration[
   return undefined;
 }
 
+function getWebSocketSettings(
+  options: WebpackDevServerOptions,
+  servePath: string,
+): {
+  webSocketServer?: DevServerConfiguration['webSocketServer'];
+  client?: DevServerConfiguration['client'];
+} {
+  const { hmr, liveReload } = options;
+  if (!hmr && !liveReload) {
+    return {
+      webSocketServer: false,
+      client: undefined,
+    };
+  }
+
+  const webSocketPath = posix.join(servePath, 'ws');
+
+  return {
+    webSocketServer: {
+      options: {
+        path: webSocketPath,
+      },
+    },
+    client: {
+      logging: 'info',
+      webSocketURL: getPublicHostOptions(options, webSocketPath),
+      overlay: {
+        errors: true,
+        warnings: false,
+      },
+    },
+  };
+}
+
 function getPublicHostOptions(options: WebpackDevServerOptions, webSocketPath: string): string {
   let publicHost: string | null | undefined = options.publicHost;
   if (publicHost) {
-    if (!/^\w+:\/\//.test(publicHost)) {
-      publicHost = `https://${publicHost}`;
-    }
-
-    publicHost = url.parse(publicHost).host;
+    const hostWithProtocol = !/^\w+:\/\//.test(publicHost) ? `https://${publicHost}` : publicHost;
+    publicHost = new URL(hostWithProtocol).host;
   }
 
   return `auto://${publicHost || '0.0.0.0:0'}${webSocketPath}`;

@@ -51,13 +51,14 @@ Note: There's a limit of 20 custom dimensions.
 | 5 | `Flag: --style` | `string` |
 | 6 | `--collection` | `string` |
 | 7 | `Flag: --strict` | `boolean` |
-| 8 | `Ivy Enabled` | `boolean` |
+| 8 | `Angular CLI Major Version` | `string` |
 | 9 | `Flag: --inline-style` | `boolean` |
 | 10 | `Flag: --inline-template` | `boolean` |
 | 11 | `Flag: --view-encapsulation` | `string` |
 | 12 | `Flag: --skip-tests` | `boolean` |
 | 13 | `Flag: --aot` | `boolean` |
 | 14 | `Flag: --minimal` | `boolean` |
+| 15 | `Flag: --standalone` | `boolean` |
 | 16 | `Flag: --optimization` | `boolean` |
 | 17 | `Flag: --routing` | `boolean` |
 | 18 | `Flag: --skip-import` | `boolean` |
@@ -98,9 +99,6 @@ Node version is our App ID, but a dimension is also used to get the numeric MAJO
 
 # Debugging
 
-Using `DEBUG=universal-analytics` will report all calls to the universal-analytics library,
-including queuing events and sending them to the server.
-
 Using `DEBUG=ng:analytics` will report additional information regarding initialization and
 decisions made during the usage analytics process, e.g. if the user has analytics disabled.
 
@@ -114,18 +112,9 @@ See [the `debug` NPM library](https://www.npmjs.com/package/debug) for more info
 
 There are 2 ways of disabling usage analytics:
 
-1. using `ng analytics off` (or changing the global configuration file yourself). This is the same
+1. using `ng analytics off --global` (or changing the global configuration file yourself). This is the same
    as answering "No" to the prompt.
 1. There is an `NG_CLI_ANALYTICS` environment variable that overrides the global configuration.
    That flag is a string that represents the User ID. If the string `"false"` is used it will
-   disable analytics for this run. If the string `"ci"` is used it will show up as a CI run (see
-   below).
+   disable analytics for this run.
 
-# CI
-
-A special user named `ci` is used for analytics for tracking CI information. This is a convention
-and is in no way enforced.
-
-Running on CI by default will disable analytics (because of a lack of TTY on STDIN/OUT). It can be
-manually enabled using either a global configuration with a value of `ci`, or using the
-`NG_CLI_ANALYTICS=ci` environment variable.

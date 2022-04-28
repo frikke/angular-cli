@@ -74,8 +74,7 @@
     },
     "resourcesOutputPath": {
       "type": "string",
-      "description": "The path where style resources will be placed, relative to outputPath.",
-      "default": ""
+      "description": "The path where style resources will be placed, relative to outputPath."
     },
     "sourceMap": {
       "description": "Output source maps for scripts and styles. For more information, see https://angular.io/guide/workspace-config#source-map-configuration.",
@@ -133,6 +132,12 @@
       "enum": ["warning", "error", "ignore"],
       "default": "warning"
     },
+    "i18nDuplicateTranslation": {
+      "type": "string",
+      "description": "How to handle duplicate translations for i18n.",
+      "enum": ["warning", "error", "ignore"],
+      "default": "warning"
+    },
     "localize": {
       "description": "Translate the bundles in one or more locales.",
       "oneOf": [
@@ -170,12 +175,6 @@
       "type": "boolean",
       "description": "Extract all licenses in a separate file, in the case of production builds only.",
       "default": true
-    },
-    "showCircularDependencies": {
-      "type": "boolean",
-      "description": "Show circular dependency warnings on builds.",
-      "default": false,
-      "x-deprecated": "The recommended method to detect circular dependencies in project code is to use either a lint rule or other external tooling."
     },
     "namedChunks": {
       "type": "boolean",

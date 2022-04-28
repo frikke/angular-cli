@@ -10,168 +10,135 @@
   Any changes to README.md directly will result in a failure on CI.
 -->
 
-# Angular CLI
-### Development tools and libraries specialized for Angular
+<h1 align="center">Angular CLI - The CLI tool for Angular.</h1>
 
-This is the home of the DevKit and the Angular CLI code. You can find the Angular CLI specific README
-[here](/packages/angular/cli/README.md).
+<p align="center">
+  <br>
+  <img src="/docs/images/angular-cli-logo.png" alt="Angular CLI logo" width="100px" height="108px"/>
+  <br><br>
+  <i>The Angular CLI is a command-line interface tool that you use to initialize, develop, scaffold, 
+    <br>and maintain Angular applications directly from a command shell.</i>
+  <br>
+</p>
 
-<%# Badges are created here. %>
-<% for (const section of monorepo.badges) {
-  for (const { label, image, title, url } of section) {
-    if (image) {
-      %>[![<%= label %>](<%= image %>)]<%
-    } else {
-      %>[<%= title %>]<%
-    }
-    %>(<%= url %>) <%
-  } %>
+<p align="center">
+  <a href="https://cli.angular.io"><strong>cli.angular.io</strong></a>
+  <br>
+</p>
 
-<% } %>
+<p align="center">
+  <a href="CONTRIBUTING.md">Contributing Guidelines</a>
+  ·
+  <a href="https://github.com/angular/angular-cli/issues">Submit an Issue</a>
+  ·
+  <a href="https://blog.angular.io/">Blog</a>
+  <br>
+  <br>
+</p>
 
-### Quick Links
-<% for (const link of Object.keys(monorepo.links)) {
-  %>[<%= link %>](<%= monorepo.links[link] %>) | <%
-} %>
-<% for (const link of Object.keys(monorepo.links)) {
-%>|---<%
-} %>|
+<p align="center">
+  <a href="https://circleci.com/gh/angular/workflows/angular-cli/tree/master">
+    <img src="https://img.shields.io/circleci/build/github/angular/angular-cli/master.svg?logo=circleci&logoColor=fff&label=CircleCI" alt="CI status" />
+  </a>&nbsp;
+  <a href="https://discord.gg/angular">
+    <img src="https://img.shields.io/discord/463752820026376202.svg?logo=discord&logoColor=fff&label=Discord&color=7389d8" alt="Discord conversation" />
+  </a>
+</p>
 
-----
+<hr>
 
-## The Goal of Angular CLI
+## Documentation
 
-The Angular CLI creates, manages, builds and test your Angular projects. It's built on top of the
-Angular DevKit.
+Get started with Angular CLI, learn the fundamentals and explore advanced topics on our documentation website.
 
-## The Goal of DevKit
+- [Getting started][quickstart]
+- [CLI][cli]
+- [Workspace and project file structure][filestructure]
+- [Workspace configuration][workspaceconfig]
+- [Schematics][schematics]
 
-DevKit's goal is to provide a large set of libraries that can be used to manage, develop, deploy and
-analyze your code.
+## Development Setup
 
-# Getting Started - Local Development
 
-## Installation
+### Prerequisites
 
-To get started locally, follow these instructions:
+- Install [Node.js] which includes [Node Package Manager][npm]
 
-1. If you haven't done it already, [make a fork of this repo](https://github.com/angular/angular-cli/fork).
-1. Clone to your local computer using `git`.
-1. Make sure that you have Node 12.14 or 14.0 installed. See instructions [here](https://nodejs.org/en/download/).
-1. Make sure that you have `yarn` installed; see instructions [here](https://yarnpkg.com/lang/en/docs/install/).
-1. Run `yarn` (no arguments) from the root of your clone of this project to install dependencies.
+### Setting Up a Project
 
-## Building and Installing the CLI
+Install the Angular CLI globally:
 
-To make a local build:
-
-```shell
-yarn build --local
 ```
-
-This generates a number of tarballs in the `dist/` directory. To actually use
-the locally built tools, switch to another repository reproducing the specific
-issue you want to fix (or just generate a local repo with `ng new`). Then
-install the locally built packages:
-
-```shell
-cd "${EXAMPLE_ANGULAR_PROJECT_REPO}"
-npm install -D ${CLI_REPO}/dist/*.tgz
-```
-
-Builds of this example project will use tooling created from the previous local
-build and include any local changes. When using the CLI, it will automatically
-check for a local install and use that if present. This means you can just run:
-
-```shell
 npm install -g @angular/cli
 ```
 
-to get a global install of the latest CLI release. Then running any `ng` command
-in the example project will automatically find and use the local build of the
-CLI.
+Create workspace:
 
-Note: If you are testing `ng update`, be aware that installing all the tarballs
-will also update the framework (`@angular/core`) to the latest version. In this
-case, simply install the CLI alone with
-`npm install -D ${CLI_REPO}/dist/_angular_cli.tgz`, that way the rest of the
-project remains to be upgraded with `ng update`.
-
-## Debugging
-
-To debug an invocation of the CLI, [build and install the CLI for an example
-project](#building-and-installing-the-cli), then run the desired `ng` command
-as:
-
-```shell
-node --inspect-brk node_modules/.bin/ng ...
+```
+ng new [PROJECT NAME]
 ```
 
-This will trigger a breakpoint as the CLI starts up. You can connect to this
-using the supported mechanisms for your IDE, but the simplest option is to open
-Chrome to [chrome://inspect](chrome://inspect) and then click on the `inspect`
-link for the `node_modules/.bin/ng` Node target.
+Run the application:
 
-Unfortunately, the CLI dynamically `require()`'s other files mid-execution, so
-the debugger is not aware of all the source code files before hand. As a result,
-it is tough to put breakpoints on files before the CLI loads them. The easiest
-workaround is to use the `debugger;` statement to stop execution in the file you
-are interested in, and then you should be able to step around and set breakpoints
-as expected.
+```
+cd [PROJECT NAME]
+ng serve
+```
 
-## Testing
+Angular is cross-platform, fast, scalable, has incredible tooling, and is loved by millions.
 
-There are two different test suites which can be run locally:
+## Quickstart
 
-### Unit tests
-  * Run all tests: `yarn bazel test //packages/...`
-  * Run a subset of the tests, use the full Bazel target example: `yarn bazel test //packages/schematics/angular:angular_test`
-  * For a complete list of test targets use the following Bazel query: `yarn bazel query "tests(//packages/...)"`
+[Get started in 5 minutes][quickstart].
 
-You can find more info about debugging [tests with Bazel in the docs.](https://github.com/angular/angular-cli/blob/master/docs/process/bazel.md#debugging-jasmine_node_test)  
+## Ecosystem
 
-### End to end tests
-  * Run: `node tests/legacy-cli/run_e2e.js`
-  * Run a subset of the tests: `node tests/legacy-cli/run_e2e.js tests/legacy-cli/e2e/tests/i18n/ivy-localize-*`
+<p>
+  <img src="/docs/images/angular-ecosystem-logos.png" alt="angular ecosystem logos" width="500px" height="auto">
+</p>
 
-When running the debug commands, Node will stop and wait for a debugger to attach.
-You can attach your IDE to the debugger to stop on breakpoints and step through the code. Also, see [IDE Specific Usage](#ide-specific-usage) for a
-simpler debug story.
+- [Angular Framework][aio]
+- [Angular Material][angularmaterial]
 
-When debugging a specific test, change `describe()` or `it()` to `fdescribe()`
-and `fit()` to focus execution to just that one test. This will keep the output clean and speed up execution by not running irrelevant tests.
+## Changelog
 
-## IDE Specific Usage
+[Learn about the latest improvements][changelog].
 
-Some additional tips for developing in specific IDEs.
+## Upgrading
 
-### Intellij IDEA / WebStorm
+Check out our [upgrade guide](https://update.angular.io/) to find out the best way to upgrade your project.
 
-To load the project in Intellij products, simply `Open` the repository folder.
-Do **not** `Import Project`, because that will overwrite the existing
-configuration.
+## Contributing
 
-Once opened, the editor should automatically detect run configurations in the
-workspace. Use the drop down to choose which one to run and then click the `Run`
-button to start it. When executing a debug target, make sure to click the
-`Debug` icon to automatically attach the debugger (if you click `Run`, Node will
-wait forever for a debugger to attach).
+### Contributing Guidelines
 
-![Intellij IDEA run configurations](docs/images/run-configurations.png)
+Read through our [contributing guidelines][contributing] to learn about our submission process, coding rules and more.
 
-## Creating New Packages
+### Want to Help?
 
-Adding a package to this repository means running two separate commands:
+Want to report a bug, contribute some code, or improve documentation? Excellent! Read up on our guidelines for [contributing][contributing] and then check out one of our issues labeled as <kbd>[help wanted](https://github.com/angular/angular-cli/labels/help%20wanted)</kbd> or <kbd>[good first issue](https://github.com/angular/angular-cli/labels/good%20first%20issue)</kbd>.
 
-1. `schematics devkit:package PACKAGE_NAME`. This will update the `.monorepo` file, and create the
-  base files for the new package (package.json, src/index, etc).
-1. `devkit-admin templates`. This will update the README and all other template files that might
-  have changed when adding a new package.
+### Code of Conduct
 
-For private packages, you will need to add a `"private": true` key to your package.json manually.
-This will require re-running the template admin script.
+Help us keep Angular open and inclusive. Please read and follow our [Code of Conduct][codeofconduct].
 
-# Packages
+### Developer Guide
+
+Read through our [developer guide][developer] to learn about how to build and test the Angular CLI locally.
+
+
+## Community
+
+Join the conversation and help the community.
+
+- [Twitter][twitter]
+- [Discord][discord]
+- [Gitter][gitter]
+- [YouTube][youtube]
+- [StackOverflow][stackoverflow]
+- Find a Local [Meetup][meetup]
+
+## Packages
 
 This is a monorepo which contains many tools and packages:
 
@@ -182,7 +149,7 @@ This is a monorepo which contains many tools and packages:
   sections.unshift(undefined);
 %>
 
-## Tools
+### Tools
 
 | Project | Package | Version | Links |
 |---|---|---|---|
@@ -209,7 +176,7 @@ if (mrPkg.snapshotRepo) {
 } %>
 <% } %>
 
-## Packages
+### Packages
 <% for (const section of sections) {
 
 %><%= section ? '#### ' + section : '' %>
@@ -239,3 +206,26 @@ for (const pkgName of Object.keys(packages)) {
   } %>
 <% } %>
 <% } %>
+
+**Love Angular CLI? Give our repo a star :star: :arrow_up:.**
+
+[contributing]: CONTRIBUTING.md
+[developer]: docs/DEVELOPER.md
+[quickstart]: https://angular.io/start
+[changelog]: CHANGELOG.md
+[documentation]: https://angular.io/docs
+[angularmaterial]: https://material.angular.io/
+[cli]: https://cli.angular.io/
+[aio]: https://angular.io/
+[workspaceconfig]: https://angular.io/guide/workspace-config
+[schematics]: https://angular.io/guide/schematics
+[filestructure]: https://angular.io/guide/file-structure
+[node.js]: https://nodejs.org/
+[npm]: https://www.npmjs.com/get-npm
+[codeofconduct]: https://github.com/angular/angular/blob/master/CODE_OF_CONDUCT.md
+[twitter]: https://www.twitter.com/angular
+[discord]: https://discord.gg/angular
+[gitter]: https://gitter.im/angular/angular-cli
+[stackoverflow]: https://stackoverflow.com/questions/tagged/angular-cli
+[youtube]: https://youtube.com/angular
+[meetup]: https://www.meetup.com/find/?keywords=angular

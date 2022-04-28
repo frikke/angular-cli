@@ -28,6 +28,6 @@ export function getAnalyticsConfig(
 
   // The category is the builder name if it's an angular builder.
   return {
-    plugins: [new NgBuildAnalyticsPlugin(wco.projectRoot, context.analytics, category, true)],
+    plugins: [new NgBuildAnalyticsPlugin(wco.projectRoot, context.analytics, category)],
   };
 }

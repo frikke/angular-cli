@@ -8,7 +8,6 @@
 
 import type { CompilerHost, CompilerOptions, NgtscProgram } from '@angular/compiler-cli';
 import { strict as assert } from 'assert';
-import { createHash } from 'crypto';
 import * as ts from 'typescript';
 import type { Compilation, Compiler, Module, NormalModule } from 'webpack';
 import { NgccProcessor } from '../ngcc_processor';
@@ -90,12 +89,13 @@ function initializeNgccProcessor(
   return { processor, errors, warnings };
 }
 
-function hashContent(content: string): Uint8Array {
-  return createHash('md5').update(content).digest();
-}
-
 const PLUGIN_NAME = 'angular-compiler';
 const compilationFileEmitters = new WeakMap<Compilation, FileEmitterCollection>();
+
+interface FileEmitHistoryItem {
+  length: number;
+  hash: Uint8Array;
+}
 
 export class AngularWebpackPlugin {
   private readonly pluginOptions: AngularWebpackPluginOptions;
@@ -105,10 +105,12 @@ export class AngularWebpackPlugin {
   private ngtscNextProgram?: NgtscProgram;
   private builder?: ts.EmitAndSemanticDiagnosticsBuilderProgram;
   private sourceFileCache?: SourceFileCache;
+  private webpackCache?: ReturnType<Compilation['getCache']>;
+  private webpackCreateHash?: Compiler['webpack']['util']['createHash'];
   private readonly fileDependencies = new Map<string, Set<string>>();
   private readonly requiredFilesToEmit = new Set<string>();
   private readonly requiredFilesToEmitCache = new Map<string, EmitFileResult | undefined>();
-  private readonly fileEmitHistory = new Map<string, { length: number; hash: Uint8Array }>();
+  private readonly fileEmitHistory = new Map<string, FileEmitHistoryItem>();
 
   constructor(options: Partial<AngularWebpackPluginOptions> = {}) {
     this.pluginOptions = {
@@ -136,8 +138,10 @@ export class AngularWebpackPlugin {
     return this.pluginOptions;
   }
 
+  // eslint-disable-next-line max-lines-per-function
   apply(compiler: Compiler): void {
     const { NormalModuleReplacementPlugin, util } = compiler.webpack;
+    this.webpackCreateHash = util.createHash;
 
     // Setup file replacements with webpack
     for (const [key, value] of Object.entries(this.pluginOptions.fileReplacements)) {
@@ -177,8 +181,12 @@ export class AngularWebpackPlugin {
     compiler.hooks.thisCompilation.tap(PLUGIN_NAME, (compilation) => {
       // Register plugin to ensure deterministic emit order in multi-plugin usage
       const emitRegistration = this.registerWithCompilation(compilation);
-
       this.watchMode = compiler.watchMode;
+
+      // Initialize webpack cache
+      if (!this.webpackCache && compilation.options.cache) {
+        this.webpackCache = compilation.getCache(PLUGIN_NAME);
+      }
 
       // Initialize the resource loader if not already setup
       if (!resourceLoader) {
@@ -377,7 +385,7 @@ export class AngularWebpackPlugin {
 
     const filesToRebuild = new Set<string>();
     for (const requiredFile of this.requiredFilesToEmit) {
-      const history = this.fileEmitHistory.get(requiredFile);
+      const history = await this.getFileEmitHistory(requiredFile);
       if (history) {
         const emitResult = await fileEmitter(requiredFile);
         if (
@@ -553,74 +561,77 @@ export class AngularWebpackPlugin {
 
     // Required to support asynchronous resource loading
     // Must be done before creating transformers or getting template diagnostics
-    const pendingAnalysis = angularCompiler.analyzeAsync().then(() => {
-      this.requiredFilesToEmit.clear();
+    const pendingAnalysis = angularCompiler
+      .analyzeAsync()
+      .then(() => {
+        this.requiredFilesToEmit.clear();
 
-      for (const sourceFile of builder.getSourceFiles()) {
-        if (sourceFile.isDeclarationFile) {
-          continue;
+        for (const sourceFile of builder.getSourceFiles()) {
+          if (sourceFile.isDeclarationFile) {
+            continue;
+          }
+
+          // Collect sources that are required to be emitted
+          if (
+            !ignoreForEmit.has(sourceFile) &&
+            !angularCompiler.incrementalDriver.safeToSkipEmit(sourceFile)
+          ) {
+            this.requiredFilesToEmit.add(normalizePath(sourceFile.fileName));
+
+            // If required to emit, diagnostics may have also changed
+            if (!ignoreForDiagnostics.has(sourceFile)) {
+              affectedFiles.add(sourceFile);
+            }
+          } else if (
+            this.sourceFileCache &&
+            !affectedFiles.has(sourceFile) &&
+            !ignoreForDiagnostics.has(sourceFile)
+          ) {
+            // Use cached Angular diagnostics for unchanged and unaffected files
+            const angularDiagnostics = this.sourceFileCache.getAngularDiagnostics(sourceFile);
+            if (angularDiagnostics) {
+              diagnosticsReporter(angularDiagnostics);
+            }
+          }
         }
 
-        // Collect sources that are required to be emitted
-        if (
-          !ignoreForEmit.has(sourceFile) &&
-          !angularCompiler.incrementalDriver.safeToSkipEmit(sourceFile)
-        ) {
-          this.requiredFilesToEmit.add(normalizePath(sourceFile.fileName));
-
-          // If required to emit, diagnostics may have also changed
-          if (!ignoreForDiagnostics.has(sourceFile)) {
-            affectedFiles.add(sourceFile);
-          }
-        } else if (
-          this.sourceFileCache &&
-          !affectedFiles.has(sourceFile) &&
-          !ignoreForDiagnostics.has(sourceFile)
-        ) {
-          // Use cached Angular diagnostics for unchanged and unaffected files
-          const angularDiagnostics = this.sourceFileCache.getAngularDiagnostics(sourceFile);
-          if (angularDiagnostics) {
-            diagnosticsReporter(angularDiagnostics);
-          }
+        // Collect new Angular diagnostics for files affected by changes
+        const OptimizeFor = this.compilerCli.OptimizeFor;
+        const optimizeDiagnosticsFor =
+          affectedFiles.size <= DIAGNOSTICS_AFFECTED_THRESHOLD
+            ? OptimizeFor.SingleFile
+            : OptimizeFor.WholeProgram;
+        for (const affectedFile of affectedFiles) {
+          const angularDiagnostics = angularCompiler.getDiagnosticsForFile(
+            affectedFile,
+            optimizeDiagnosticsFor,
+          );
+          diagnosticsReporter(angularDiagnostics);
+          this.sourceFileCache?.updateAngularDiagnostics(affectedFile, angularDiagnostics);
         }
-      }
 
-      // Temporary workaround during transition to ESM-only @angular/compiler-cli
-      // TODO_ESM: This workaround should be removed prior to the final release of v13
-      //       and replaced with only `this.compilerCli.OptimizeFor`.
-      const OptimizeFor =
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (this.compilerCli as any).OptimizeFor ??
-        require('@angular/compiler-cli/src/ngtsc/typecheck/api').OptimizeFor;
+        return {
+          emitter: this.createFileEmitter(
+            builder,
+            mergeTransformers(angularCompiler.prepareEmit().transformers, transformers),
+            getDependencies,
+            (sourceFile) => {
+              this.requiredFilesToEmit.delete(normalizePath(sourceFile.fileName));
+              angularCompiler.incrementalDriver.recordSuccessfulEmit(sourceFile);
+            },
+          ),
+        };
+      })
+      .catch((err) => ({ errorMessage: err instanceof Error ? err.message : `${err}` }));
 
-      // Collect new Angular diagnostics for files affected by changes
-      const optimizeDiagnosticsFor =
-        affectedFiles.size <= DIAGNOSTICS_AFFECTED_THRESHOLD
-          ? OptimizeFor.SingleFile
-          : OptimizeFor.WholeProgram;
-      for (const affectedFile of affectedFiles) {
-        const angularDiagnostics = angularCompiler.getDiagnosticsForFile(
-          affectedFile,
-          optimizeDiagnosticsFor,
-        );
-        diagnosticsReporter(angularDiagnostics);
-        this.sourceFileCache?.updateAngularDiagnostics(affectedFile, angularDiagnostics);
-      }
-
-      return this.createFileEmitter(
-        builder,
-        mergeTransformers(angularCompiler.prepareEmit().transformers, transformers),
-        getDependencies,
-        (sourceFile) => {
-          this.requiredFilesToEmit.delete(normalizePath(sourceFile.fileName));
-          angularCompiler.incrementalDriver.recordSuccessfulEmit(sourceFile);
-        },
-      );
-    });
     const analyzingFileEmitter: FileEmitter = async (file) => {
-      const innerFileEmitter = await pendingAnalysis;
+      const analysis = await pendingAnalysis;
 
-      return innerFileEmitter(file);
+      if ('errorMessage' in analysis) {
+        throw new Error(analysis.errorMessage);
+      }
+
+      return analysis.emitter(file);
     };
 
     return {
@@ -703,12 +714,8 @@ export class AngularWebpackPlugin {
 
       onAfterEmit?.(sourceFile);
 
-      let hash;
-      if (content !== undefined && this.watchMode) {
-        // Capture emit history info for Angular rebuild analysis
-        hash = hashContent(content);
-        this.fileEmitHistory.set(filePath, { length: content.length, hash });
-      }
+      // Capture emit history info for Angular rebuild analysis
+      const hash = content ? (await this.addFileEmitHistory(filePath, content)).hash : undefined;
 
       const dependencies = [
         ...(this.fileDependencies.get(filePath) || []),
@@ -731,24 +738,38 @@ export class AngularWebpackPlugin {
     // this, a Function constructor is used to prevent TypeScript from changing the dynamic import.
     // Once TypeScript provides support for keeping the dynamic import this workaround can
     // be dropped.
-    const compilerCliModule = await new Function(`return import('@angular/compiler-cli');`)();
-    let compilerNgccModule;
-    try {
-      compilerNgccModule = await new Function(`return import('@angular/compiler-cli/ngcc');`)();
-    } catch {
-      // If the `exports` field entry is not present then try the file directly.
-      // TODO_ESM: This try/catch can be removed once the `exports` field is present in `@angular/compiler-cli`
-      compilerNgccModule = await new Function(
-        `return import('@angular/compiler-cli/ngcc/index.js');`,
-      )();
+    this.compilerCliModule = await new Function(`return import('@angular/compiler-cli');`)();
+    this.compilerNgccModule = await new Function(`return import('@angular/compiler-cli/ngcc');`)();
+  }
+
+  private async addFileEmitHistory(
+    filePath: string,
+    content: string,
+  ): Promise<FileEmitHistoryItem> {
+    assert.ok(this.webpackCreateHash, 'File emitter is used prior to Webpack compilation');
+
+    const historyData: FileEmitHistoryItem = {
+      length: content.length,
+      hash: this.webpackCreateHash('xxhash64').update(content).digest() as Uint8Array,
+    };
+
+    if (this.webpackCache) {
+      const history = await this.getFileEmitHistory(filePath);
+      if (!history || Buffer.compare(history.hash, historyData.hash) !== 0) {
+        // Hash doesn't match or item doesn't exist.
+        await this.webpackCache.storePromise(filePath, null, historyData);
+      }
+    } else if (this.watchMode) {
+      // The in memory file emit history is only required during watch mode.
+      this.fileEmitHistory.set(filePath, historyData);
     }
-    // If it is not ESM then the functions needed will be stored in the `default` property.
-    // TODO_ESM: This conditional can be removed when `@angular/compiler-cli` is ESM only.
-    this.compilerCliModule = compilerCliModule.readConfiguration
-      ? compilerCliModule
-      : compilerCliModule.default;
-    this.compilerNgccModule = compilerNgccModule.process
-      ? compilerNgccModule
-      : compilerNgccModule.default;
+
+    return historyData;
+  }
+
+  private async getFileEmitHistory(filePath: string): Promise<FileEmitHistoryItem | undefined> {
+    return this.webpackCache
+      ? this.webpackCache.getPromise<FileEmitHistoryItem | undefined>(filePath, null)
+      : this.fileEmitHistory.get(filePath);
   }
 }

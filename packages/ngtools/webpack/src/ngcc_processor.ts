@@ -73,15 +73,6 @@ export class NgccProcessor {
     const runHashBasePath = path.join(this._nodeModulesDirectory, '.cli-ngcc');
     const projectBasePath = path.join(this._nodeModulesDirectory, '..');
     try {
-      let lockData;
-      let lockFile = 'yarn.lock';
-      try {
-        lockData = readFileSync(path.join(projectBasePath, lockFile));
-      } catch {
-        lockFile = 'package-lock.json';
-        lockData = readFileSync(path.join(projectBasePath, lockFile));
-      }
-
       let ngccConfigData;
       try {
         ngccConfigData = readFileSync(path.join(projectBasePath, 'ngcc.config.js'));
@@ -91,11 +82,12 @@ export class NgccProcessor {
 
       const relativeTsconfigPath = path.relative(projectBasePath, this.tsConfigPath);
       const tsconfigData = readFileSync(this.tsConfigPath);
+      const { lockFileData, lockFilePath } = this.findPackageManagerLockFile(projectBasePath);
 
       // Generate a hash that represents the state of the package lock file and used tsconfig
       const runHash = createHash('sha256')
-        .update(lockData)
-        .update(lockFile)
+        .update(lockFileData)
+        .update(lockFilePath)
         .update(ngccConfigData)
         .update(tsconfigData)
         .update(relativeTsconfigPath)
@@ -120,14 +112,6 @@ export class NgccProcessor {
     const timeLabel = 'NgccProcessor.process';
     time(timeLabel);
 
-    // Temporary workaround during transition to ESM-only @angular/compiler-cli
-    // TODO_ESM: This workaround should be removed prior to the final release of v13
-    //       and replaced with only `this.compilerNgcc.ngccMainFilePath`.
-    const ngccExecutablePath =
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (this.compilerNgcc as any).ngccMainFilePath ??
-      require.resolve('@angular/compiler-cli/ngcc/main-ngcc.js');
-
     // We spawn instead of using the API because:
     // - NGCC Async uses clustering which is problematic when used via the API which means
     // that we cannot setup multiple cluster masters with different options.
@@ -136,7 +120,7 @@ export class NgccProcessor {
     const { status, error } = spawnSync(
       process.execPath,
       [
-        ngccExecutablePath,
+        this.compilerNgcc.ngccMainFilePath,
         '--source' /** basePath */,
         this._nodeModulesDirectory,
         '--properties' /** propertiesToConsider */,
@@ -255,6 +239,24 @@ export class NgccProcessor {
     }
 
     throw new Error(`Cannot locate the 'node_modules' directory.`);
+  }
+
+  private findPackageManagerLockFile(projectBasePath: string): {
+    lockFilePath: string;
+    lockFileData: Buffer;
+  } {
+    for (const lockFile of ['yarn.lock', 'pnpm-lock.yaml', 'package-lock.json']) {
+      const lockFilePath = path.join(projectBasePath, lockFile);
+
+      try {
+        return {
+          lockFilePath,
+          lockFileData: readFileSync(lockFilePath),
+        };
+      } catch {}
+    }
+
+    throw new Error('Cannot locate a package manager lock file.');
   }
 }
 

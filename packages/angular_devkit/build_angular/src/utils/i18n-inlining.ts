@@ -23,6 +23,7 @@ function emittedFilesToInlineOptions(
   outputPath: string,
   es5: boolean,
   missingTranslation: 'error' | 'warning' | 'ignore' | undefined,
+  context: BuilderContext,
 ): { options: InlineOptions[]; originalFiles: string[] } {
   const options: InlineOptions[] = [];
   const originalFiles: string[] = [];
@@ -56,6 +57,8 @@ function emittedFilesToInlineOptions(
       }
     }
 
+    context.logger.debug(`i18n file queued for processing: ${action.filename}`);
+
     options.push(action);
   }
 
@@ -86,9 +89,12 @@ export async function i18nInlineEmittedFiles(
       baseOutputPath,
       es5,
       missingTranslation,
+      context,
     );
 
     for await (const result of executor.inlineAll(options)) {
+      context.logger.debug(`i18n file processed: ${result.file}`);
+
       for (const diagnostic of result.diagnostics) {
         spinner.stop();
         if (diagnostic.type === 'error') {

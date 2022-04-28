@@ -197,7 +197,6 @@ function restoreFormValues(oldInputs: any[], oldOptions: any[]): void {
         case 'date':
         case 'datetime-local':
         case 'email':
-        case 'file':
         case 'hidden':
         case 'month':
         case 'number':
@@ -211,6 +210,10 @@ function restoreFormValues(oldInputs: any[], oldOptions: any[]): void {
         case 'url':
         case 'week':
           newElement.value = oldElement.value;
+          break;
+        case 'file':
+          // Ignored due: Uncaught DOMException: Failed to set the 'value' property on 'HTMLInputElement':
+          // This input element accepts a filename, which may only be programmatically set to the empty string.
           break;
         default:
           console.warn('[NG HMR] Unknown input type ' + oldElement.type + '.');

@@ -12,12 +12,14 @@ import {
   AssetPatternClass,
   Budget,
   CrossOrigin,
-  ExtraEntryPoint,
-  I18NMissingTranslation,
+  I18NTranslation,
   IndexUnion,
   InlineStyleLanguage,
   Localize,
+  OutputHashing,
+  ScriptElement,
   SourceMapClass,
+  StyleElement,
 } from '../builders/browser/schema';
 import { Schema as DevServerSchema } from '../builders/dev-server/schema';
 import { NormalizedCachedOptions } from './normalize-cache';
@@ -38,17 +40,16 @@ export interface BuildOptions {
   verbose?: boolean;
   progress?: boolean;
   localize?: Localize;
-  i18nMissingTranslation?: I18NMissingTranslation;
+  i18nMissingTranslation?: I18NTranslation;
   bundleDependencies?: boolean;
   externalDependencies?: string[];
   watch?: boolean;
-  outputHashing?: string;
+  outputHashing?: OutputHashing;
   poll?: number;
   index?: IndexUnion;
   deleteOutputPath?: boolean;
   preserveSymlinks?: boolean;
   extractLicenses?: boolean;
-  showCircularDependencies?: boolean;
   buildOptimizer?: boolean;
   namedChunks?: boolean;
   crossOrigin?: CrossOrigin;
@@ -61,19 +62,17 @@ export interface BuildOptions {
   polyfills?: string;
   budgets: Budget[];
   assets: AssetPatternClass[];
-  scripts: ExtraEntryPoint[];
-  styles: ExtraEntryPoint[];
+  scripts: ScriptElement[];
+  styles: StyleElement[];
   stylePreprocessorOptions?: { includePaths: string[] };
   platform?: 'browser' | 'server';
   fileReplacements: NormalizedFileReplacement[];
   inlineStyleLanguage?: InlineStyleLanguage;
   allowedCommonJsDependencies?: string[];
   cache: NormalizedCachedOptions;
-}
-
-export interface WebpackTestOptions extends BuildOptions {
   codeCoverage?: boolean;
   codeCoverageExclude?: string[];
+  supportedBrowsers: string[];
 }
 
 export interface WebpackDevServerOptions
@@ -89,4 +88,5 @@ export interface WebpackConfigOptions<T = BuildOptions> {
   tsConfig: ParsedConfiguration;
   tsConfigPath: string;
   scriptTarget: import('typescript').ScriptTarget;
+  projectName: string;
 }

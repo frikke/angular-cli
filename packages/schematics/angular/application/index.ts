@@ -6,12 +6,11 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import { JsonObject, join, normalize, strings } from '@angular-devkit/core';
+import { JsonObject, join, normalize } from '@angular-devkit/core';
 import {
   MergeStrategy,
   Rule,
   SchematicContext,
-  SchematicsException,
   Tree,
   apply,
   applyTemplates,
@@ -21,6 +20,7 @@ import {
   move,
   noop,
   schematic,
+  strings,
   url,
 } from '@angular-devkit/schematics';
 import { NodePackageInstallTask } from '@angular-devkit/schematics/tasks';
@@ -28,7 +28,6 @@ import { Schema as ComponentOptions } from '../component/schema';
 import { NodeDependencyType, addPackageJsonDependency } from '../utility/dependencies';
 import { latestVersions } from '../utility/latest-versions';
 import { relativePathToWorkspaceRoot } from '../utility/paths';
-import { validateProjectName } from '../utility/validation';
 import { getWorkspace, updateWorkspace } from '../utility/workspace';
 import { Builders, ProjectType } from '../utility/workspace-models';
 import { Schema as ApplicationOptions, Style } from './schema';
@@ -61,7 +60,11 @@ function addDependenciesToPackageJson(options: ApplicationOptions) {
   };
 }
 
-function addAppToWorkspaceFile(options: ApplicationOptions, appDir: string): Rule {
+function addAppToWorkspaceFile(
+  options: ApplicationOptions,
+  appDir: string,
+  folderName: string,
+): Rule {
   let projectRoot = appDir;
   if (projectRoot) {
     projectRoot += '/';
@@ -90,14 +93,23 @@ function addAppToWorkspaceFile(options: ApplicationOptions, appDir: string): Rul
   }
 
   if (options.skipTests || options.minimal) {
-    ['class', 'component', 'directive', 'guard', 'interceptor', 'pipe', 'service'].forEach(
-      (type) => {
-        if (!(`@schematics/angular:${type}` in schematics)) {
-          schematics[`@schematics/angular:${type}`] = {};
-        }
-        (schematics[`@schematics/angular:${type}`] as JsonObject).skipTests = true;
-      },
-    );
+    const schematicsWithTests = [
+      'class',
+      'component',
+      'directive',
+      'guard',
+      'interceptor',
+      'pipe',
+      'resolver',
+      'service',
+    ];
+
+    schematicsWithTests.forEach((type) => {
+      if (!(`@schematics/angular:${type}` in schematics)) {
+        schematics[`@schematics/angular:${type}`] = {};
+      }
+      (schematics[`@schematics/angular:${type}`] as JsonObject).skipTests = true;
+    });
   }
 
   if (options.strict) {
@@ -151,7 +163,7 @@ function addAppToWorkspaceFile(options: ApplicationOptions, appDir: string): Rul
         builder: Builders.Browser,
         defaultConfiguration: 'production',
         options: {
-          outputPath: `dist/${options.name}`,
+          outputPath: `dist/${folderName}`,
           index: `${sourceRoot}/index.html`,
           main: `${sourceRoot}/main.ts`,
           polyfills: `${sourceRoot}/polyfills.ts`,
@@ -220,10 +232,6 @@ function addAppToWorkspaceFile(options: ApplicationOptions, appDir: string): Rul
   };
 
   return updateWorkspace((workspace) => {
-    if (workspace.projects.size === 0) {
-      workspace.extensions.defaultProject = options.name;
-    }
-
     workspace.projects.add({
       name: options.name,
       ...project,
@@ -238,12 +246,6 @@ function minimalPathFilter(path: string): boolean {
 
 export default function (options: ApplicationOptions): Rule {
   return async (host: Tree) => {
-    if (!options.name) {
-      throw new SchematicsException(`Invalid options, "name" is required.`);
-    }
-
-    validateProjectName(options.name);
-
     const appRootSelector = `${options.prefix}-root`;
     const componentOptions: Partial<ComponentOptions> = !options.minimal
       ? {
@@ -264,13 +266,20 @@ export default function (options: ApplicationOptions): Rule {
     const workspace = await getWorkspace(host);
     const newProjectRoot = (workspace.extensions.newProjectRoot as string | undefined) || '';
     const isRootApp = options.projectRoot !== undefined;
+
+    // If scoped project (i.e. "@foo/bar"), convert dir to "foo/bar".
+    let folderName = options.name.startsWith('@') ? options.name.slice(1) : options.name;
+    if (/[A-Z]/.test(folderName)) {
+      folderName = strings.dasherize(folderName);
+    }
+
     const appDir = isRootApp
       ? normalize(options.projectRoot || '')
-      : join(normalize(newProjectRoot), strings.dasherize(options.name));
+      : join(normalize(newProjectRoot), folderName);
     const sourceDir = `${appDir}/src/app`;
 
     return chain([
-      addAppToWorkspaceFile(options, appDir),
+      addAppToWorkspaceFile(options, appDir, folderName),
       mergeWith(
         apply(url('./files'), [
           options.minimal ? filter(minimalPathFilter) : noop(),
@@ -280,6 +289,7 @@ export default function (options: ApplicationOptions): Rule {
             relativePathToWorkspaceRoot: relativePathToWorkspaceRoot(appDir),
             appName: options.name,
             isRootApp,
+            folderName,
           }),
           move(appDir),
         ]),

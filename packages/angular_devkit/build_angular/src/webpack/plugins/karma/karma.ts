@@ -10,14 +10,13 @@
 // TODO: cleanup this file, it's copied as is from Angular CLI.
 import * as http from 'http';
 import * as path from 'path';
-import * as glob from 'glob';
 import webpack from 'webpack';
-const webpackDevMiddleware = require('webpack-dev-middleware');
+import webpackDevMiddleware from 'webpack-dev-middleware';
 
 import { statsErrorsToString } from '../../utils/stats';
 import { createConsoleLogger } from '@angular-devkit/core/node';
 import { logging } from '@angular-devkit/core';
-import { WebpackTestOptions } from '../../../utils/build-options';
+import { BuildOptions } from '../../../utils/build-options';
 import { normalizeSourceMaps } from '../../../utils/index';
 
 const KARMA_APPLICATION_PATH = '_karma_webpack_';
@@ -28,29 +27,6 @@ let webpackMiddleware: any;
 let successCb: () => void;
 let failureCb: () => void;
 
-// Add files to the Karma files array.
-function addKarmaFiles(files: any[], newFiles: any[], prepend = false) {
-  const defaults = {
-    included: true,
-    served: true,
-    watched: true,
-  };
-
-  const processedFiles = newFiles
-    // Remove globs that do not match any files, otherwise Karma will show a warning for these.
-    .filter((file) => glob.sync(file.pattern, { nodir: true }).length != 0)
-    // Fill in pattern properties with defaults.
-    .map((file) => ({ ...defaults, ...file }));
-
-  // It's important to not replace the array, because
-  // karma already has a reference to the existing array.
-  if (prepend) {
-    files.unshift(...processedFiles);
-  } else {
-    files.push(...processedFiles);
-  }
-}
-
 const init: any = (config: any, emitter: any) => {
   if (!config.buildWebpack) {
     throw new Error(
@@ -58,7 +34,7 @@ const init: any = (config: any, emitter: any) => {
         ` be used from within Angular CLI and will not work correctly outside of it.`,
     );
   }
-  const options = config.buildWebpack.options as WebpackTestOptions;
+  const options = config.buildWebpack.options as BuildOptions;
   const logger: logging.Logger = config.buildWebpack.logger || createConsoleLogger();
   successCb = config.buildWebpack.successCb;
   failureCb = config.buildWebpack.failureCb;
@@ -73,13 +49,14 @@ const init: any = (config: any, emitter: any) => {
     const smsPath = path.dirname(require.resolve('source-map-support'));
     const ksmsPath = path.dirname(require.resolve('karma-source-map-support'));
 
-    addKarmaFiles(
-      config.files,
-      [
-        { pattern: path.join(smsPath, 'browser-source-map-support.js'), watched: false },
-        { pattern: path.join(ksmsPath, 'client.js'), watched: false },
-      ],
-      true,
+    config.files.unshift(
+      {
+        pattern: path.join(smsPath, 'browser-source-map-support.js'),
+        included: true,
+        served: true,
+        watched: false,
+      },
+      { pattern: path.join(ksmsPath, 'client.js'), included: true, served: true, watched: false },
     );
   }
 
@@ -169,6 +146,12 @@ const init: any = (config: any, emitter: any) => {
   compiler.hooks.watchRun.tapAsync('karma', (_: any, callback: () => void) => handler(callback));
   compiler.hooks.run.tapAsync('karma', (_: any, callback: () => void) => handler(callback));
 
+  webpackMiddleware = webpackDevMiddleware(compiler, webpackMiddlewareConfig);
+  emitter.on('exit', (done: any) => {
+    webpackMiddleware.close();
+    done();
+  });
+
   function unblock() {
     isBlocked = false;
     blocked.forEach((cb) => cb());
@@ -176,22 +159,29 @@ const init: any = (config: any, emitter: any) => {
   }
 
   let lastCompilationHash: string | undefined;
-  compiler.hooks.done.tap('karma', (stats) => {
-    if (stats.hasErrors()) {
-      lastCompilationHash = undefined;
-    } else if (stats.hash != lastCompilationHash) {
-      // Refresh karma only when there are no webpack errors, and if the compilation changed.
-      lastCompilationHash = stats.hash;
-      emitter.refreshFiles();
-    }
-    unblock();
-  });
+  let isFirstRun = true;
 
-  webpackMiddleware = webpackDevMiddleware(compiler, webpackMiddlewareConfig);
+  return new Promise<void>((resolve) => {
+    compiler.hooks.done.tap('karma', (stats) => {
+      if (isFirstRun) {
+        // This is needed to block Karma from launching browsers before Webpack writes the assets in memory.
+        // See the below:
+        // https://github.com/karma-runner/karma-chrome-launcher/issues/154#issuecomment-986661937
+        // https://github.com/angular/angular-cli/issues/22495
+        isFirstRun = false;
+        resolve();
+      }
 
-  emitter.on('exit', (done: any) => {
-    webpackMiddleware.close();
-    done();
+      if (stats.hasErrors()) {
+        lastCompilationHash = undefined;
+      } else if (stats.hash != lastCompilationHash) {
+        // Refresh karma only when there are no webpack errors, and if the compilation changed.
+        lastCompilationHash = stats.hash;
+        emitter.refreshFiles();
+      }
+
+      unblock();
+    });
   });
 };
 

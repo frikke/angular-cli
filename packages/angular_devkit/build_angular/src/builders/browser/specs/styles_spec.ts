@@ -317,7 +317,7 @@ describe('Browser Builder styles', () => {
 
     const overrides = { optimization: true };
     const { files } = await browserBuild(architect, host, target, overrides);
-    expect(await files['styles.css']).not.toContain('/*! important-comment */');
+    expect(await files['styles.css']).toContain('/*! important-comment */');
   });
 
   it('supports autoprefixer grid comments in SCSS with optimization true', async () => {
@@ -513,6 +513,8 @@ describe('Browser Builder styles', () => {
 
     const run2 = await architect.scheduleTarget(target, overrides);
     await expectAsync(run2.result).toBeResolvedTo(jasmine.objectContaining({ success: false }));
+    await run2.stop();
+    await run.stop();
   });
 
   it('supports Protocol-relative Url', async () => {
@@ -653,6 +655,28 @@ describe('Browser Builder styles', () => {
     });
 
     result = await browserBuild(architect, host, target, { optimization: true });
-    expect(await result.files['styles.css']).toContain('rgba(0,0,0,.149)');
+    expect(await result.files['styles.css']).toContain('rgba(0,0,0,.15)');
+  });
+
+  it('works when using the same css file in `styles` and `stylesUrl`', async () => {
+    host.writeMultipleFiles({
+      'src/styles.css': `
+        div { color: red }
+      `,
+      './src/app/app.component.ts': `
+        import { Component } from '@angular/core';
+
+        @Component({
+          selector: 'app-root',
+          templateUrl: './app.component.html',
+          styleUrls: ['../styles.css']
+        })
+        export class AppComponent {
+          title = 'app';
+        }
+      `,
+    });
+
+    await browserBuild(architect, host, target, { styles: ['src/styles.css'] });
   });
 });

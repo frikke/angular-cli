@@ -8,7 +8,7 @@
 
 import { Observable, Subject, concat, of } from 'rxjs';
 import { finalize, ignoreElements, share, shareReplay, tap } from 'rxjs/operators';
-import { JsonValue } from '../../json';
+import { JsonObject, JsonValue, isJsonObject } from '../../json';
 import {
   JobDescription,
   JobHandler,
@@ -18,14 +18,12 @@ import {
   JobOutboundMessageKind,
 } from './api';
 
-const stableStringify = require('fast-json-stable-stringify');
-
 // eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace strategy {
   export type JobStrategy<
     A extends JsonValue = JsonValue,
     I extends JsonValue = JsonValue,
-    O extends JsonValue = JsonValue
+    O extends JsonValue = JsonValue,
   > = (
     handler: JobHandler<A, I, O>,
     options?: Partial<Readonly<JobDescription>>,
@@ -37,7 +35,7 @@ export namespace strategy {
   export function serialize<
     A extends JsonValue = JsonValue,
     I extends JsonValue = JsonValue,
-    O extends JsonValue = JsonValue
+    O extends JsonValue = JsonValue,
   >(): JobStrategy<A, I, O> {
     let latest: Observable<JobOutboundMessage<O>> = of();
 
@@ -61,12 +59,12 @@ export namespace strategy {
   /**
    * Creates a JobStrategy that will always reuse a running job, and restart it if the job ended.
    * @param replayMessages Replay ALL messages if a job is reused, otherwise just hook up where it
-   *        is.
+   * is.
    */
   export function reuse<
     A extends JsonValue = JsonValue,
     I extends JsonValue = JsonValue,
-    O extends JsonValue = JsonValue
+    O extends JsonValue = JsonValue,
   >(replayMessages = false): JobStrategy<A, I, O> {
     let inboundBus = new Subject<JobInboundMessage<I>>();
     let run: Observable<JobOutboundMessage<O>> | null = null;
@@ -116,18 +114,28 @@ export namespace strategy {
   /**
    * Creates a JobStrategy that will reuse a running job if the argument matches.
    * @param replayMessages Replay ALL messages if a job is reused, otherwise just hook up where it
-   *        is.
+   * is.
    */
   export function memoize<
     A extends JsonValue = JsonValue,
     I extends JsonValue = JsonValue,
-    O extends JsonValue = JsonValue
+    O extends JsonValue = JsonValue,
   >(replayMessages = false): JobStrategy<A, I, O> {
     const runs = new Map<string, Observable<JobOutboundMessage<O>>>();
 
     return (handler, options) => {
       const newHandler = (argument: A, context: JobHandlerContext<A, I, O>) => {
-        const argumentJson = stableStringify(argument);
+        const argumentJson = JSON.stringify(
+          isJsonObject(argument)
+            ? Object.keys(argument)
+                .sort()
+                .reduce((result, key) => {
+                  result[key] = argument[key];
+
+                  return result;
+                }, {} as JsonObject)
+            : argument,
+        );
         const maybeJob = runs.get(argumentJson);
 
         if (maybeJob) {

@@ -6,11 +6,10 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import { join, normalize, strings } from '@angular-devkit/core';
+import { join, normalize } from '@angular-devkit/core';
 import {
   Rule,
   SchematicContext,
-  SchematicsException,
   Tree,
   apply,
   applyTemplates,
@@ -19,6 +18,7 @@ import {
   move,
   noop,
   schematic,
+  strings,
   url,
 } from '@angular-devkit/schematics';
 import { NodePackageInstallTask } from '@angular-devkit/schematics/tasks';
@@ -26,7 +26,6 @@ import { NodeDependencyType, addPackageJsonDependency } from '../utility/depende
 import { JSONFile } from '../utility/json-file';
 import { latestVersions } from '../utility/latest-versions';
 import { relativePathToWorkspaceRoot } from '../utility/paths';
-import { validateProjectName } from '../utility/validation';
 import { getWorkspace, updateWorkspace } from '../utility/workspace';
 import { Builders, ProjectType } from '../utility/workspace-models';
 import { Schema as LibraryOptions } from './schema';
@@ -84,10 +83,6 @@ function addLibToWorkspaceFile(
   projectName: string,
 ): Rule {
   return updateWorkspace((workspace) => {
-    if (workspace.projects.size === 0) {
-      workspace.extensions.defaultProject = projectName;
-    }
-
     workspace.projects.add({
       name: projectName,
       root: projectRoot,
@@ -125,28 +120,23 @@ function addLibToWorkspaceFile(
 
 export default function (options: LibraryOptions): Rule {
   return async (host: Tree) => {
-    if (!options.name) {
-      throw new SchematicsException(`Invalid options, "name" is required.`);
-    }
     const prefix = options.prefix;
 
-    validateProjectName(options.name);
-
     // If scoped project (i.e. "@foo/bar"), convert projectDir to "foo/bar".
-    const projectName = options.name;
-    const packageName = strings.dasherize(projectName);
-    let scopeName = null;
+    const packageName = options.name;
     if (/^@.*\/.*/.test(options.name)) {
-      const [scope, name] = options.name.split('/');
-      scopeName = scope.replace(/^@/, '');
+      const [, name] = options.name.split('/');
       options.name = name;
     }
 
     const workspace = await getWorkspace(host);
     const newProjectRoot = (workspace.extensions.newProjectRoot as string | undefined) || '';
 
-    const scopeFolder = scopeName ? strings.dasherize(scopeName) + '/' : '';
-    const folderName = `${scopeFolder}${strings.dasherize(options.name)}`;
+    let folderName = packageName.startsWith('@') ? packageName.slice(1) : packageName;
+    if (/[A-Z]/.test(folderName)) {
+      folderName = strings.dasherize(folderName);
+    }
+
     const projectRoot = join(normalize(newProjectRoot), folderName);
     const distRoot = `dist/${folderName}`;
     const pathImportLib = `${distRoot}/${folderName.replace('/', '-')}`;
@@ -170,7 +160,7 @@ export default function (options: LibraryOptions): Rule {
 
     return chain([
       mergeWith(templateSource),
-      addLibToWorkspaceFile(options, projectRoot, projectName),
+      addLibToWorkspaceFile(options, projectRoot, packageName),
       options.skipPackageJson ? noop() : addDependenciesToPackageJson(),
       options.skipTsConfig ? noop() : updateTsConfig(packageName, pathImportLib, distRoot),
       schematic('module', {
@@ -178,7 +168,7 @@ export default function (options: LibraryOptions): Rule {
         commonModule: false,
         flat: true,
         path: sourceDir,
-        project: projectName,
+        project: packageName,
       }),
       schematic('component', {
         name: options.name,
@@ -188,13 +178,13 @@ export default function (options: LibraryOptions): Rule {
         flat: true,
         path: sourceDir,
         export: true,
-        project: projectName,
+        project: packageName,
       }),
       schematic('service', {
         name: options.name,
         flat: true,
         path: sourceDir,
-        project: projectName,
+        project: packageName,
       }),
       (_tree: Tree, context: SchematicContext) => {
         if (!options.skipPackageJson && !options.skipInstall) {

@@ -7,13 +7,13 @@
  */
 
 import * as ts from 'typescript';
-import { DirectAngularResourceLoaderPath } from '../loaders/direct-resource';
 import { InlineAngularResourceLoaderPath } from '../loaders/inline-resource';
+
+export const NG_COMPONENT_RESOURCE_QUERY = 'ngResource';
 
 export function replaceResources(
   shouldTransform: (fileName: string) => boolean,
   getTypeChecker: () => ts.TypeChecker,
-  directTemplateLoading = false,
   inlineStyleFileExtension?: string,
 ): ts.TransformerFactory<ts.SourceFile> {
   return (context: ts.TransformationContext) => {
@@ -30,7 +30,6 @@ export function replaceResources(
                 nodeFactory,
                 node,
                 typeChecker,
-                directTemplateLoading,
                 resourceImportDeclarations,
                 moduleKind,
                 inlineStyleFileExtension,
@@ -81,7 +80,6 @@ function visitDecorator(
   nodeFactory: ts.NodeFactory,
   node: ts.Decorator,
   typeChecker: ts.TypeChecker,
-  directTemplateLoading: boolean,
   resourceImportDeclarations: ts.ImportDeclaration[],
   moduleKind?: ts.ModuleKind,
   inlineStyleFileExtension?: string,
@@ -111,7 +109,6 @@ function visitDecorator(
           nodeFactory,
           node,
           styleReplacements,
-          directTemplateLoading,
           resourceImportDeclarations,
           moduleKind,
           inlineStyleFileExtension,
@@ -144,9 +141,8 @@ function visitComponentMetadata(
   nodeFactory: ts.NodeFactory,
   node: ts.ObjectLiteralElementLike,
   styleReplacements: ts.Expression[],
-  directTemplateLoading: boolean,
   resourceImportDeclarations: ts.ImportDeclaration[],
-  moduleKind?: ts.ModuleKind,
+  moduleKind: ts.ModuleKind = ts.ModuleKind.ES2015,
   inlineStyleFileExtension?: string,
 ): ts.ObjectLiteralElementLike | undefined {
   if (!ts.isPropertyAssignment(node) || ts.isComputedPropertyName(node.name)) {
@@ -159,10 +155,7 @@ function visitComponentMetadata(
       return undefined;
 
     case 'templateUrl':
-      const url = getResourceUrl(
-        node.initializer,
-        directTemplateLoading ? `!${DirectAngularResourceLoaderPath}!` : '',
-      );
+      const url = getResourceUrl(node.initializer);
       if (!url) {
         return node;
       }
@@ -199,9 +192,12 @@ function visitComponentMetadata(
           if (inlineStyleFileExtension) {
             const data = Buffer.from(node.text).toString('base64');
             const containingFile = node.getSourceFile().fileName;
-            url = `${containingFile}.${inlineStyleFileExtension}!=!${InlineAngularResourceLoaderPath}?data=${encodeURIComponent(
-              data,
-            )}!${containingFile}`;
+            // app.component.ts.css?ngResource!=!@ngtools/webpack/src/loaders/inline-resource.js?data=...!app.component.ts
+            url =
+              `${containingFile}.${inlineStyleFileExtension}?${NG_COMPONENT_RESOURCE_QUERY}` +
+              `!=!${InlineAngularResourceLoaderPath}?data=${encodeURIComponent(
+                data,
+              )}!${containingFile}`;
           } else {
             return nodeFactory.createStringLiteral(node.text);
           }
@@ -229,13 +225,13 @@ function visitComponentMetadata(
   }
 }
 
-export function getResourceUrl(node: ts.Node, loader = ''): string | null {
+export function getResourceUrl(node: ts.Node): string | null {
   // only analyze strings
   if (!ts.isStringLiteral(node) && !ts.isNoSubstitutionTemplateLiteral(node)) {
     return null;
   }
 
-  return `${loader}${/^\.?\.\//.test(node.text) ? '' : './'}${node.text}`;
+  return `${/^\.?\.\//.test(node.text) ? '' : './'}${node.text}?${NG_COMPONENT_RESOURCE_QUERY}`;
 }
 
 function isComponentDecorator(node: ts.Node, typeChecker: ts.TypeChecker): node is ts.Decorator {
@@ -255,14 +251,15 @@ function createResourceImport(
   nodeFactory: ts.NodeFactory,
   url: string,
   resourceImportDeclarations: ts.ImportDeclaration[],
-  moduleKind = ts.ModuleKind.ES2015,
+  moduleKind: ts.ModuleKind,
 ): ts.Identifier | ts.Expression {
   const urlLiteral = nodeFactory.createStringLiteral(url);
 
   if (moduleKind < ts.ModuleKind.ES2015) {
-    return nodeFactory.createPropertyAccessExpression(
-      nodeFactory.createCallExpression(nodeFactory.createIdentifier('require'), [], [urlLiteral]),
-      'default',
+    return nodeFactory.createCallExpression(
+      nodeFactory.createIdentifier('require'),
+      [],
+      [urlLiteral],
     );
   } else {
     const importName = nodeFactory.createIdentifier(

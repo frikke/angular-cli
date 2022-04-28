@@ -4,12 +4,7 @@
 # found in the LICENSE file at https://angular.io/license
 
 load("@npm//@bazel/jasmine:index.bzl", "jasmine_node_test")
-load("//tools:defaults.bzl", "ts_library")
-
-# @external_begin
-load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
-load("@build_bazel_rules_nodejs//:index.bzl", "pkg_npm")
-# @external_end
+load("//tools:defaults.bzl", "pkg_npm", "ts_library")
 
 licenses(["notice"])  # MIT
 
@@ -30,9 +25,9 @@ ts_library(
     deps = [
         "//packages/angular_devkit/core",
         "//packages/angular_devkit/core/node",
-        "@npm//@types/minimist",
         "@npm//@types/node",
         "@npm//@types/pidusage",
+        "@npm//@types/yargs-parser",
         "@npm//ansi-colors",
         "@npm//rxjs",
     ],
@@ -65,28 +60,35 @@ jasmine_node_test(
     srcs = [":benchmark_test_lib"],
     deps = [
         "@npm//jasmine",
-        "@npm//minimist",
         "@npm//pidtree",
         "@npm//pidusage",
         "@npm//source-map",
-        "@npm//temp",
         "@npm//tree-kill",
+        "@npm//yargs-parser",
     ],
 )
 
-# @external_begin
+genrule(
+    name = "license",
+    srcs = ["//:LICENSE"],
+    outs = ["LICENSE"],
+    cmd = "cp $(execpath //:LICENSE) $@",
+)
+
 pkg_npm(
     name = "npm_package",
+    pkg_deps = [
+        "//packages/angular_devkit/core:package.json",
+    ],
     deps = [
+        "src/test/exit-code-one.js",
+        "src/test/fibonacci.js",
+        "src/test/test-script.js",
+        "src/test/watch-test-cmd.js",
+        "src/test/watch-test-file.txt",
+        "src/test/watch-test-script.js",
+        ":README.md",
         ":benchmark",
+        ":license",
     ],
 )
-
-pkg_tar(
-    name = "npm_package_archive",
-    srcs = [":npm_package"],
-    extension = "tar.gz",
-    strip_prefix = "./npm_package",
-    tags = ["manual"],
-)
-# @external_end

@@ -6,7 +6,7 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-import { join, normalize, strings } from '@angular-devkit/core';
+import { join, normalize } from '@angular-devkit/core';
 import {
   Rule,
   SchematicsException,
@@ -16,10 +16,12 @@ import {
   chain,
   mergeWith,
   move,
+  strings,
   url,
 } from '@angular-devkit/schematics';
 import { NodeDependencyType, addPackageJsonDependency } from '../utility/dependencies';
 import { JSONFile } from '../utility/json-file';
+import { latestVersions } from '../utility/latest-versions';
 import { relativePathToWorkspaceRoot } from '../utility/paths';
 import { getWorkspace, updateWorkspace } from '../utility/workspace';
 import { Builders } from '../utility/workspace-models';
@@ -92,6 +94,11 @@ export default function (options: E2eOptions): Rule {
             type: NodeDependencyType.Dev,
             name: 'ts-node',
             version: '~9.1.1',
+          },
+          {
+            type: NodeDependencyType.Dev,
+            name: '@types/node',
+            version: latestVersions['@types/node'],
           },
         ].forEach((dep) => addPackageJsonDependency(host, dep)),
       addScriptsToPackageJson(),

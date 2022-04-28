@@ -1,6 +1,6 @@
 {
   "name": "@angular/cli",
-  "version": "0.0.0",
+  "version": "0.0.0-PLACEHOLDER",
   "description": "CLI tool for Angular",
   "main": "lib/cli/index.js",
   "bin": {
@@ -11,9 +11,6 @@
     "angular-cli",
     "Angular CLI"
   ],
-  "scripts": {
-    "postinstall": "node ./bin/postinstall/script.js"
-  },
   "repository": {
     "type": "git",
     "url": "https://github.com/angular/angular-cli.git"
@@ -25,25 +22,26 @@
   },
   "homepage": "https://github.com/angular/angular-cli",
   "dependencies": {
-    "@angular-devkit/architect": "0.0.0",
-    "@angular-devkit/core": "0.0.0",
-    "@angular-devkit/schematics": "0.0.0",
-    "@schematics/angular": "0.0.0",
+    "@angular-devkit/architect": "0.0.0-EXPERIMENTAL-PLACEHOLDER",
+    "@angular-devkit/core": "0.0.0-PLACEHOLDER",
+    "@angular-devkit/schematics": "0.0.0-PLACEHOLDER",
+    "@schematics/angular": "0.0.0-PLACEHOLDER",
     "@yarnpkg/lockfile": "1.1.0",
     "ansi-colors": "4.1.1",
-    "debug": "4.3.2",
-    "ini": "2.0.0",
-    "inquirer": "8.2.0",
+    "debug": "4.3.4",
+    "ini": "3.0.0",
+    "inquirer": "8.2.2",
     "jsonc-parser": "3.0.0",
-    "npm-package-arg": "8.1.5",
-    "npm-pick-manifest": "6.1.1",
-    "open": "8.3.0",
+    "npm-package-arg": "9.0.2",
+    "npm-pick-manifest": "7.0.1",
+    "open": "8.4.0",
     "ora": "5.4.1",
-    "pacote": "12.0.0",
-    "resolve": "1.20.0",
-    "semver": "7.3.5",
+    "pacote": "13.1.1",
+    "resolve": "1.22.0",
+    "semver": "7.3.7",
     "symbol-observable": "4.0.0",
-    "uuid": "8.3.2"
+    "uuid": "8.3.2",
+    "yargs": "17.4.1"
   },
   "devDependencies": {
     "rxjs": "6.6.7"
@@ -51,12 +49,12 @@
   "ng-update": {
     "migrations": "@schematics/angular/migrations/migration-collection.json",
     "packageGroup": {
-      "@angular/cli": "0.0.0",
-      "@angular-devkit/architect": "0.0.0",
-      "@angular-devkit/build-angular": "0.0.0",
-      "@angular-devkit/build-webpack": "0.0.0",
-      "@angular-devkit/core": "0.0.0",
-      "@angular-devkit/schematics": "0.0.0"
+      "@angular/cli": "0.0.0-PLACEHOLDER",
+      "@angular-devkit/architect": "0.0.0-EXPERIMENTAL-PLACEHOLDER",
+      "@angular-devkit/build-angular": "0.0.0-PLACEHOLDER",
+      "@angular-devkit/build-webpack": "0.0.0-EXPERIMENTAL-PLACEHOLDER",
+      "@angular-devkit/core": "0.0.0-PLACEHOLDER",
+      "@angular-devkit/schematics": "0.0.0-PLACEHOLDER"
     }
   }
 }

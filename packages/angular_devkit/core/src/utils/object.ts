@@ -6,25 +6,11 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
-/** @deprecated Since v12.0, unused by the Angular tooling */
-export function mapObject<T, V>(
-  obj: { [k: string]: T },
-  mapper: (k: string, v: T) => V,
-): { [k: string]: V } {
-  return Object.keys(obj).reduce((acc: { [k: string]: V }, k: string) => {
-    acc[k] = mapper(k, obj[k]);
-
-    return acc;
-  }, {});
-}
-
 const copySymbol = Symbol();
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function deepCopy<T extends any>(value: T): T {
+export function deepCopy<T>(value: T): T {
   if (Array.isArray(value)) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (value.map((o: any) => deepCopy(o)) as unknown) as T;
+    return value.map((o) => deepCopy(o)) as unknown as T;
   } else if (value && typeof value === 'object') {
     const valueCasted = value as {
       [copySymbol]?: T;

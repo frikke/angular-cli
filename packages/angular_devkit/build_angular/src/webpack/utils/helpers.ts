@@ -6,9 +6,21 @@
  * found in the LICENSE file at https://angular.io/license
  */
 
+import type { ObjectPattern } from 'copy-webpack-plugin';
+import { createHash } from 'crypto';
+import { existsSync } from 'fs';
+import glob from 'glob';
 import * as path from 'path';
-import { Configuration, SourceMapDevToolPlugin } from 'webpack';
-import { ExtraEntryPoint, ExtraEntryPointClass } from '../../builders/browser/schema';
+import { ScriptTarget } from 'typescript';
+import type { Configuration, WebpackOptionsNormalized } from 'webpack';
+import {
+  AssetPatternClass,
+  OutputHashing,
+  ScriptElement,
+  StyleElement,
+} from '../../builders/browser/schema';
+import { WebpackConfigOptions } from '../../utils/build-options';
+import { VERSION } from '../../utils/package-version';
 
 export interface HashFormat {
   chunk: string;
@@ -17,31 +29,46 @@ export interface HashFormat {
   script: string;
 }
 
-export function getOutputHashFormat(option: string, length = 20): HashFormat {
-  const hashFormats: { [option: string]: HashFormat } = {
-    none: { chunk: '', extract: '', file: '', script: '' },
-    media: { chunk: '', extract: '', file: `.[hash:${length}]`, script: '' },
-    bundles: {
-      chunk: `.[chunkhash:${length}]`,
-      extract: `.[contenthash:${length}]`,
-      file: '',
-      script: `.[hash:${length}]`,
-    },
-    all: {
-      chunk: `.[chunkhash:${length}]`,
-      extract: `.[contenthash:${length}]`,
-      file: `.[hash:${length}]`,
-      script: `.[hash:${length}]`,
-    },
-  };
+export function getOutputHashFormat(outputHashing = OutputHashing.None, length = 20): HashFormat {
+  const hashTemplate = `.[contenthash:${length}]`;
 
-  return hashFormats[option] || hashFormats['none'];
+  switch (outputHashing) {
+    case 'media':
+      return {
+        chunk: '',
+        extract: '',
+        file: hashTemplate,
+        script: '',
+      };
+    case 'bundles':
+      return {
+        chunk: hashTemplate,
+        extract: hashTemplate,
+        file: '',
+        script: hashTemplate,
+      };
+    case 'all':
+      return {
+        chunk: hashTemplate,
+        extract: hashTemplate,
+        file: hashTemplate,
+        script: hashTemplate,
+      };
+    case 'none':
+    default:
+      return {
+        chunk: '',
+        extract: '',
+        file: '',
+        script: '',
+      };
+  }
 }
 
-export type NormalizedEntryPoint = Required<ExtraEntryPointClass>;
+export type NormalizedEntryPoint = Required<Exclude<ScriptElement | StyleElement, string>>;
 
 export function normalizeExtraEntryPoints(
-  extraEntryPoints: ExtraEntryPoint[],
+  extraEntryPoints: (ScriptElement | StyleElement)[],
   defaultBundleName: string,
 ): NormalizedEntryPoint[] {
   return extraEntryPoints.map((entry) => {
@@ -62,47 +89,6 @@ export function normalizeExtraEntryPoints(
 
     return { ...newEntry, inject, bundleName };
   });
-}
-
-export function getSourceMapDevTool(
-  scriptsSourceMap: boolean | undefined,
-  stylesSourceMap: boolean | undefined,
-  hiddenSourceMap = false,
-  inlineSourceMap = false,
-): SourceMapDevToolPlugin {
-  const include = [];
-  if (scriptsSourceMap) {
-    include.push(/js$/);
-  }
-
-  if (stylesSourceMap) {
-    include.push(/css$/);
-  }
-
-  return new SourceMapDevToolPlugin({
-    filename: inlineSourceMap ? undefined : '[file].map',
-    include,
-    // We want to set sourceRoot to  `webpack:///` for non
-    // inline sourcemaps as otherwise paths to sourcemaps will be broken in browser
-    // `webpack:///` is needed for Visual Studio breakpoints to work properly as currently
-    // there is no way to set the 'webRoot'
-    sourceRoot: 'webpack:///',
-    moduleFilenameTemplate: '[resource-path]',
-    append: hiddenSourceMap ? false : undefined,
-  });
-}
-
-export function isPolyfillsEntry(name: string): boolean {
-  return name === 'polyfills';
-}
-
-export function getWatchOptions(
-  poll: number | undefined,
-): NonNullable<Configuration['watchOptions']> {
-  return {
-    poll,
-    ignored: poll === undefined ? '**/$_lazy_route_resources' : 'node_modules/**',
-  };
 }
 
 export function assetNameTemplateFactory(hashFormat: HashFormat): (resourcePath: string) => string {
@@ -129,5 +115,223 @@ export function assetNameTemplateFactory(hashFormat: HashFormat): (resourcePath:
 
     // File has the same name but it's in a different location.
     return '[path][name].[ext]';
+  };
+}
+
+export function getInstrumentationExcludedPaths(
+  sourceRoot: string,
+  excludedPaths: string[],
+): Set<string> {
+  const excluded = new Set<string>();
+
+  for (const excludeGlob of excludedPaths) {
+    glob
+      .sync(path.join(sourceRoot, excludeGlob), { nodir: true })
+      .forEach((p) => excluded.add(path.normalize(p)));
+  }
+
+  return excluded;
+}
+
+export function getCacheSettings(
+  wco: WebpackConfigOptions,
+  angularVersion: string,
+): WebpackOptionsNormalized['cache'] {
+  const { enabled, path: cacheDirectory } = wco.buildOptions.cache;
+  if (enabled) {
+    return {
+      type: 'filesystem',
+      profile: wco.buildOptions.verbose,
+      cacheDirectory: path.join(cacheDirectory, 'angular-webpack'),
+      maxMemoryGenerations: 1,
+      // We use the versions and build options as the cache name. The Webpack configurations are too
+      // dynamic and shared among different build types: test, build and serve.
+      // None of which are "named".
+      name: createHash('sha1')
+        .update(angularVersion)
+        .update(VERSION)
+        .update(wco.projectRoot)
+        .update(JSON.stringify(wco.tsConfig))
+        .update(
+          JSON.stringify({
+            ...wco.buildOptions,
+            // Needed because outputPath changes on every build when using i18n extraction
+            // https://github.com/angular/angular-cli/blob/736a5f89deaca85f487b78aec9ff66d4118ceb6a/packages/angular_devkit/build_angular/src/utils/i18n-options.ts#L264-L265
+            outputPath: undefined,
+          }),
+        )
+        .digest('hex'),
+    };
+  }
+
+  if (wco.buildOptions.watch) {
+    return {
+      type: 'memory',
+      maxGenerations: 1,
+    };
+  }
+
+  return false;
+}
+
+export function globalScriptsByBundleName(
+  root: string,
+  scripts: ScriptElement[],
+): { bundleName: string; inject: boolean; paths: string[] }[] {
+  return normalizeExtraEntryPoints(scripts, 'scripts').reduce(
+    (prev: { bundleName: string; paths: string[]; inject: boolean }[], curr) => {
+      const { bundleName, inject, input } = curr;
+      let resolvedPath = path.resolve(root, input);
+
+      if (!existsSync(resolvedPath)) {
+        try {
+          resolvedPath = require.resolve(input, { paths: [root] });
+        } catch {
+          throw new Error(`Script file ${input} does not exist.`);
+        }
+      }
+
+      const existingEntry = prev.find((el) => el.bundleName === bundleName);
+      if (existingEntry) {
+        if (existingEntry.inject && !inject) {
+          // All entries have to be lazy for the bundle to be lazy.
+          throw new Error(`The ${bundleName} bundle is mixing injected and non-injected scripts.`);
+        }
+
+        existingEntry.paths.push(resolvedPath);
+      } else {
+        prev.push({
+          bundleName,
+          inject,
+          paths: [resolvedPath],
+        });
+      }
+
+      return prev;
+    },
+    [],
+  );
+}
+
+export function assetPatterns(root: string, assets: AssetPatternClass[]) {
+  return assets.map((asset: AssetPatternClass, index: number): ObjectPattern => {
+    // Resolve input paths relative to workspace root and add slash at the end.
+    // eslint-disable-next-line prefer-const
+    let { input, output, ignore = [], glob } = asset;
+    input = path.resolve(root, input).replace(/\\/g, '/');
+    input = input.endsWith('/') ? input : input + '/';
+    output = output.endsWith('/') ? output : output + '/';
+
+    if (output.startsWith('..')) {
+      throw new Error('An asset cannot be written to a location outside of the output path.');
+    }
+
+    return {
+      context: input,
+      // Now we remove starting slash to make Webpack place it from the output root.
+      to: output.replace(/^\//, ''),
+      from: glob,
+      noErrorOnMissing: true,
+      force: true,
+      globOptions: {
+        dot: true,
+        followSymbolicLinks: !!asset.followSymlinks,
+        ignore: [
+          '.gitkeep',
+          '**/.DS_Store',
+          '**/Thumbs.db',
+          // Negate patterns needs to be absolute because copy-webpack-plugin uses absolute globs which
+          // causes negate patterns not to match.
+          // See: https://github.com/webpack-contrib/copy-webpack-plugin/issues/498#issuecomment-639327909
+          ...ignore,
+        ].map((i) => path.posix.join(input, i)),
+      },
+      priority: index,
+    };
+  });
+}
+
+export function externalizePackages(
+  context: string,
+  request: string | undefined,
+  callback: (error?: Error, result?: string) => void,
+): void {
+  if (!request) {
+    return;
+  }
+
+  // Absolute & Relative paths are not externals
+  if (request.startsWith('.') || path.isAbsolute(request)) {
+    callback();
+
+    return;
+  }
+
+  try {
+    require.resolve(request, { paths: [context] });
+    callback(undefined, request);
+  } catch {
+    // Node couldn't find it, so it must be user-aliased
+    callback();
+  }
+}
+
+type WebpackStatsOptions = Exclude<Configuration['stats'], string | boolean>;
+export function getStatsOptions(verbose = false): WebpackStatsOptions {
+  const webpackOutputOptions: WebpackStatsOptions = {
+    all: false, // Fallback value for stats options when an option is not defined. It has precedence over local webpack defaults.
+    colors: true,
+    hash: true, // required by custom stat output
+    timings: true, // required by custom stat output
+    chunks: true, // required by custom stat output
+    builtAt: true, // required by custom stat output
+    warnings: true,
+    errors: true,
+    assets: true, // required by custom stat output
+    cachedAssets: true, // required for bundle size calculators
+
+    // Needed for markAsyncChunksNonInitial.
+    ids: true,
+    entrypoints: true,
+  };
+
+  const verboseWebpackOutputOptions: WebpackStatsOptions = {
+    // The verbose output will most likely be piped to a file, so colors just mess it up.
+    colors: false,
+    usedExports: true,
+    optimizationBailout: true,
+    reasons: true,
+    children: true,
+    assets: true,
+    version: true,
+    chunkModules: true,
+    errorDetails: true,
+    moduleTrace: true,
+    logging: 'verbose',
+    modulesSpace: Infinity,
+  };
+
+  return verbose
+    ? { ...webpackOutputOptions, ...verboseWebpackOutputOptions }
+    : webpackOutputOptions;
+}
+
+export function getMainFieldsAndConditionNames(
+  target: ScriptTarget,
+  platformServer: boolean,
+): Pick<WebpackOptionsNormalized['resolve'], 'mainFields' | 'conditionNames'> {
+  const mainFields = platformServer
+    ? ['es2015', 'module', 'main']
+    : ['es2015', 'browser', 'module', 'main'];
+  const conditionNames = ['es2015', '...'];
+
+  if (target >= ScriptTarget.ES2020) {
+    mainFields.unshift('es2020');
+    conditionNames.unshift('es2020');
+  }
+
+  return {
+    mainFields,
+    conditionNames,
   };
 }

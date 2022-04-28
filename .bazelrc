@@ -68,7 +68,14 @@ test:saucelabs --define=KARMA_WEB_TEST_MODE=SL_REQUIRED
 # Releases should always be stamped with version control info
 # This command assumes node on the path and is a workaround for
 # https://github.com/bazelbuild/bazel/issues/4802
-build:release --workspace_status_command="yarn -s ng-dev release build-env-stamp"
+build:release --workspace_status_command="yarn -s ng-dev release build-env-stamp --mode=release"
+build:release --stamp
+
+build:snapshot --workspace_status_command="yarn -s ng-dev release build-env-stamp --mode=snapshot"
+build:snapshot --stamp
+build:snapshot --//:enable_snapshot_repo_deps
+
+build:local --//:enable_package_json_tar_deps
 
 ###############################
 # Output                      #
@@ -93,7 +100,7 @@ test --test_output=errors
 
 # Use the Angular team internal GCP instance for remote execution.
 build:remote --remote_instance_name=projects/internal-200822/instances/primary_instance
-build:remote --project_id=internal-200822
+build:remote --bes_instance_name=internal-200822
 
 # Starting with Bazel 0.27.0 strategies do not need to be explicitly
 # defined. See https://github.com/bazelbuild/bazel/issues/7480

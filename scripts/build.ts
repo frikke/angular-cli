@@ -24,7 +24,7 @@ const gitIgnore = gitIgnoreFiles
   .filter((line) => !line.match(/^\s*$/));
 const gitIgnoreExcept = gitIgnoreFiles
   .filter((line) => line.startsWith('!'))
-  .map((line) => line.substr(1));
+  .map((line) => line.slice(1));
 
 function _gitIgnoreMatch(p: string): boolean {
   p = path.relative(path.dirname(__dirname), p);
@@ -122,24 +122,7 @@ function _rm(p: string) {
 }
 
 function rimraf(location: string) {
-  // The below should be removed and replace with just `rmSync` when support for Node.Js 12 is removed.
-  const { rmSync, rmdirSync } = fs as typeof fs & {
-    rmSync?: (
-      path: fs.PathLike,
-      options?: {
-        force?: boolean;
-        maxRetries?: number;
-        recursive?: boolean;
-        retryDelay?: number;
-      },
-    ) => void;
-  };
-
-  if (rmSync) {
-    rmSync(location, { force: true, recursive: true, maxRetries: 3 });
-  } else {
-    rmdirSync(location, { recursive: true, maxRetries: 3 });
-  }
+  fs.rmSync(location, { force: true, recursive: true, maxRetries: 3 });
 }
 
 function _clean(logger: logging.Logger) {
@@ -411,8 +394,13 @@ export default async function (
             } else {
               obj[depName] = `github:${pkg.snapshotRepo}#${pkg.snapshotHash}`;
             }
-          } else if ((obj[depName] as string).match(/\b0\.0\.0\b/)) {
-            obj[depName] = (obj[depName] as string).replace(/\b0\.0\.0\b/, v);
+          } else if ((obj[depName] as string).match(/\b0\.0\.0-PLACEHOLDER\b/)) {
+            obj[depName] = (obj[depName] as string).replace(/\b0\.0\.0-PLACEHOLDER\b/, v);
+          } else if ((obj[depName] as string).match(/\b0\.0\.0-EXPERIMENTAL-PLACEHOLDER\b/)) {
+            obj[depName] = (obj[depName] as string).replace(
+              /\b0\.0\.0-EXPERIMENTAL-PLACEHOLDER\b/,
+              v,
+            );
           }
         }
       }

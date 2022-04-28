@@ -9,13 +9,18 @@
 import { logging, tags } from '@angular-devkit/core';
 import { Rule, SchematicContext, SchematicsException, Tree } from '@angular-devkit/schematics';
 import * as npa from 'npm-package-arg';
+import type { Manifest } from 'pacote';
 import * as semver from 'semver';
-import { Dependency, JsonSchemaForNpmPackageJsonFiles } from '../../../../utilities/package-json';
 import {
+  NgPackageManifestProperties,
   NpmRepositoryPackageJson,
   getNpmPackageJson,
-} from '../../../../utilities/package-metadata';
+} from '../../../utilities/package-metadata';
 import { Schema as UpdateSchema } from './schema';
+
+interface JsonSchemaForNpmPackageJsonFiles extends Manifest, NgPackageManifestProperties {
+  peerDependenciesMeta?: Record<string, { optional?: boolean }>;
+}
 
 type VersionRange = string & { __VERSION_RANGE: void };
 type PeerVersionTransform = string | ((range: string) => string);
@@ -267,7 +272,7 @@ function _performUpdate(
     throw new SchematicsException('package.json could not be parsed: ' + e.message);
   }
 
-  const updateDependency = (deps: Dependency, name: string, newVersion: string) => {
+  const updateDependency = (deps: Record<string, string>, name: string, newVersion: string) => {
     const oldVersion = deps[name];
     // We only respect caret and tilde ranges on update.
     const execResult = /^[\^~]/.exec(oldVersion);
@@ -370,6 +375,7 @@ function _getUpdateMetadata(
     } else if (
       typeof packageGroup == 'object' &&
       packageGroup &&
+      !Array.isArray(packageGroup) &&
       Object.values(packageGroup).every((x) => typeof x == 'string')
     ) {
       result.packageGroup = packageGroup;
@@ -418,13 +424,39 @@ function _usageMessage(
   const packageGroups = new Map<string, string>();
   const packagesToUpdate = [...infoMap.entries()]
     .map(([name, info]) => {
-      const tag = options.next
+      let tag = options.next
         ? info.npmPackageJson['dist-tags']['next']
           ? 'next'
           : 'latest'
         : 'latest';
-      const version = info.npmPackageJson['dist-tags'][tag];
-      const target = info.npmPackageJson.versions[version];
+      let version = info.npmPackageJson['dist-tags'][tag];
+      let target = info.npmPackageJson.versions[version];
+
+      const versionDiff = semver.diff(info.installed.version, version);
+      if (
+        versionDiff !== 'patch' &&
+        versionDiff !== 'minor' &&
+        /^@(?:angular|nguniversal)\//.test(name)
+      ) {
+        const installedMajorVersion = semver.parse(info.installed.version)?.major;
+        const toInstallMajorVersion = semver.parse(version)?.major;
+        if (
+          installedMajorVersion !== undefined &&
+          toInstallMajorVersion !== undefined &&
+          installedMajorVersion < toInstallMajorVersion - 1
+        ) {
+          const nextMajorVersion = `${installedMajorVersion + 1}.`;
+          const nextMajorVersions = Object.keys(info.npmPackageJson.versions)
+            .filter((v) => v.startsWith(nextMajorVersion))
+            .sort((a, b) => (a > b ? -1 : 1));
+
+          if (nextMajorVersions.length) {
+            version = nextMajorVersions[0];
+            target = info.npmPackageJson.versions[version];
+            tag = '';
+          }
+        }
+      }
 
       return {
         name,
@@ -434,31 +466,34 @@ function _usageMessage(
         target,
       };
     })
-    .filter(({ info, version, target }) => {
-      return target && semver.compare(info.installed.version, version) < 0;
-    })
-    .filter(({ target }) => {
-      return target['ng-update'];
-    })
+    .filter(
+      ({ info, version, target }) =>
+        target?.['ng-update'] && semver.compare(info.installed.version, version) < 0,
+    )
     .map(({ name, info, version, tag, target }) => {
       // Look for packageGroup.
-      if (target['ng-update'] && target['ng-update']['packageGroup']) {
-        const packageGroup = target['ng-update']['packageGroup'];
-        const packageGroupName =
-          target['ng-update']['packageGroupName'] || target['ng-update']['packageGroup'][0];
+      const packageGroup = target['ng-update']?.['packageGroup'];
+      if (packageGroup) {
+        const packageGroupNames = Array.isArray(packageGroup)
+          ? packageGroup
+          : Object.keys(packageGroup);
+
+        const packageGroupName = target['ng-update']?.['packageGroupName'] || packageGroupNames[0];
         if (packageGroupName) {
           if (packageGroups.has(name)) {
             return null;
           }
 
-          packageGroup.forEach((x: string) => packageGroups.set(x, packageGroupName));
+          packageGroupNames.forEach((x: string) => packageGroups.set(x, packageGroupName));
           packageGroups.set(packageGroupName, packageGroupName);
           name = packageGroupName;
         }
       }
 
       let command = `ng update ${name}`;
-      if (tag == 'next') {
+      if (!tag) {
+        command += `@${semver.parse(version)?.major || version}`;
+      } else if (tag == 'next') {
         command += ' --next';
       }
 
@@ -641,35 +676,37 @@ function _addPackageGroup(
     return;
   }
 
-  let packageGroup = ngUpdateMetadata['packageGroup'];
+  const packageGroup = ngUpdateMetadata['packageGroup'];
   if (!packageGroup) {
     return;
   }
+  let packageGroupNormalized: Record<string, string> = {};
   if (Array.isArray(packageGroup) && !packageGroup.some((x) => typeof x != 'string')) {
-    packageGroup = packageGroup.reduce((acc, curr) => {
+    packageGroupNormalized = packageGroup.reduce((acc, curr) => {
       acc[curr] = maybePackage;
 
       return acc;
     }, {} as { [name: string]: string });
-  }
-
-  // Only need to check if it's an object because we set it right the time before.
-  if (
-    typeof packageGroup != 'object' ||
-    packageGroup === null ||
-    Object.values(packageGroup).some((v) => typeof v != 'string')
+  } else if (
+    typeof packageGroup == 'object' &&
+    packageGroup &&
+    !Array.isArray(packageGroup) &&
+    Object.values(packageGroup).every((x) => typeof x == 'string')
   ) {
-    logger.warn(`packageGroup metadata of package ${npmPackageJson.name} is malformed.`);
+    packageGroupNormalized = packageGroup;
+  } else {
+    logger.warn(`packageGroup metadata of package ${npmPackageJson.name} is malformed. Ignoring.`);
 
     return;
   }
 
-  Object.keys(packageGroup)
-    .filter((name) => !packages.has(name)) // Don't override names from the command line.
-    .filter((name) => allDependencies.has(name)) // Remove packages that aren't installed.
-    .forEach((name) => {
-      packages.set(name, packageGroup[name]);
-    });
+  for (const [name, value] of Object.entries(packageGroupNormalized)) {
+    // Don't override names from the command line.
+    // Remove packages that aren't installed.
+    if (!packages.has(name) && allDependencies.has(name)) {
+      packages.set(name, value as VersionRange);
+    }
+  }
 }
 
 /**
@@ -827,9 +864,7 @@ export default function (options: UpdateSchema): Rule {
     const npmPackageJsonMap = allPackageMetadata.reduce((acc, npmPackageJson) => {
       // If the package was not found on the registry. It could be private, so we will just
       // ignore. If the package was part of the list, we will error out, but will simply ignore
-      // if it's either not requested (so just part of package.json. silently) or if it's a
-      // `--all` situation. There is an edge case here where a public package peer depends on a
-      // private one, but it's rare enough.
+      // if it's either not requested (so just part of package.json. silently).
       if (!npmPackageJson.name) {
         if (npmPackageJson.requestedName && packages.has(npmPackageJson.requestedName)) {
           throw new SchematicsException(

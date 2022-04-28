@@ -35,11 +35,7 @@ import { BrowserBuilderOptions, Builders, ServerBuilderOptions } from '../utilit
 import { Schema as AppShellOptions } from './schema';
 
 function getSourceFile(host: Tree, path: string): ts.SourceFile {
-  const buffer = host.read(path);
-  if (!buffer) {
-    throw new SchematicsException(`Could not find ${path}.`);
-  }
-  const content = buffer.toString();
+  const content = host.readText(path);
   const source = ts.createSourceFile(path, content, ts.ScriptTarget.Latest, true);
 
   return source;
@@ -82,10 +78,9 @@ function getComponentTemplate(host: Tree, compPath: string, tmplInfo: TemplateIn
     const templateUrl = (tmplInfo.templateUrlProp.initializer as ts.StringLiteral).text;
     const dir = dirname(normalize(compPath));
     const templatePath = join(dir, templateUrl);
-    const buffer = host.read(templatePath);
-    if (buffer) {
-      template = buffer.toString();
-    }
+    try {
+      template = host.readText(templatePath);
+    } catch {}
   }
 
   return template;
@@ -125,7 +120,7 @@ function validateProject(mainPath: string): Rule {
     const tmpl = getComponentTemplateInfo(host, componentPath);
     const template = getComponentTemplate(host, componentPath, tmpl);
     if (!routerOutletCheckRegex.test(template)) {
-      const errorMsg = `Prerequisite for app shell is to define a router-outlet in your root component.`;
+      const errorMsg = `Prerequisite for application shell is to define a router-outlet in your root component.`;
       context.logger.error(errorMsg);
       throw new SchematicsException(errorMsg);
     }

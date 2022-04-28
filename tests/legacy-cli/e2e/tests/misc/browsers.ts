@@ -1,7 +1,7 @@
 import express from 'express';
 import * as path from 'path';
 import { copyProjectAsset } from '../../utils/assets';
-import { appendToFile, replaceInFile } from '../../utils/fs';
+import { replaceInFile } from '../../utils/fs';
 import { ng } from '../../utils/process';
 
 export default async function () {
@@ -47,8 +47,8 @@ export default async function () {
     await ng(
       'e2e',
       'test-project',
-      '--protractorConfig=e2e/protractor-saucelabs.conf.js',
-      '--devServerTarget=',
+      '--protractor-config=e2e/protractor-saucelabs.conf.js',
+      '--dev-server-target=',
     );
   } finally {
     server.close();

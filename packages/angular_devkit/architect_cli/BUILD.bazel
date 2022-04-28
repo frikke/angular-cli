@@ -1,4 +1,4 @@
-load("//tools:defaults.bzl", "ts_library")
+load("//tools:defaults.bzl", "pkg_npm", "ts_library")
 
 # Copyright Google Inc. All Rights Reserved.
 #
@@ -20,10 +20,30 @@ ts_library(
         "//packages/angular_devkit/architect/node",
         "//packages/angular_devkit/core",
         "//packages/angular_devkit/core/node",
-        "@npm//@types/minimist",
         "@npm//@types/node",
         "@npm//@types/progress",
+        "@npm//@types/yargs-parser",
         "@npm//ansi-colors",
         "@npm//rxjs",
+    ],
+)
+
+genrule(
+    name = "license",
+    srcs = ["//:LICENSE"],
+    outs = ["LICENSE"],
+    cmd = "cp $(execpath //:LICENSE) $@",
+)
+
+pkg_npm(
+    name = "npm_package",
+    pkg_deps = [
+        "//packages/angular_devkit/architect:package.json",
+        "//packages/angular_devkit/core:package.json",
+    ],
+    deps = [
+        ":README.md",
+        ":architect_cli",
+        ":license",
     ],
 )

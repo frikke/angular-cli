@@ -13,7 +13,7 @@ import * as https from 'https';
 import { Observable, from, isObservable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import * as Url from 'url';
-import { BaseException } from '../../exception/exception';
+import { BaseException } from '../../exception';
 import { PartiallyOrderedSet, deepCopy } from '../../utils';
 import { JsonArray, JsonObject, JsonValue, isJsonObject } from '../utils';
 import {
@@ -209,9 +209,6 @@ export class CoreSchemaRegistry implements SchemaRegistry {
       }
     }
 
-    if (fullReference.startsWith('#')) {
-      fullReference = fullReference.slice(0, -1);
-    }
     const resolvedSchema = this._ajv.getSchema(fullReference);
 
     return {

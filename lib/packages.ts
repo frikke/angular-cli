@@ -85,7 +85,7 @@ function loadPackageJson(p: string) {
       // Overwrite engines to a common default.
       case 'engines':
         pkg['engines'] = {
-          'node': '^12.20.0 || ^14.15.0 || >=16.10.0',
+          'node': '^14.15.0 || >=16.10.0',
           'npm': '^6.11.0 || ^7.5.6 || >=8.0.0',
           'yarn': '>= 1.13.0',
         };
@@ -152,14 +152,15 @@ const packageJsonPaths = [
   ..._findPrimaryPackageJsonFiles(path.join(__dirname, '..', 'packages'), excludeRe),
 ];
 
-function _exec(cmd: string) {
-  return execSync(cmd).toString().trim();
+function _exec(cmd: string, opts?: { cwd?: string }) {
+  return execSync(cmd, opts).toString().trim();
 }
 
 let gitShaCache: string;
 function _getSnapshotHash(_pkg: PackageInfo): string {
   if (!gitShaCache) {
-    gitShaCache = _exec('git log --format=%h -n1');
+    const opts = { cwd: __dirname }; // Ensure we call git from within this repo
+    gitShaCache = _exec('git log --format=%h -n1', opts);
   }
 
   return gitShaCache;
@@ -210,7 +211,7 @@ export const packages: PackageMap = packageJsonPaths
     const experimental = !!packageJson.private || !!packageJson.experimental;
 
     packages[name] = {
-      build: path.join(distRoot, pkgRoot.substr(path.dirname(__dirname).length)),
+      build: path.join(distRoot, pkgRoot.slice(path.dirname(__dirname).length)),
       dist: path.join(distRoot, name),
       root: pkgRoot,
       relative: path.relative(path.dirname(__dirname), pkgRoot),

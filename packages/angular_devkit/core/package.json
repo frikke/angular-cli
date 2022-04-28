@@ -1,6 +1,6 @@
 {
   "name": "@angular-devkit/core",
-  "version": "0.0.0",
+  "version": "0.0.0-PLACEHOLDER",
   "description": "Angular DevKit - Core Utility Library",
   "main": "src/index.js",
   "typings": "src/index.d.ts",
@@ -9,9 +9,8 @@
   ],
   "dependencies": {
     "ajv-formats": "2.1.1",
-    "ajv": "8.6.3",
-    "fast-json-stable-stringify": "2.1.0",
-    "magic-string": "0.25.7",
+    "ajv": "8.11.0",
+    "jsonc-parser": "3.0.0",
     "rxjs": "6.6.7",
     "source-map": "0.7.3"
   },
@@ -22,8 +21,5 @@
     "chokidar": {
       "optional": true
     }
-  },
-  "devDependencies": {
-    "seedrandom": "^3.0.0"
   }
 }

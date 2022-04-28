@@ -4,7 +4,7 @@
 # found in the LICENSE file at https://angular.io/license
 
 load("@npm//@bazel/jasmine:index.bzl", "jasmine_node_test")
-load("//tools:defaults.bzl", "ts_library")
+load("//tools:defaults.bzl", "pkg_npm", "ts_library")
 load("//tools:ts_json_schema.bzl", "ts_json_schema")
 
 licenses(["notice"])  # MIT
@@ -33,7 +33,6 @@ ts_library(
     data = glob(
         include = [
             "collection.json",
-            "package.json",
             "pwa/schema.json",
             "pwa/files/**/*",
         ],
@@ -66,4 +65,24 @@ ts_library(
 jasmine_node_test(
     name = "pwa_test",
     srcs = [":pwa_test_lib"],
+)
+
+genrule(
+    name = "license",
+    srcs = ["//:LICENSE"],
+    outs = ["LICENSE"],
+    cmd = "cp $(execpath //:LICENSE) $@",
+)
+
+pkg_npm(
+    name = "npm_package",
+    pkg_deps = [
+        "//packages/angular_devkit/schematics:package.json",
+        "//packages/schematics/angular:package.json",
+    ],
+    deps = [
+        ":README.md",
+        ":license",
+        ":pwa",
+    ],
 )

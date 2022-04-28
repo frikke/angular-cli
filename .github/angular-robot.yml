@@ -31,14 +31,12 @@ merge:
     # list of labels that a PR needs to have, checked with a regexp (e.g. "target:" will work for the label "target: major")
     requiredLabels:
       - 'target: *'
-      - 'cla: yes'
 
     # list of labels that a PR shouldn't have, checked after the required labels with a regexp
     forbiddenLabels:
       - 'action: cleanup'
       - 'action: review'
       - 'PR state: blocked'
-      - 'cla: no'
 
     # list of PR statuses that need to be successful
     requiredStatuses:
@@ -51,7 +49,6 @@ merge:
       - 'ci/circleci: e2e-cli'
       - 'ci/circleci: test-browsers'
       - 'ci/angular: size'
-      - 'cla/google'
 
   # the comment that will be added when the merge label is added despite failing checks, leave empty or set to false to disable
   # {{MERGE_LABEL}} will be replaced by the value of the mergeLabel option

@@ -8,7 +8,7 @@
 
 import { BuilderContext, BuilderOutput, createBuilder } from '@angular-devkit/architect';
 import { runWebpack } from '@angular-devkit/build-webpack';
-import { json, tags } from '@angular-devkit/core';
+import { tags } from '@angular-devkit/core';
 import * as path from 'path';
 import { Observable, from } from 'rxjs';
 import { concatMap, map } from 'rxjs/operators';
@@ -19,30 +19,24 @@ import { NormalizedBrowserBuilderSchema, deleteOutputDir } from '../../utils';
 import { i18nInlineEmittedFiles } from '../../utils/i18n-inlining';
 import { I18nOptions } from '../../utils/i18n-options';
 import { ensureOutputPaths } from '../../utils/output-paths';
+import { purgeStaleBuildCache } from '../../utils/purge-cache';
 import { assertCompatibleAngularVersion } from '../../utils/version';
 import { generateI18nBrowserWebpackConfigFromContext } from '../../utils/webpack-browser-config';
-import {
-  getCommonConfig,
-  getServerConfig,
-  getStatsConfig,
-  getStylesConfig,
-  getTypeScriptConfig,
-} from '../../webpack/configs';
+import { getCommonConfig, getStylesConfig } from '../../webpack/configs';
 import { webpackStatsLogger } from '../../webpack/utils/stats';
 import { Schema as ServerBuilderOptions } from './schema';
 
 /**
  * @experimental Direct usage of this type is considered experimental.
  */
-export type ServerBuilderOutput = json.JsonObject &
-  BuilderOutput & {
-    baseOutputPath: string;
-    outputPaths: string[];
-    /**
-     * @deprecated in version 9. Use 'outputPaths' instead.
-     */
-    outputPath: string;
-  };
+export type ServerBuilderOutput = BuilderOutput & {
+  baseOutputPath: string;
+  outputPaths: string[];
+  /**
+   * @deprecated in version 9. Use 'outputPaths' instead.
+   */
+  outputPath: string;
+};
 
 export { ServerBuilderOptions };
 
@@ -152,6 +146,9 @@ async function initialize(
   i18n: I18nOptions;
   target: ScriptTarget;
 }> {
+  // Purge old build disk cache.
+  await purgeStaleBuildCache(context);
+
   const originalOutputPath = options.outputPath;
   const { config, i18n, target } = await generateI18nBrowserWebpackConfigFromContext(
     {
@@ -161,13 +158,7 @@ async function initialize(
       platform: 'server',
     } as NormalizedBrowserBuilderSchema,
     context,
-    (wco) => [
-      getCommonConfig(wco),
-      getServerConfig(wco),
-      getStylesConfig(wco),
-      getStatsConfig(wco),
-      getTypeScriptConfig(wco),
-    ],
+    (wco) => [getCommonConfig(wco), getStylesConfig(wco)],
   );
 
   let transformedConfig;

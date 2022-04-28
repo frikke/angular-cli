@@ -13,24 +13,19 @@ import type { ɵParsedMessage as LocalizeMessage } from '@angular/localize';
 import type { Diagnostics } from '@angular/localize/tools';
 import * as fs from 'fs';
 import * as path from 'path';
-import webpack from 'webpack';
+import webpack, { Configuration } from 'webpack';
 import { ExecutionTransformer } from '../../transforms';
 import { createI18nOptions } from '../../utils/i18n-options';
 import { loadEsmModule } from '../../utils/load-esm';
+import { purgeStaleBuildCache } from '../../utils/purge-cache';
 import { assertCompatibleAngularVersion } from '../../utils/version';
 import { generateBrowserWebpackConfigFromContext } from '../../utils/webpack-browser-config';
-import {
-  getBrowserConfig,
-  getCommonConfig,
-  getStatsConfig,
-  getTypeScriptConfig,
-  getWorkerConfig,
-} from '../../webpack/configs';
+import { getCommonConfig } from '../../webpack/configs';
 import { createWebpackLoggingCallback } from '../../webpack/utils/stats';
 import { Schema as BrowserBuilderOptions, OutputHashing } from '../browser/schema';
 import { Format, Schema } from './schema';
 
-export type ExtractI18nBuilderOptions = Schema & JsonObject;
+export type ExtractI18nBuilderOptions = Schema;
 
 function getI18nOutfile(format: string | undefined) {
   switch (format) {
@@ -136,6 +131,9 @@ export async function execute(
   // Check Angular version.
   assertCompatibleAngularVersion(context.workspaceRoot);
 
+  // Purge old build disk cache.
+  await purgeStaleBuildCache(context);
+
   const browserTarget = targetFromTargetString(options.browserTarget);
   const browserOptions = await context.validateOptions<JsonObject & BrowserBuilderOptions>(
     await context.getTargetOptions(browserTarget),
@@ -154,6 +152,16 @@ export async function execute(
 
   if (!context.target || !context.target.project) {
     throw new Error('The builder requires a target.');
+  }
+
+  try {
+    require.resolve('@angular/localize');
+  } catch {
+    return {
+      success: false,
+      error: `i18n extraction requires the '@angular/localize' package.`,
+      outputPath: outFile,
+    };
   }
 
   const metadata = await context.getProjectMetadata(context.target);
@@ -182,6 +190,7 @@ export async function execute(
     subresourceIntegrity: false,
     outputHashing: OutputHashing.None,
     namedChunks: true,
+    allowedCommonJsDependencies: undefined,
   };
   const { config, projectRoot } = await generateBrowserWebpackConfigFromContext(
     builderOptions,
@@ -190,13 +199,9 @@ export async function execute(
       // Default value for legacy message ids is currently true
       useLegacyIds = wco.tsConfig.options.enableI18nLegacyMessageIdFormat ?? true;
 
-      const partials = [
+      const partials: (Promise<Configuration> | Configuration)[] = [
         { plugins: [new NoEmitPlugin()] },
         getCommonConfig(wco),
-        getBrowserConfig(wco),
-        getTypeScriptConfig(wco),
-        getWorkerConfig(wco),
-        getStatsConfig(wco),
       ];
 
       // Add Ivy application file extractor support
@@ -229,16 +234,6 @@ export async function execute(
       return partials;
     },
   );
-
-  try {
-    require.resolve('@angular/localize');
-  } catch {
-    return {
-      success: false,
-      error: `Ivy extraction requires the '@angular/localize' package.`,
-      outputPath: outFile,
-    };
-  }
 
   // All the localize usages are setup to first try the ESM entry point then fallback to the deep imports.
   // This provides interim compatibility while the framework is transitioned to bundled ESM packages.

@@ -29,7 +29,7 @@ import {
 } from './description';
 import { readJsonFile } from './file-system-utility';
 
-export declare type OptionTransform<T extends object, R extends object> = (
+export declare type OptionTransform<T extends object | null, R extends object> = (
   schematic: FileSystemSchematicDescription,
   options: T,
   context?: FileSystemSchematicContext,
@@ -102,6 +102,7 @@ export abstract class FileSystemEngineHostBase implements FileSystemEngineHost {
   protected abstract _resolveReferenceString(
     name: string,
     parentPath: string,
+    collectionDescription: FileSystemCollectionDesc,
   ): { ref: RuleFactory<{}>; path: string } | null;
   protected abstract _transformCollectionDescription(
     name: string,
@@ -118,12 +119,12 @@ export abstract class FileSystemEngineHostBase implements FileSystemEngineHost {
   private _contextTransforms: ContextTransform[] = [];
   private _taskFactories = new Map<string, () => Observable<TaskExecutor>>();
 
-  listSchematicNames(collection: FileSystemCollectionDesc) {
+  listSchematicNames(collection: FileSystemCollectionDesc, includeHidden?: boolean) {
     const schematics: string[] = [];
     for (const key of Object.keys(collection.schematics)) {
       const schematic = collection.schematics[key];
 
-      if (schematic.hidden || schematic.private) {
+      if ((schematic.hidden && !includeHidden) || schematic.private) {
         continue;
       }
 
@@ -139,7 +140,7 @@ export abstract class FileSystemEngineHostBase implements FileSystemEngineHost {
     return schematics;
   }
 
-  registerOptionsTransform<T extends object, R extends object>(t: OptionTransform<T, R>) {
+  registerOptionsTransform<T extends object | null, R extends object>(t: OptionTransform<T, R>) {
     this._transforms.push(t);
   }
 
@@ -217,9 +218,9 @@ export abstract class FileSystemEngineHostBase implements FileSystemEngineHost {
 
     if (partialDesc.extends) {
       const index = partialDesc.extends.indexOf(':');
-      const collectionName = index !== -1 ? partialDesc.extends.substr(0, index) : null;
+      const collectionName = index !== -1 ? partialDesc.extends.slice(0, index) : null;
       const schematicName =
-        index === -1 ? partialDesc.extends : partialDesc.extends.substr(index + 1);
+        index === -1 ? partialDesc.extends : partialDesc.extends.slice(index + 1);
 
       if (collectionName !== null) {
         const extendCollection = this.createCollectionDescription(collectionName);
@@ -234,7 +235,11 @@ export abstract class FileSystemEngineHostBase implements FileSystemEngineHost {
     if (!partialDesc.factory) {
       throw new SchematicMissingFactoryException(name);
     }
-    const resolvedRef = this._resolveReferenceString(partialDesc.factory, collectionPath);
+    const resolvedRef = this._resolveReferenceString(
+      partialDesc.factory,
+      collectionPath,
+      collection,
+    );
     if (!resolvedRef) {
       throw new FactoryCannotBeResolvedException(name);
     }

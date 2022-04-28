@@ -207,6 +207,14 @@ describe('Component Schematic', () => {
     expect(content).toMatch(/selector: 'pre-foo'/);
   });
 
+  it('should error when name starts with a digit', async () => {
+    const options = { ...defaultOptions, name: '1-one' };
+
+    await expectAsync(
+      schematicRunner.runSchematicAsync('component', options, appTree).toPromise(),
+    ).toBeRejectedWithError('Selector (app-1-one) is invalid.');
+  });
+
   it('should use the default project prefix if none is passed', async () => {
     const options = { ...defaultOptions, prefix: undefined };
 
@@ -388,5 +396,46 @@ describe('Component Schematic', () => {
       ]),
     );
     expect(tree.files).not.toContain('/projects/bar/src/app/foo/foo.component.spec.ts');
+  });
+
+  it('should respect templateUrl when style=none and changeDetection=OnPush', async () => {
+    const options = { ...defaultOptions, style: Style.None, changeDetection: 'OnPush' };
+    const tree = await schematicRunner.runSchematicAsync('component', options, appTree).toPromise();
+    const content = tree.readContent('/projects/bar/src/app/foo/foo.component.ts');
+    expect(content).not.toMatch(/styleUrls: /);
+    expect(content).toMatch(/templateUrl: '.\/foo.component.html',\n/);
+    expect(content).toMatch(/changeDetection: ChangeDetectionStrategy.OnPush/);
+  });
+
+  it('should respect inlineTemplate when style=none and changeDetection=OnPush', async () => {
+    const options = {
+      ...defaultOptions,
+      style: Style.None,
+      changeDetection: 'OnPush',
+      inlineTemplate: true,
+    };
+    const tree = await schematicRunner.runSchematicAsync('component', options, appTree).toPromise();
+    const content = tree.readContent('/projects/bar/src/app/foo/foo.component.ts');
+    expect(content).not.toMatch(/styleUrls: /);
+    expect(content).toMatch(/template: `(\n(.|)*){3}\n\s*`,\n/);
+    expect(content).toMatch(/changeDetection: ChangeDetectionStrategy.OnPush/);
+  });
+
+  it('should create a standalone component', async () => {
+    const options = { ...defaultOptions, standalone: true };
+    const tree = await schematicRunner.runSchematicAsync('component', options, appTree).toPromise();
+    const moduleContent = tree.readContent('/projects/bar/src/app/app.module.ts');
+    const componentContent = tree.readContent('/projects/bar/src/app/foo/foo.component.ts');
+    expect(componentContent).toContain('standalone: true');
+    expect(componentContent).toContain('class FooComponent');
+    expect(moduleContent).not.toContain('FooComponent');
+  });
+
+  it('should declare standalone components in the `imports` of a test', async () => {
+    const options = { ...defaultOptions, standalone: true };
+    const tree = await schematicRunner.runSchematicAsync('component', options, appTree).toPromise();
+    const testContent = tree.readContent('/projects/bar/src/app/foo/foo.component.spec.ts');
+    expect(testContent).toContain('imports: [ FooComponent ]');
+    expect(testContent).not.toContain('declarations');
   });
 });
